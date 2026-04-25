@@ -32,14 +32,18 @@ export const FORECAST_DATA = [
   { crop: "Рожь",            currentPrice: 10_100, forecastPrice:  9_750, change: -3.5,  confidence: 67, trend: "down", yield: 18.2, yieldForecast: 17.4 },
 ];
 
-// Риски Поволжья весна 2026: ранняя засуха на юге, заморозки апреля в Оренбурге/Башкортостане
+// Риски по России весна 2026
 export const RISK_DATA = [
-  { region: "Волгоградская обл.", risk: 81, type: "Засуха",          level: "critical", crop: "Кукуруза",     color: "#ef4444" },
-  { region: "Самарская обл.",     risk: 63, type: "Засуха",          level: "high",     crop: "Пшеница",      color: "#f97316" },
-  { region: "Саратовская обл.",   risk: 54, type: "Суховей",         level: "medium",   crop: "Подсолнечник", color: "#f59e0b" },
-  { region: "Оренбургская обл.",  risk: 52, type: "Заморозки",       level: "medium",   crop: "Пшеница",      color: "#f59e0b" },
-  { region: "Башкортостан",       risk: 39, type: "Заморозки",       level: "low",      crop: "Ячмень",       color: "#10b981" },
-  { region: "Пензенская обл.",    risk: 22, type: "Переувлажнение",  level: "low",      crop: "Рожь",         color: "#10b981" },
+  { region: "Волгоградская обл.",  risk: 81, type: "Засуха",         level: "critical", crop: "Кукуруза",     color: "#ef4444" },
+  { region: "Астраханская обл.",   risk: 68, type: "Засуха",         level: "critical", crop: "Пшеница",      color: "#ef4444" },
+  { region: "Самарская обл.",      risk: 63, type: "Засуха",         level: "high",     crop: "Пшеница",      color: "#f97316" },
+  { region: "Саратовская обл.",    risk: 54, type: "Суховей",        level: "medium",   crop: "Подсолнечник", color: "#f59e0b" },
+  { region: "Оренбургская обл.",   risk: 52, type: "Заморозки",      level: "medium",   crop: "Пшеница",      color: "#f59e0b" },
+  { region: "Ростовская обл.",     risk: 47, type: "Суховей",        level: "medium",   crop: "Подсолнечник", color: "#f59e0b" },
+  { region: "Ставропольский кр.",  risk: 44, type: "Засуха",         level: "medium",   crop: "Пшеница",      color: "#f59e0b" },
+  { region: "Челябинская обл.",    risk: 44, type: "Заморозки",      level: "medium",   crop: "Ячмень",       color: "#f59e0b" },
+  { region: "Башкортостан",        risk: 39, type: "Заморозки",      level: "low",      crop: "Ячмень",       color: "#10b981" },
+  { region: "Пензенская обл.",     risk: 22, type: "Переувлажнение", level: "low",      crop: "Рожь",         color: "#10b981" },
 ];
 
 // Актуальные события апрель 2026
@@ -54,25 +58,47 @@ export const ALERTS = [
   { id: 7, type: "info",     title: "Субсидии АПК 2026", desc: "Минсельхоз: льготный кредит для сезонных работ под 4.5% — заявки принимаются до 30 апреля 2026", time: "11 ч назад", icon: "CreditCard" },
 ];
 
-// Данные регионов Поволжья апрель 2026
-// NDVI по Sentinel-2 (весна 2026 — ранний старт вегетации на севере, стресс на юге)
-// rain — осадки мм/месяц Росгидромет, temp — среднесуточная °C апрель 2026
+// Данные регионов России апрель 2026
+// x,y — координаты на SVG-карте (viewBox 0 0 1000 600)
+// Ключевые зернопроизводящие регионы всех федеральных округов
 export const MAP_REGIONS = [
-  { id: "samara",        name: "Самарская",     x: 68, y: 35, risk: 63, area: 21, ndvi: 0.56, rain: 12, temp: 15, posevnaya: 1842, wheat_pct: 48, sun_pct: 22, corn_pct: 14 },
-  { id: "saratov",       name: "Саратовская",   x: 52, y: 52, risk: 54, area: 34, ndvi: 0.49, rain:  7, temp: 18, posevnaya: 2310, wheat_pct: 52, sun_pct: 18, corn_pct: 11 },
-  { id: "volgograd",     name: "Волгоградская", x: 50, y: 72, risk: 81, area: 28, ndvi: 0.33, rain:  3, temp: 23, posevnaya: 2640, wheat_pct: 44, sun_pct: 24, corn_pct: 17 },
-  { id: "ulyanovsk",     name: "Ульяновская",   x: 62, y: 22, risk: 29, area: 12, ndvi: 0.68, rain: 17, temp: 13, posevnaya: 1120, wheat_pct: 38, sun_pct: 12, corn_pct: 10 },
-  { id: "penza",         name: "Пензенская",    x: 38, y: 28, risk: 22, area: 11, ndvi: 0.71, rain: 21, temp: 12, posevnaya: 1380, wheat_pct: 41, sun_pct: 16, corn_pct:  8 },
-  { id: "orenburg",      name: "Оренбургская",  x: 82, y: 45, risk: 52, area: 47, ndvi: 0.61, rain: 10, temp: 16, posevnaya: 3200, wheat_pct: 61, sun_pct:  9, corn_pct:  5 },
-  { id: "tatarstan",     name: "Татарстан",     x: 60, y: 12, risk: 21, area: 18, ndvi: 0.74, rain: 20, temp: 11, posevnaya: 1560, wheat_pct: 35, sun_pct:  8, corn_pct: 12 },
-  { id: "bashkortostan", name: "Башкортостан",  x: 80, y: 18, risk: 39, area: 32, ndvi: 0.65, rain: 15, temp: 12, posevnaya: 1890, wheat_pct: 42, sun_pct: 10, corn_pct:  9 },
+  // Поволжье (ПФО)
+  { id: "samara",           name: "Самарская",        x: 590, y: 240, risk: 63, area: 21, ndvi: 0.56, rain: 12, temp: 15, posevnaya: 1842, wheat_pct: 48, sun_pct: 22, corn_pct: 14 },
+  { id: "saratov",          name: "Саратовская",      x: 550, y: 290, risk: 54, area: 34, ndvi: 0.49, rain:  7, temp: 18, posevnaya: 2310, wheat_pct: 52, sun_pct: 18, corn_pct: 11 },
+  { id: "volgograd",        name: "Волгоградская",    x: 530, y: 340, risk: 81, area: 28, ndvi: 0.33, rain:  3, temp: 23, posevnaya: 2640, wheat_pct: 44, sun_pct: 24, corn_pct: 17 },
+  { id: "ulyanovsk",        name: "Ульяновская",      x: 575, y: 210, risk: 29, area: 12, ndvi: 0.68, rain: 17, temp: 13, posevnaya: 1120, wheat_pct: 38, sun_pct: 12, corn_pct: 10 },
+  { id: "penza",            name: "Пензенская",       x: 510, y: 230, risk: 22, area: 11, ndvi: 0.71, rain: 21, temp: 12, posevnaya: 1380, wheat_pct: 41, sun_pct: 16, corn_pct:  8 },
+  { id: "orenburg",         name: "Оренбургская",     x: 640, y: 260, risk: 52, area: 47, ndvi: 0.61, rain: 10, temp: 16, posevnaya: 3200, wheat_pct: 61, sun_pct:  9, corn_pct:  5 },
+  { id: "tatarstan",        name: "Татарстан",        x: 570, y: 185, risk: 21, area: 18, ndvi: 0.74, rain: 20, temp: 11, posevnaya: 1560, wheat_pct: 35, sun_pct:  8, corn_pct: 12 },
+  { id: "bashkortostan",    name: "Башкортостан",     x: 625, y: 205, risk: 39, area: 32, ndvi: 0.65, rain: 15, temp: 12, posevnaya: 1890, wheat_pct: 42, sun_pct: 10, corn_pct:  9 },
+  // Юг России (ЮФО/СКФО)
+  { id: "krasnodar",        name: "Краснодарский",    x: 450, y: 370, risk: 38, area: 38, ndvi: 0.72, rain: 18, temp: 19, posevnaya: 3780, wheat_pct: 55, sun_pct: 16, corn_pct: 18 },
+  { id: "rostov",           name: "Ростовская",       x: 470, y: 350, risk: 47, area: 36, ndvi: 0.58, rain:  9, temp: 20, posevnaya: 3540, wheat_pct: 58, sun_pct: 20, corn_pct: 12 },
+  { id: "stavropol",        name: "Ставропольский",   x: 500, y: 385, risk: 44, area: 28, ndvi: 0.62, rain: 14, temp: 18, posevnaya: 2890, wheat_pct: 62, sun_pct: 15, corn_pct:  8 },
+  { id: "astrakhan",        name: "Астраханская",     x: 555, y: 360, risk: 68, area:  8, ndvi: 0.28, rain:  2, temp: 24, posevnaya:  420, wheat_pct: 22, sun_pct:  8, corn_pct: 10 },
+  // Центральное Черноземье (ЦФО)
+  { id: "voronezh",         name: "Воронежская",      x: 470, y: 255, risk: 31, area: 26, ndvi: 0.69, rain: 18, temp: 13, posevnaya: 2840, wheat_pct: 44, sun_pct: 18, corn_pct: 16 },
+  { id: "belgorod",         name: "Белгородская",     x: 445, y: 270, risk: 26, area: 18, ndvi: 0.71, rain: 22, temp: 12, posevnaya: 1680, wheat_pct: 40, sun_pct: 14, corn_pct: 20 },
+  { id: "kursk",            name: "Курская",          x: 440, y: 248, risk: 24, area: 17, ndvi: 0.73, rain: 24, temp: 11, posevnaya: 1520, wheat_pct: 48, sun_pct: 10, corn_pct: 14 },
+  { id: "tambov",           name: "Тамбовская",       x: 488, y: 240, risk: 28, area: 14, ndvi: 0.70, rain: 20, temp: 12, posevnaya: 1610, wheat_pct: 46, sun_pct: 12, corn_pct: 10 },
+  // Центр (ЦФО)
+  { id: "moscow_obl",       name: "Московская",       x: 458, y: 195, risk: 15, area:  5, ndvi: 0.76, rain: 32, temp:  8, posevnaya:  540, wheat_pct: 28, sun_pct:  4, corn_pct:  6 },
+  // Северо-Запад (СЗФО)
+  { id: "leningrad",        name: "Ленинградская",    x: 408, y: 140, risk: 12, area:  3, ndvi: 0.78, rain: 38, temp:  6, posevnaya:  280, wheat_pct: 18, sun_pct:  2, corn_pct:  4 },
+  // Урал (УФО)
+  { id: "chelyabinsk",      name: "Челябинская",      x: 665, y: 215, risk: 44, area: 28, ndvi: 0.60, rain: 16, temp:  9, posevnaya: 2100, wheat_pct: 52, sun_pct:  5, corn_pct:  3 },
+  { id: "kurgan",           name: "Курганская",       x: 680, y: 195, risk: 37, area: 20, ndvi: 0.63, rain: 18, temp:  8, posevnaya: 1640, wheat_pct: 58, sun_pct:  4, corn_pct:  2 },
+  // Западная Сибирь (СФО)
+  { id: "novosibirsk",      name: "Новосибирская",    x: 740, y: 215, risk: 33, area: 32, ndvi: 0.64, rain: 22, temp:  6, posevnaya: 2560, wheat_pct: 54, sun_pct:  3, corn_pct:  1 },
+  { id: "omsk",             name: "Омская",           x: 710, y: 200, risk: 35, area: 30, ndvi: 0.62, rain: 20, temp:  7, posevnaya: 2380, wheat_pct: 60, sun_pct:  2, corn_pct:  1 },
+  { id: "altai",            name: "Алтайский",        x: 750, y: 255, risk: 41, area: 45, ndvi: 0.59, rain: 19, temp:  8, posevnaya: 3820, wheat_pct: 48, sun_pct:  5, corn_pct:  2 },
 ];
 
 export const STATS = [
-  { label: "Регионов под мониторингом", value: "8",   suffix: "",  icon: "MapPin",       color: "emerald" },
-  { label: "Культур анализируется",     value: "12",  suffix: "",  icon: "Wheat",        color: "amber" },
-  { label: "Точность прогнозов AI",     value: "87",  suffix: "%", icon: "Target",       color: "cyan" },
-  { label: "Активных предупреждений",   value: "4",   suffix: "",  icon: "AlertTriangle", color: "red" },
+  { label: "Регионов под мониторингом", value: "23",  suffix: "",  icon: "MapPin",        color: "emerald" },
+  { label: "Культур анализируется",     value: "12",  suffix: "",  icon: "Wheat",         color: "amber" },
+  { label: "Точность прогнозов AI",     value: "87",  suffix: "%", icon: "Target",        color: "cyan" },
+  { label: "Активных предупреждений",   value: "4",   suffix: "",  icon: "AlertTriangle",  color: "red" },
 ];
 
 // Цены НТБ пшеница 3кл (₽/т), Поволжье, октябрь 2025 — прогноз июль 2026

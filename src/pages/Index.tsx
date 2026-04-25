@@ -6,7 +6,7 @@ import PageContent from "./PageContent";
 const SECTION_TITLES: Record<string, { label: string; desc: string }> = {
   home:         { label: "Главная",            desc: "Дашборд и сводка по рынку" },
   forecasts:    { label: "Прогнозы",           desc: "Цены и урожайность культур" },
-  map:          { label: "Карта регионов",     desc: "Поволжье · 8 регионов" },
+  map:          { label: "Карта регионов",     desc: "Россия · 23 региона" },
   supply:       { label: "Спрос и предложение",desc: "Баланс рынка" },
   ndvi:         { label: "NDVI-мониторинг",    desc: "Спутниковые данные Sentinel-2" },
   news:         { label: "Новости АПК",        desc: "Актуальные события" },

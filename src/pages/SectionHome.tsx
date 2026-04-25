@@ -158,7 +158,7 @@ export default function SectionHome({
                 <span className="gold-text">для агробизнеса</span>
               </h1>
               <p className="text-white/75 mt-2 text-sm font-body max-w-md">
-                Прогнозирование цен и урожайности · 8 регионов Поволжья · 12 культур · спутниковый мониторинг NDVI
+                Прогнозирование цен и урожайности · 23 региона России · 12 культур · спутниковый мониторинг NDVI
               </p>
               <div className="flex gap-3 mt-5 flex-wrap">
                 <button onClick={() => setActiveSection("forecasts")}
@@ -175,7 +175,7 @@ export default function SectionHome({
             <div className="hidden lg:grid grid-cols-2 gap-3 shrink-0">
               {[
                 { v: "94.7%", l: "Точность AI" },
-                { v: "8 рег.", l: "Поволжье" },
+                { v: "23 рег.", l: "Россия" },
                 { v: "12", l: "культур" },
                 { v: "LIVE", l: "данные" },
               ].map((s, i) => (

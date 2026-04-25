@@ -4,6 +4,11 @@ export const REGION_NAMES: Record<string, string> = {
   samara: "Самарская", saratov: "Саратовская", volgograd: "Волгоградская",
   ulyanovsk: "Ульяновская", penza: "Пензенская", orenburg: "Оренбургская",
   tatarstan: "Татарстан", bashkortostan: "Башкортостан",
+  krasnodar: "Краснодарский", rostov: "Ростовская", stavropol: "Ставропольский",
+  astrakhan: "Астраханская", voronezh: "Воронежская", belgorod: "Белгородская",
+  kursk: "Курская", tambov: "Тамбовская", moscow_obl: "Московская",
+  leningrad: "Ленинградская", chelyabinsk: "Челябинская", kurgan: "Курганская",
+  novosibirsk: "Новосибирская", omsk: "Омская", altai: "Алтайский",
 };
 
 export function ndviColor(v: number) {

@@ -13,7 +13,7 @@ export default function NdviHeatMap({ summary, selectedRegion, onSelectRegion }:
       <div className="glass-card rounded-xl p-5">
         <div className="flex items-center gap-2 mb-5">
           <Icon name="Map" size={15} className="text-primary" />
-          <h2 className="font-semibold text-sm">Тепловая карта NDVI · Поволжье · апрель 2025</h2>
+          <h2 className="font-semibold text-sm">Тепловая карта NDVI · Россия · апрель 2026</h2>
         </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {[...summary].sort((a, b) => b.ndvi - a.ndvi).map((r) => (

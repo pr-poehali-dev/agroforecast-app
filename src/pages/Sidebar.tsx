@@ -71,7 +71,7 @@ export default function Sidebar({ activeSection, sidebarOpen, collapsed, onNavig
                   <div className="font-heading font-bold text-white leading-tight text-[15px] tracking-wide">АгроПорт</div>
                   <div className="text-[10px] text-white/70 font-mono mt-0.5 flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse-glow inline-block" />
-                    Поволжье · v2.5
+                    Россия · v3.0
                   </div>
                 </div>
               )}
