@@ -305,7 +305,7 @@ export default function PageContent({
                 </div>
                 <button onClick={() => setActiveSection("map")} className="text-xs text-primary hover:text-primary/80 transition-colors">Открыть →</button>
               </div>
-              <MapSVG selectedRegion={selectedRegion} onSelect={setSelectedRegion} />
+              <MapSVGSmall selectedRegion={selectedRegion} onSelect={setSelectedRegion} />
               <div className="flex gap-3 mt-3 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-primary" />Низкий</span>
                 <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-accent" />Средний</span>
