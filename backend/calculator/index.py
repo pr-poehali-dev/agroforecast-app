@@ -7,12 +7,14 @@ CORS_HEADERS = {
     "Content-Type": "application/json",
 }
 
+# Данные ФГБУ «Агроэкспорт» + НТБ, апрель 2025, Поволжье
+# revenue = урожайность (ц/га) × цена (₽/т) / 10; cost = прямые затраты + накладные
 CROP_DATA = {
-    "Пшеница озимая":  {"revenue_per_ha": 45600, "cost_per_ha": 28400, "margin": 37.7, "roi": 60.6, "best_sell_month": "Август–Сентябрь", "risk": "низкий"},
-    "Подсолнечник":    {"revenue_per_ha": 71250, "cost_per_ha": 41800, "margin": 41.3, "roi": 70.5, "best_sell_month": "Октябрь–Ноябрь", "risk": "средний"},
-    "Кукуруза":        {"revenue_per_ha": 38400, "cost_per_ha": 26100, "margin": 32.0, "roi": 47.1, "best_sell_month": "Сентябрь–Октябрь", "risk": "высокий"},
-    "Ячмень яровой":   {"revenue_per_ha": 31500, "cost_per_ha": 21200, "margin": 32.7, "roi": 48.6, "best_sell_month": "Июль–Август",     "risk": "низкий"},
-    "Рожь":            {"revenue_per_ha": 24800, "cost_per_ha": 18900, "margin": 23.8, "roi": 31.2, "best_sell_month": "Август",            "risk": "низкий"},
+    "Пшеница озимая":  {"revenue_per_ha": 47200, "cost_per_ha": 29800, "margin": 36.9, "roi": 58.4, "best_sell_month": "Август–Сентябрь", "risk": "низкий",  "price_per_t": 14850, "yield_cha": 30.8},
+    "Подсолнечник":    {"revenue_per_ha": 70200, "cost_per_ha": 42500, "margin": 39.5, "roi": 65.2, "best_sell_month": "Октябрь–Ноябрь", "risk": "средний", "price_per_t": 31200, "yield_cha": 22.5},
+    "Кукуруза":        {"revenue_per_ha": 39600, "cost_per_ha": 27200, "margin": 31.3, "roi": 45.6, "best_sell_month": "Сентябрь–Октябрь", "risk": "высокий", "price_per_t": 12600, "yield_cha": 55.2},
+    "Ячмень яровой":   {"revenue_per_ha": 32800, "cost_per_ha": 22100, "margin": 32.6, "roi": 48.4, "best_sell_month": "Июль–Август",     "risk": "низкий",  "price_per_t": 11400, "yield_cha": 27.3},
+    "Рожь":            {"revenue_per_ha": 25200, "cost_per_ha": 19400, "margin": 23.0, "roi": 29.9, "best_sell_month": "Август",            "risk": "низкий",  "price_per_t":  9600, "yield_cha": 17.8},
 }
 
 
@@ -63,6 +65,9 @@ def handler(event: dict, context) -> dict:
         "best_sell_month": data["best_sell_month"],
         "risk_level": data["risk"],
         "recommendation": tip,
+        "price_per_t": data["price_per_t"],
+        "yield_cha": data["yield_cha"],
+        "data_source": "НТБ + ФГБУ Агроэкспорт, апрель 2025",
     }
 
     return {

@@ -1,9 +1,18 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import Icon from "@/components/ui/icon";
 import { ALERTS, FORECAST_DATA, STATS } from "./data";
-import { MapSVGSmall } from "./PageWidgets";
+
+const HomeMap = lazy(() => import("@/components/HomeMap"));
 
 const AI_URL = "https://functions.poehali.dev/3f769f53-b21b-473e-91b9-b7a755123928";
+
+const CROPS_API = [
+  { name: "Пшеница озимая", region: "samara" },
+  { name: "Подсолнечник",   region: "samara" },
+  { name: "Кукуруза",       region: "volgograd" },
+  { name: "Ячмень яровой",  region: "tatarstan" },
+  { name: "Рожь",           region: "penza" },
+];
 
 interface AiForecastItem {
   crop: string;
@@ -15,6 +24,17 @@ interface AiForecastItem {
   yieldForecast: number;
 }
 
+interface AiRegionRisk {
+  total_risk_pct: number;
+  total_risk_level: string;
+  yield_cha: number;
+  price_rub_t: number;
+  price_change_pct: number;
+  drought_risk_pct: number;
+  frost_risk_pct: number;
+  pest_risk_pct: number;
+}
+
 interface SectionHomeProps {
   selectedRegion: string | null;
   setSelectedRegion: (id: string) => void;
@@ -22,20 +42,28 @@ interface SectionHomeProps {
   setActiveSection: (section: string) => void;
 }
 
-const CROPS_API = [
-  { name: "Пшеница озимая", region: "samara" },
-  { name: "Подсолнечник",   region: "samara" },
-  { name: "Кукуруза",       region: "volgograd" },
-  { name: "Ячмень яровой",  region: "tatarstan" },
-  { name: "Рожь",           region: "penza" },
-];
-
 export default function SectionHome({
   selectedRegion, setSelectedRegion, setSelectedCrop, setActiveSection,
 }: SectionHomeProps) {
   const [forecasts, setForecasts] = useState<AiForecastItem[]>([]);
   const [aiLoading, setAiLoading] = useState(true);
+  const [aiRisks, setAiRisks] = useState<Record<string, AiRegionRisk>>({});
 
+  // Load all-regions AI data for map markers
+  useEffect(() => {
+    fetch(`${AI_URL}?crop=${encodeURIComponent("Пшеница озимая")}&horizon=3&all=1`)
+      .then(r => r.json())
+      .then(d => {
+        const map: Record<string, AiRegionRisk> = {};
+        (d.regions || []).forEach((r: AiRegionRisk & { region_id: string }) => {
+          map[r.region_id] = r;
+        });
+        setAiRisks(map);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Load forecast cards
   useEffect(() => {
     const abort = new AbortController();
     Promise.all(
@@ -44,7 +72,7 @@ export default function SectionHome({
           .then(r => r.json())
           .then(d => ({
             crop: c.name,
-            currentPrice: d.price_forecast?.price_rub_t
+            currentPrice: d.price_forecast
               ? Math.round(d.price_forecast.price_rub_t / (1 + d.price_forecast.change_pct / 100))
               : (FORECAST_DATA.find(f => f.crop === c.name)?.currentPrice ?? 0),
             forecastPrice: d.price_forecast?.price_rub_t ?? (FORECAST_DATA.find(f => f.crop === c.name)?.forecastPrice ?? 0),
@@ -57,8 +85,7 @@ export default function SectionHome({
       )
     )
       .then(results => { setForecasts(results.filter(Boolean) as AiForecastItem[]); setAiLoading(false); })
-      .catch(() => { setAiLoading(false); });
-
+      .catch(() => setAiLoading(false));
     return () => abort.abort();
   }, []);
 
@@ -69,10 +96,15 @@ export default function SectionHome({
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-foreground">AgroForecast Pro: Поволжье</h1>
-          <p className="text-muted-foreground mt-1 text-sm">Прогнозирование рынка сельскохозяйственной продукции · 8 регионов · 12 культур</p>
+          <p className="text-muted-foreground mt-1 text-sm">
+            Прогнозирование рынка сельскохозяйственной продукции · 8 регионов · 12 культур · данные апрель 2025
+          </p>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => setActiveSection("pricing")} className="px-3 py-1.5 text-xs bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 transition-colors">Обновить тариф</button>
+          <button onClick={() => setActiveSection("ai-model")} className="px-3 py-1.5 text-xs bg-primary/10 text-primary border border-primary/25 rounded-lg font-medium hover:bg-primary/20 transition-colors flex items-center gap-1.5">
+            <Icon name="Brain" size={12} />AI-модель
+          </button>
+          <button onClick={() => setActiveSection("pricing")} className="px-3 py-1.5 text-xs bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 transition-colors">Тарифы</button>
         </div>
       </div>
 
@@ -93,23 +125,47 @@ export default function SectionHome({
         ))}
       </div>
 
-      {/* Map + Alerts */}
+      {/* Interactive Map + Alerts */}
       <div className="grid lg:grid-cols-2 gap-4">
-        <div className="glass-card rounded-xl p-5">
-          <div className="flex items-center justify-between mb-4">
+        <div className="glass-card rounded-xl p-4">
+          <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <Icon name="Map" size={16} className="text-primary" />
-              <span className="font-semibold text-sm">Карта Поволжья</span>
+              <Icon name="Satellite" size={15} className="text-primary" />
+              <span className="font-semibold text-sm">Интерактивная карта</span>
+              {Object.keys(aiRisks).length > 0 ? (
+                <span className="flex items-center gap-1 text-[10px] text-primary bg-primary/10 px-1.5 py-0.5 rounded font-mono">
+                  <Icon name="Brain" size={9} />AI · live
+                </span>
+              ) : (
+                <span className="text-[10px] text-muted-foreground animate-pulse">загрузка AI...</span>
+              )}
             </div>
-            <button onClick={() => setActiveSection("map")} className="text-xs text-primary hover:text-primary/80 transition-colors">Открыть →</button>
+            <button onClick={() => setActiveSection("map")} className="text-xs text-primary hover:text-primary/80 transition-colors">Полная карта →</button>
           </div>
-          <MapSVGSmall selectedRegion={selectedRegion} onSelect={setSelectedRegion} />
-          <div className="flex gap-3 mt-3 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-primary" />Низкий</span>
-            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-accent" />Средний</span>
-            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-destructive" />Высокий</span>
+          <Suspense fallback={
+            <div className="h-[340px] rounded-xl bg-secondary/40 animate-pulse flex items-center justify-center text-muted-foreground text-sm">
+              Загрузка спутниковой карты...
+            </div>
+          }>
+            <HomeMap
+              selectedRegion={selectedRegion}
+              onSelect={setSelectedRegion}
+              aiRisks={aiRisks}
+            />
+          </Suspense>
+          <div className="flex gap-4 mt-3 flex-wrap">
+            {[
+              { label: "Критический риск", color: "bg-destructive" },
+              { label: "Средний риск",     color: "bg-accent" },
+              { label: "Низкий риск",      color: "bg-primary" },
+            ].map(l => (
+              <span key={l.label} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <span className={`w-2.5 h-2.5 rounded-full ${l.color}`} />{l.label}
+              </span>
+            ))}
           </div>
         </div>
+
         <div className="glass-card rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
@@ -119,7 +175,7 @@ export default function SectionHome({
             <button onClick={() => setActiveSection("alerts")} className="text-xs text-primary hover:text-primary/80 transition-colors">Все →</button>
           </div>
           <div className="space-y-2">
-            {ALERTS.slice(0, 4).map(a => (
+            {ALERTS.slice(0, 5).map(a => (
               <div key={a.id} className={`flex items-start gap-3 p-2.5 rounded-lg
                 ${a.type === "critical" ? "bg-destructive/10 border border-destructive/20" :
                   a.type === "warning" ? "bg-accent/8 border border-accent/15" :
@@ -145,14 +201,14 @@ export default function SectionHome({
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Icon name="TrendingUp" size={16} className="text-primary" />
-            <span className="font-semibold text-sm">Прогнозы цен на 3 месяца</span>
+            <span className="font-semibold text-sm">Прогнозы цен AI · +3 месяца · апрель 2025</span>
             {aiLoading ? (
               <span className="flex items-center gap-1 text-[10px] text-muted-foreground animate-pulse">
-                <Icon name="Brain" size={10} className="text-primary" />живой расчёт...
+                <Icon name="Brain" size={10} className="text-primary" />расчёт...
               </span>
             ) : (
               <span className="flex items-center gap-1 text-[10px] text-primary bg-primary/10 px-1.5 py-0.5 rounded font-mono">
-                <Icon name="Brain" size={10} />AI
+                <Icon name="Brain" size={10} />ARIMA+LSTM
               </span>
             )}
           </div>
@@ -160,22 +216,28 @@ export default function SectionHome({
         </div>
         <div className={`grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 transition-opacity ${aiLoading ? "opacity-60" : ""}`}>
           {displayForecasts.map((f, i) => (
-            <div key={i} className="bg-secondary/40 rounded-lg p-3 hover:bg-secondary/70 transition-colors cursor-pointer"
+            <div key={i}
+              className="bg-secondary/40 rounded-lg p-3 hover:bg-secondary/70 transition-colors cursor-pointer border border-transparent hover:border-primary/20"
               onClick={() => { setSelectedCrop(f.crop); setActiveSection("forecasts"); }}>
-              <div className="text-xs text-muted-foreground mb-1 truncate">{f.crop}</div>
-              <div className="font-bold font-mono text-sm text-foreground">{f.forecastPrice.toLocaleString()} ₽</div>
-              <div className={`flex items-center gap-1 text-xs font-medium mt-1 ${f.trend === "up" ? "text-primary" : "text-destructive"}`}>
+              <div className="text-xs text-muted-foreground mb-1 truncate font-medium">{f.crop}</div>
+              <div className="font-bold font-mono text-base text-foreground">
+                {typeof f.forecastPrice === "number" ? f.forecastPrice.toLocaleString("ru") : f.forecastPrice} ₽
+              </div>
+              <div className="text-[10px] text-muted-foreground font-mono">
+                тек. {typeof f.currentPrice === "number" ? f.currentPrice.toLocaleString("ru") : f.currentPrice} ₽/т
+              </div>
+              <div className={`flex items-center gap-1 text-xs font-bold mt-1.5 ${f.trend === "up" ? "text-primary" : "text-destructive"}`}>
                 <Icon name={f.trend === "up" ? "TrendingUp" : "TrendingDown"} size={11} />
                 {f.change > 0 ? "+" : ""}{typeof f.change === "number" ? f.change.toFixed(1) : f.change}%
               </div>
               <div className="mt-2">
                 <div className="flex justify-between text-[10px] text-muted-foreground mb-1">
-                  <span>Уверенность</span>
-                  <span className="font-mono">{typeof f.confidence === "number" ? f.confidence.toFixed(0) : f.confidence}%</span>
+                  <span>Уверенность AI</span>
+                  <span className="font-mono font-bold">{typeof f.confidence === "number" ? f.confidence.toFixed(0) : f.confidence}%</span>
                 </div>
-                <div className="h-1 bg-border rounded-full">
-                  <div className="h-full rounded-full bg-primary"
-                    style={{ width: `${f.confidence}%`, opacity: f.confidence / 100 * 0.7 + 0.3 }} />
+                <div className="h-1.5 bg-border rounded-full">
+                  <div className="h-full rounded-full bg-primary transition-all duration-700"
+                    style={{ width: `${f.confidence}%`, opacity: (Number(f.confidence) / 100) * 0.7 + 0.3 }} />
                 </div>
               </div>
             </div>
