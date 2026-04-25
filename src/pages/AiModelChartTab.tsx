@@ -16,6 +16,45 @@ function ruText(s: string): string {
     .replace(/\bEU\b/g, "ЕС");
 }
 
+// Переводим поле month из API в короткое русское название
+// API может отдавать "United States (2025)", "Jan", "January 2025", "2025-01" и т.п.
+const MONTHS_RU: Record<string, string> = {
+  Jan: "Янв", Feb: "Фев", Mar: "Мар", Apr: "Апр",
+  May: "Май", Jun: "Июн", Jul: "Июл", Aug: "Авг",
+  Sep: "Сен", Oct: "Окт", Nov: "Ноя", Dec: "Дек",
+  January: "Янв", February: "Фев", March: "Мар", April: "Апр",
+  June: "Июн", July: "Июл", August: "Авг",
+  September: "Сен", October: "Окт", November: "Ноя", December: "Дек",
+  "01": "Янв", "02": "Фев", "03": "Мар", "04": "Апр",
+  "05": "Май", "06": "Июн", "07": "Июл", "08": "Авг",
+  "09": "Сен", "10": "Окт", "11": "Ноя", "12": "Дек",
+};
+
+function formatMonth(month: string, date?: string): string {
+  if (!month) return "";
+
+  // Если уже по-русски (кириллица) — возвращаем как есть
+  if (/[а-яА-Я]/.test(month)) return month.slice(0, 3);
+
+  // Попробуем из поля date: "2025-01-15" → "Янв"
+  if (date) {
+    const m = date.match(/^\d{4}-(\d{2})/);
+    if (m && MONTHS_RU[m[1]]) return MONTHS_RU[m[1]];
+  }
+
+  // Попробуем прямое совпадение
+  for (const [en, ru] of Object.entries(MONTHS_RU)) {
+    if (month.startsWith(en)) return ru;
+  }
+
+  // Попробуем формат "2025-01"
+  const isoM = month.match(/\d{4}-(\d{2})/);
+  if (isoM && MONTHS_RU[isoM[1]]) return MONTHS_RU[isoM[1]];
+
+  // Если ничего не подошло — берём первые 3 символа (могут быть цифры)
+  return month.slice(0, 4);
+}
+
 interface AiModelChartTabProps {
   chart: ChartPoint[];
   crop: string;
@@ -86,7 +125,7 @@ export default function AiModelChartTab({ chart, crop, region, horizon, meta }: 
                 fill={d.forecast ? "#f59e0b" : "#10b981"} stroke="white" strokeWidth="1.5" />
             ))}
             {chartData.map((d, i) => (
-              <text key={i} x={px(i)} y={ch + 20} textAnchor="middle" fill="rgba(0,0,0,0.35)" fontSize="10" fontFamily="IBM Plex Mono">{d.month}</text>
+              <text key={i} x={px(i)} y={ch + 20} textAnchor="middle" fill="rgba(0,0,0,0.35)" fontSize="10" fontFamily="IBM Plex Mono">{formatMonth(d.month, d.date)}</text>
             ))}
           </svg>
         </div>
