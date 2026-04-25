@@ -1,0 +1,30 @@
+{
+  "tests": [
+    {
+      "name": "GET — список культур",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200,
+      "expectedBody": {"crops": ["Пшеница озимая"]},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST — расчёт пшеница 500 га",
+      "method": "POST",
+      "path": "/",
+      "body": {"crop": "Пшеница озимая", "area": 500},
+      "expectedStatus": 200,
+      "expectedBody": {"crop": "Пшеница озимая", "profit_rub": 8600000},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST — подсолнечник 100 га",
+      "method": "POST",
+      "path": "/",
+      "body": {"crop": "Подсолнечник", "area": 100},
+      "expectedStatus": 200,
+      "expectedBody": {"roi_pct": 70.5},
+      "bodyMatcher": "partial"
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import Icon from "@/components/ui/icon";
 import {
   CROPS, FORECAST_DATA, RISK_DATA, ALERTS, MAP_REGIONS,
@@ -6,6 +6,11 @@ import {
   PROFITABILITY_DATA, PRICING_PLANS,
   getRiskColor, getRiskLabel,
 } from "./data";
+
+const VolgaMap = lazy(() => import("@/components/VolgaMap"));
+
+const CALC_URL = "https://functions.poehali.dev/b54f9de1-da43-4c7f-b32f-63fbdcdbc6fd";
+const SETTINGS_URL = "https://functions.poehali.dev/6e542f17-7128-4815-848b-0f1d83bb3a4f";
 
 // ─── SVG Chart: Price ───────────────────────────────────────────────────────
 
@@ -80,19 +85,19 @@ function SupplyChart() {
   );
 }
 
-// ─── Map SVG ─────────────────────────────────────────────────────────────────
+// ─── Map placeholder (for home page preview, small) ──────────────────────────
 
-function MapSVG({ selectedRegion, onSelect }: { selectedRegion: string | null; onSelect: (id: string) => void }) {
+function MapSVGSmall({ selectedRegion, onSelect }: { selectedRegion: string | null; onSelect: (id: string) => void }) {
   return (
     <div className="relative w-full h-full min-h-[280px]">
       <svg viewBox="0 0 100 100" className="w-full h-full">
         <defs>
-          <radialGradient id="bgGrad" cx="50%" cy="50%" r="70%">
+          <radialGradient id="bgGrad2" cx="50%" cy="50%" r="70%">
             <stop offset="0%" stopColor="rgba(16,185,129,0.04)" />
             <stop offset="100%" stopColor="rgba(0,0,0,0)" />
           </radialGradient>
         </defs>
-        <rect width="100" height="100" fill="url(#bgGrad)" />
+        <rect width="100" height="100" fill="url(#bgGrad2)" />
         {[...Array(10)].map((_, i) => <line key={`h${i}`} x1="0" y1={i * 10} x2="100" y2={i * 10} stroke="rgba(16,185,129,0.06)" strokeWidth="0.3" />)}
         {[...Array(10)].map((_, i) => <line key={`v${i}`} x1={i * 10} y1="0" x2={i * 10} y2="100" stroke="rgba(16,185,129,0.06)" strokeWidth="0.3" />)}
         {MAP_REGIONS.map(r => {
@@ -109,21 +114,67 @@ function MapSVG({ selectedRegion, onSelect }: { selectedRegion: string | null; o
             </g>
           );
         })}
-        <text x="50" y="97" textAnchor="middle" fill="rgba(16,185,129,0.3)" fontSize="3" fontFamily="IBM Plex Mono" letterSpacing="2">ПОВОЛЖЬЕ · NDVI МОНИТОРИНГ</text>
+        <text x="50" y="97" textAnchor="middle" fill="rgba(16,185,129,0.3)" fontSize="3" fontFamily="IBM Plex Mono" letterSpacing="2">ПОВОЛЖЬЕ</text>
       </svg>
     </div>
   );
 }
 
-// ─── Business Calculator ──────────────────────────────────────────────────────
+// ─── Business Calculator (API-backed) ────────────────────────────────────────
+
+interface CalcResult {
+  crop: string;
+  area_ha: number;
+  revenue_rub: number;
+  cost_rub: number;
+  profit_rub: number;
+  margin_pct: number;
+  roi_pct: number;
+  best_sell_month: string;
+  risk_level: string;
+  recommendation: string;
+}
 
 function Calculator() {
   const [area, setArea] = useState(500);
   const [cropIdx, setCropIdx] = useState(0);
-  const crop = PROFITABILITY_DATA[cropIdx];
-  const revenue = (crop.revenue * area) / 1000;
-  const cost = (crop.cost * area) / 1000;
-  const profit = revenue - cost;
+  const [result, setResult] = useState<CalcResult | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const cropName = PROFITABILITY_DATA[cropIdx].crop;
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setLoading(true);
+      fetch(CALC_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ crop: cropName, area }),
+      })
+        .then(r => r.json())
+        .then((data: CalcResult) => { setResult(data); setLoading(false); })
+        .catch(() => {
+          // fallback to local calc
+          const c = PROFITABILITY_DATA[cropIdx];
+          setResult({
+            crop: c.crop, area_ha: area,
+            revenue_rub: c.revenue * area,
+            cost_rub: c.cost * area,
+            profit_rub: (c.revenue - c.cost) * area,
+            margin_pct: c.margin, roi_pct: c.roi,
+            best_sell_month: "Август–Сентябрь", risk_level: "средний",
+            recommendation: c.margin > 35 ? "Оптимальная культура для вашей площади." : "Рассмотрите переход на подсолнечник (ROI 70.5%).",
+          });
+          setLoading(false);
+        });
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [cropIdx, area, cropName]);
+
+  const revenue = result ? result.revenue_rub / 1_000_000 : 0;
+  const cost = result ? result.cost_rub / 1_000_000 : 0;
+  const profit = result ? result.profit_rub / 1_000_000 : 0;
+
   return (
     <div className="space-y-5">
       <div>
@@ -139,15 +190,18 @@ function Calculator() {
         </div>
       </div>
       <div>
-        <label className="text-xs text-muted-foreground mb-2 block">Площадь посева: <span className="font-mono font-bold text-foreground">{area} га</span></label>
+        <label className="text-xs text-muted-foreground mb-2 block">
+          Площадь посева: <span className="font-mono font-bold text-foreground">{area} га</span>
+          {loading && <span className="ml-2 text-muted-foreground">считаю...</span>}
+        </label>
         <input type="range" min={50} max={5000} step={50} value={area} onChange={e => setArea(+e.target.value)}
           className="w-full h-2 bg-border rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary" />
         <div className="flex justify-between text-[10px] text-muted-foreground mt-1"><span>50 га</span><span>5 000 га</span></div>
       </div>
-      <div className="grid grid-cols-3 gap-3">
+      <div className={`grid grid-cols-3 gap-3 transition-opacity ${loading ? "opacity-50" : ""}`}>
         <div className="bg-secondary/40 rounded-xl p-4 text-center">
           <div className="text-xs text-muted-foreground mb-1">Выручка</div>
-          <div className="text-lg font-bold font-mono text-foreground">{revenue.toFixed(1) } млн ₽</div>
+          <div className="text-lg font-bold font-mono text-foreground">{revenue.toFixed(1)} млн ₽</div>
         </div>
         <div className="bg-secondary/40 rounded-xl p-4 text-center">
           <div className="text-xs text-muted-foreground mb-1">Затраты</div>
@@ -158,28 +212,33 @@ function Calculator() {
           <div className="text-lg font-bold font-mono text-primary">{profit.toFixed(1)} млн ₽</div>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        {[
-          { label: "Маржинальность", value: `${crop.margin}%`, good: crop.margin > 35 },
-          { label: "ROI", value: `${crop.roi}%`, good: crop.roi > 50 },
-        ].map((m, i) => (
-          <div key={i} className={`p-3 rounded-lg border ${m.good ? "border-primary/25 bg-primary/5" : "border-border bg-secondary/30"}`}>
-            <div className="text-xs text-muted-foreground">{m.label}</div>
-            <div className={`text-xl font-bold font-mono mt-0.5 ${m.good ? "text-primary" : "text-foreground"}`}>{m.value}</div>
+      {result && (
+        <>
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { label: "Маржинальность", value: `${result.margin_pct}%`, good: result.margin_pct > 35 },
+              { label: "ROI", value: `${result.roi_pct}%`, good: result.roi_pct > 50 },
+            ].map((m, i) => (
+              <div key={i} className={`p-3 rounded-lg border ${m.good ? "border-primary/25 bg-primary/5" : "border-border bg-secondary/30"}`}>
+                <div className="text-xs text-muted-foreground">{m.label}</div>
+                <div className={`text-xl font-bold font-mono mt-0.5 ${m.good ? "text-primary" : "text-foreground"}`}>{m.value}</div>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
-      <div className="p-3 bg-accent/8 border border-accent/20 rounded-lg">
-        <div className="flex items-start gap-2">
-          <Icon name="Lightbulb" size={14} className="text-accent mt-0.5 shrink-0" />
-          <div className="text-xs text-foreground">
-            <span className="font-medium">AI-рекомендация:</span>{" "}
-            {crop.margin > 35
-              ? `Оптимальная культура для вашей площади. Рекомендуем продажу в июле-августе при прогнозируемом росте цены.`
-              : `Рассмотрите переход на подсолнечник (маржа 41.3%) или диверсификацию посевов для снижения рисков.`}
+          <div className="flex gap-3 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1"><Icon name="Calendar" size={11} />Лучший срок продаж: <span className="font-medium text-foreground">{result.best_sell_month}</span></span>
+            <span className="flex items-center gap-1"><Icon name="Shield" size={11} />Риск: <span className="font-medium text-foreground">{result.risk_level}</span></span>
           </div>
-        </div>
-      </div>
+          <div className="p-3 bg-accent/8 border border-accent/20 rounded-lg">
+            <div className="flex items-start gap-2">
+              <Icon name="Lightbulb" size={14} className="text-accent mt-0.5 shrink-0" />
+              <div className="text-xs text-foreground">
+                <span className="font-medium">Рекомендация (API):</span>{" "}{result.recommendation}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -404,15 +463,17 @@ export default function PageContent({
             <p className="text-muted-foreground mt-1 text-sm">Спутниковые данные Sentinel-2 · NDVI · метеоусловия · нажмите регион для деталей</p>
           </div>
           <div className="grid lg:grid-cols-3 gap-4">
-            <div className="lg:col-span-2 glass-card rounded-xl p-5 scan-animation">
+            <div className="lg:col-span-2 glass-card rounded-xl p-5">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <Icon name="Satellite" size={14} className="text-primary" />
-                  <span className="text-xs font-mono text-muted-foreground">SENTINEL-2 · NDVI · 25.04.2026</span>
+                  <span className="text-xs font-mono text-muted-foreground">ESRI WORLD IMAGERY · ПОВОЛЖЬЕ</span>
                 </div>
-                <div className="flex items-center gap-1.5 text-xs text-primary"><span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse-glow" />Online</div>
+                <div className="flex items-center gap-1.5 text-xs text-primary"><span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse-glow" />Live</div>
               </div>
-              <MapSVG selectedRegion={selectedRegion} onSelect={setSelectedRegion} />
+              <Suspense fallback={<div className="h-[420px] rounded-xl bg-secondary/40 animate-pulse flex items-center justify-center text-muted-foreground text-sm">Загрузка карты...</div>}>
+                <VolgaMap selectedRegion={selectedRegion} onSelect={setSelectedRegion} />
+              </Suspense>
               <div className="flex gap-4 mt-4 flex-wrap">
                 {[{ label: "Критический риск", color: "bg-destructive" }, { label: "Средний риск", color: "bg-accent" }, { label: "Низкий риск", color: "bg-primary" }].map(l => (
                   <span key={l.label} className="flex items-center gap-1.5 text-xs text-muted-foreground"><span className={`w-2.5 h-2.5 rounded-full ${l.color}`} />{l.label}</span>

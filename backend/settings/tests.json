@@ -1,0 +1,30 @@
+{
+  "tests": [
+    {
+      "name": "GET настройки пользователя по умолчанию",
+      "method": "GET",
+      "path": "/?user_id=default",
+      "expectedStatus": 200,
+      "expectedBody": {"user_id": "default"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "PUT — сохранить профиль",
+      "method": "PUT",
+      "path": "/?user_id=default",
+      "body": {"profile": {"name": "Тест Тестов", "role": "Фермер", "org": "ООО Тест"}},
+      "expectedStatus": 200,
+      "expectedBody": {"ok": true},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "PUT — сохранить регионы",
+      "method": "PUT",
+      "path": "/?user_id=default",
+      "body": {"regions": ["Самарская", "Саратовская"]},
+      "expectedStatus": 200,
+      "expectedBody": {"ok": true},
+      "bodyMatcher": "partial"
+    }
+  ]
+}
