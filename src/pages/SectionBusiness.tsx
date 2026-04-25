@@ -1,12 +1,30 @@
+import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import { ALERTS, PROFITABILITY_DATA, PRICING_PLANS } from "./data";
 import { Calculator } from "./PageWidgets";
+import { exportAnalyticsPdf, exportForecastsXlsx, exportCommercialPdf, exportFor1C } from "@/lib/useExport";
 
 interface SectionBusinessProps {
   activeSection: string;
 }
 
 export default function SectionBusiness({ activeSection }: SectionBusinessProps) {
+  const [exporting, setExporting] = useState<string | null>(null);
+
+  const doExport = async (tag: string, fn: () => void) => {
+    setExporting(tag);
+    await new Promise(r => setTimeout(r, 300));
+    fn();
+    setTimeout(() => setExporting(null), 800);
+  };
+
+  const EXPORT_ACTIONS = [
+    { label: "Аналитический отчёт (PDF)", icon: "FileText", tag: "PDF",  fn: exportAnalyticsPdf },
+    { label: "Данные прогнозов (Excel)", icon: "Table",    tag: "XLSX", fn: exportForecastsXlsx },
+    { label: "Коммерческое предложение", icon: "FilePlus", tag: "КП",   fn: exportCommercialPdf },
+    { label: "Выгрузка для 1С / API",   icon: "Database", tag: "JSON",  fn: exportFor1C },
+  ];
+
   return (
     <>
       {/* ── ANALYTICS ── */}
@@ -117,20 +135,27 @@ export default function SectionBusiness({ activeSection }: SectionBusinessProps)
                   <h2 className="font-semibold text-sm">Экспорт и отчёты</h2>
                 </div>
                 <div className="space-y-2">
-                  {[
-                    { label: "Аналитический отчёт (PDF)", icon: "FileText", tag: "PDF" },
-                    { label: "Данные прогнозов (Excel)", icon: "Table", tag: "XLSX" },
-                    { label: "Коммерческое предложение", icon: "FilePlus", tag: "DOCX" },
-                    { label: "Выгрузка для 1С", icon: "Database", tag: "XML" },
-                  ].map((r, i) => (
-                    <button key={i} className="w-full flex items-center gap-3 p-3 rounded-lg bg-secondary/40 hover:bg-secondary/70 transition-colors text-sm text-left">
-                      <Icon name={r.icon as string} size={15} className="text-muted-foreground" />
+                  {EXPORT_ACTIONS.map((r, i) => (
+                    <button key={i}
+                      onClick={() => doExport(r.tag, r.fn)}
+                      disabled={exporting !== null}
+                      className="w-full flex items-center gap-3 p-3 rounded-lg bg-secondary/40 hover:bg-secondary/70 transition-colors text-sm text-left disabled:opacity-60 active:scale-[0.99]">
+                      {exporting === r.tag ? (
+                        <Icon name="Loader" size={15} className="text-primary animate-spin" />
+                      ) : (
+                        <Icon name={r.icon as string} size={15} className="text-muted-foreground" />
+                      )}
                       <span className="flex-1">{r.label}</span>
-                      <span className="px-1.5 py-0.5 text-[10px] font-mono bg-border rounded text-muted-foreground">{r.tag}</span>
-                      <Icon name="ChevronRight" size={14} className="text-muted-foreground" />
+                      <span className={`px-1.5 py-0.5 text-[10px] font-mono rounded transition-colors ${exporting === r.tag ? "bg-primary/20 text-primary" : "bg-border text-muted-foreground"}`}>
+                        {exporting === r.tag ? "..." : r.tag}
+                      </span>
+                      <Icon name={exporting === r.tag ? "Check" : "Download"} size={14} className={exporting === r.tag ? "text-primary" : "text-muted-foreground"} />
                     </button>
                   ))}
                 </div>
+                <p className="text-[10px] text-muted-foreground mt-3 leading-relaxed">
+                  PDF открывается в новой вкладке для печати. CSV/JSON скачиваются автоматически. Данные: НТБ + Минсельхоз, апрель 2026.
+                </p>
               </div>
             </div>
           </div>
