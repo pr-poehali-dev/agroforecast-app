@@ -1,35 +1,11 @@
-import React from "react";
-import L from "leaflet";
-
-// ─── Leaflet default icon fix ─────────────────────────────────────────────────
-delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  iconUrl:       "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  shadowUrl:     "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-});
-
-export const fromIcon = L.divIcon({
-  className: "",
-  html: `<div style="width:28px;height:28px;border-radius:50% 50% 50% 0;background:#2E7D32;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,.35);transform:rotate(-45deg)"></div>`,
-  iconSize: [28, 28],
-  iconAnchor: [14, 28],
-});
-
-export const toIcon = L.divIcon({
-  className: "",
-  html: `<div style="width:28px;height:28px;border-radius:50% 50% 50% 0;background:#1565C0;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,.35);transform:rotate(-45deg)"></div>`,
-  iconSize: [28, 28],
-  iconAnchor: [14, 28],
-});
-
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-export interface City {
+export interface GeoPoint {
   name: string;
+  display: string;
   lat: number;
   lon: number;
-  region: string;
+  region?: string;
 }
 
 export interface VehicleType {
@@ -47,6 +23,10 @@ export interface CargoType {
 export interface CalcResult {
   from_city: string;
   to_city: string;
+  from_lat: number;
+  from_lon: number;
+  to_lat: number;
+  to_lon: number;
   from_region: string;
   to_region: string;
   distance_km: number;
@@ -86,9 +66,41 @@ export interface SavedRoute {
 
 // ─── Утилиты ──────────────────────────────────────────────────────────────────
 
-export const fmt = (n: number) => n.toLocaleString("ru-RU");
+export const fmt = (n: number) => Math.round(n).toLocaleString("ru-RU");
 
-// ─── Skeleton ─────────────────────────────────────────────────────────────────
+// ─── Nominatim геокодер ───────────────────────────────────────────────────────
 
-export const Sk: React.FC<{ className?: string }> = ({ className = "" }) =>
-  React.createElement("div", { className: `animate-pulse bg-gray-200 rounded ${className}` });
+export async function geocode(query: string): Promise<GeoPoint[]> {
+  if (!query || query.length < 2) return [];
+  const url =
+    `https://nominatim.openstreetmap.org/search` +
+    `?format=json&addressdetails=1&limit=7&countrycodes=ru` +
+    `&q=${encodeURIComponent(query)}`;
+  try {
+    const res = await fetch(url, {
+      headers: { "Accept-Language": "ru", "User-Agent": "AgroPort/1.0" },
+    });
+    const data = await res.json();
+    return data.map((item: Record<string, unknown>) => {
+      const addr = (item.address || {}) as Record<string, string>;
+      const region = addr.state || addr.county || addr.region || "";
+      const short =
+        addr.village ||
+        addr.town ||
+        addr.city ||
+        addr.hamlet ||
+        addr.municipality ||
+        (item.name as string) ||
+        (item.display_name as string).split(",")[0];
+      return {
+        name: short,
+        display: (item.display_name as string).split(",").slice(0, 4).join(", "),
+        lat: parseFloat(item.lat as string),
+        lon: parseFloat(item.lon as string),
+        region,
+      };
+    });
+  } catch {
+    return [];
+  }
+}
