@@ -30,7 +30,7 @@ export default function MapSection({ selectedRegion, setSelectedRegion }: MapSec
               <Icon name="Satellite" size={14} className="text-primary" />
               <span className="text-xs font-mono text-muted-foreground">ESRI WORLD IMAGERY · ПОВОЛЖЬЕ</span>
             </div>
-            <div className="flex items-center gap-1.5 text-xs text-primary"><span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse-glow" />Live</div>
+            <div className="flex items-center gap-1.5 text-xs text-primary"><span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse-glow" />Прямой эфир</div>
           </div>
           <Suspense fallback={<div className="h-[420px] rounded-xl bg-secondary/40 animate-pulse flex items-center justify-center text-muted-foreground text-sm">Загрузка карты...</div>}>
             <VolgaMap selectedRegion={selectedRegion} onSelect={setSelectedRegion} />
