@@ -67,6 +67,8 @@ export default {
 			fontFamily: {
 				'golos': ['Golos Text', 'sans-serif'],
 				'mono': ['IBM Plex Mono', 'monospace'],
+				'heading': ['Roboto', 'Golos Text', 'sans-serif'],
+				'body': ['Open Sans', 'Golos Text', 'sans-serif'],
 			},
 			borderRadius: {
 				lg: 'var(--radius)',

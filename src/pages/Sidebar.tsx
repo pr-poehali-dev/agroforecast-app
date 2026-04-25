@@ -11,96 +11,156 @@ interface SidebarProps {
 const NAV_GROUPS = [
   {
     label: "Мониторинг",
+    icon: "Activity",
     items: ["home", "forecasts", "map", "supply", "ndvi", "news"],
   },
   {
     label: "Управление",
+    icon: "Settings2",
     items: ["risks", "ai-model", "analytics", "business", "planner", "alerts"],
   },
   {
     label: "Платформа",
+    icon: "Layers",
     items: ["integrations", "pricing"],
   },
 ];
+
+const SECTION_ICONS: Record<string, string> = {
+  home: "LayoutDashboard",
+  forecasts: "TrendingUp",
+  map: "Map",
+  supply: "ArrowLeftRight",
+  ndvi: "Satellite",
+  news: "Newspaper",
+  risks: "ShieldAlert",
+  "ai-model": "Brain",
+  analytics: "BarChart3",
+  business: "Briefcase",
+  planner: "ClipboardList",
+  alerts: "Bell",
+  integrations: "Plug",
+  pricing: "CreditCard",
+};
 
 export default function Sidebar({ activeSection, sidebarOpen, onNavigate, onClose }: SidebarProps) {
   return (
     <>
       <aside className={`
-        fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-border flex flex-col
-        transition-transform duration-300
+        fixed inset-y-0 left-0 z-50 w-64 flex flex-col
+        bg-white border-r border-border
+        transition-transform duration-300 ease-in-out
         ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
         lg:relative lg:translate-x-0 lg:flex
       `}>
-        {/* Logo */}
-        <div className="p-5 border-b border-border">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-primary/20 border border-primary/30 flex items-center justify-center">
-              <Icon name="Wheat" size={18} className="text-primary" />
+
+        {/* ── Логотип ── */}
+        <div className="relative overflow-hidden">
+          <div className="hero-gradient p-5">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-white/20 border border-white/30 flex items-center justify-center shadow-lg">
+                <Icon name="Wheat" size={20} className="text-white" />
+              </div>
+              <div>
+                <div className="font-heading font-bold text-white leading-tight text-[15px] tracking-wide">АгроПорт</div>
+                <div className="text-[10px] text-white/70 font-mono mt-0.5 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse-glow inline-block" />
+                  Поволжье · v2.5
+                </div>
+              </div>
             </div>
-            <div>
-              <div className="font-bold text-foreground leading-none text-sm">AgroForecast Pro</div>
-              <div className="text-[10px] text-muted-foreground font-mono mt-0.5">Поволжье · v2.5.0</div>
+            {/* Декоративные элементы */}
+            <div className="absolute right-4 top-3 opacity-10">
+              <Icon name="Sprout" size={48} className="text-white" />
             </div>
           </div>
+          {/* Золотая полоска */}
+          <div className="h-0.5 bg-gradient-to-r from-accent via-yellow-300 to-accent" />
         </div>
 
-        {/* Nav groups */}
-        <nav className="flex-1 p-3 overflow-y-auto space-y-4">
+        {/* ── Навигация ── */}
+        <nav className="flex-1 px-3 py-4 overflow-y-auto space-y-5">
           {NAV_GROUPS.map(group => {
             const groupItems = NAV_ITEMS.filter(n => group.items.includes(n.id));
             return (
               <div key={group.label}>
-                <div className="px-2 mb-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                  {group.label}
+                <div className="flex items-center gap-1.5 px-2 mb-2">
+                  <Icon name={group.icon as string} size={10} className="text-muted-foreground" />
+                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">{group.label}</span>
                 </div>
                 <div className="space-y-0.5">
-                  {groupItems.map(item => (
-                    <button key={item.id}
-                      onClick={() => { onNavigate(item.id); onClose(); }}
-                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group
-                        ${activeSection === item.id
-                          ? "bg-primary/15 text-primary border border-primary/25"
-                          : "text-muted-foreground hover:text-foreground hover:bg-secondary border border-transparent"
-                        }`}>
-                      <Icon name={item.icon as string} size={15}
-                        className={activeSection === item.id ? "text-primary" : "text-muted-foreground group-hover:text-foreground"} />
-                      <span className="flex-1 text-left">{item.label}</span>
-                      {item.id === "alerts" && (
-                        <span className="w-5 h-5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">7</span>
-                      )}
-                    </button>
-                  ))}
+                  {groupItems.map(item => {
+                    const isActive = activeSection === item.id;
+                    const iconName = SECTION_ICONS[item.id] || item.icon;
+                    return (
+                      <button key={item.id}
+                        onClick={() => { onNavigate(item.id); onClose(); }}
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group relative
+                          ${isActive
+                            ? "bg-primary/12 text-primary border border-primary/20"
+                            : "text-muted-foreground hover:text-foreground hover:bg-secondary border border-transparent"
+                          }`}>
+                        {isActive && (
+                          <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-primary rounded-r-full" />
+                        )}
+                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all
+                          ${isActive ? "bg-primary/20" : "bg-secondary group-hover:bg-primary/10"}`}>
+                          <Icon name={iconName as string} size={14}
+                            className={isActive ? "text-primary" : "text-muted-foreground group-hover:text-primary"} />
+                        </div>
+                        <span className="flex-1 text-left font-body text-[13px]">{item.label}</span>
+                        {item.id === "alerts" && (
+                          <span className="w-5 h-5 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center badge-pulse">7</span>
+                        )}
+                        {item.id === "ai-model" && (
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-accent/20 text-accent border border-accent/30">AI</span>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             );
           })}
         </nav>
 
-        {/* User block */}
-        <div className="p-4 border-t border-border">
+        {/* ── Пользователь ── */}
+        <div className="p-4 border-t border-border bg-secondary/30">
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/60 to-accent/60 flex items-center justify-center text-xs font-bold text-white shrink-0">АВ</div>
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium text-foreground truncate">Алексей Воронов</div>
-              <div className="text-[10px] text-muted-foreground">Профессионал · до 1 мая</div>
+            <div className="w-9 h-9 rounded-full hero-gradient flex items-center justify-center text-xs font-bold text-white shrink-0 shadow">
+              АВ
             </div>
-            <button className="text-muted-foreground hover:text-foreground transition-colors">
-              <Icon name="Settings" size={14} />
+            <div className="flex-1 min-w-0">
+              <div className="text-[13px] font-semibold text-foreground truncate font-heading">Алексей Воронов</div>
+              <div className="flex items-center gap-1 mt-0.5">
+                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-accent/20 text-accent border border-accent/25">PRO</span>
+                <span className="text-[10px] text-muted-foreground">· до 1 мая</span>
+              </div>
+            </div>
+            <button className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors">
+              <Icon name="Settings" size={13} />
             </button>
           </div>
-          <div className="h-1.5 bg-border rounded-full">
-            <div className="h-full w-[68%] rounded-full bg-primary/60" />
-          </div>
-          <div className="flex justify-between mt-1 text-[10px] text-muted-foreground">
-            <span>API: 340/500 запросов</span>
-            <span>68%</span>
+
+          {/* API-лимит */}
+          <div className="space-y-1.5">
+            <div className="flex justify-between text-[10px] text-muted-foreground">
+              <span className="flex items-center gap-1"><Icon name="Zap" size={9} />API запросы</span>
+              <span className="font-mono font-medium text-foreground">340 / 500</span>
+            </div>
+            <div className="h-1.5 bg-border rounded-full overflow-hidden">
+              <div className="progress-bar h-full" style={{ width: "68%" }} />
+            </div>
+            <div className="flex justify-between text-[10px] text-muted-foreground">
+              <span>Осталось 160 запросов</span>
+              <span className="text-primary font-medium">68%</span>
+            </div>
           </div>
         </div>
       </aside>
 
       {sidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-black/60 lg:hidden" onClick={onClose} />
+        <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden" onClick={onClose} />
       )}
     </>
   );

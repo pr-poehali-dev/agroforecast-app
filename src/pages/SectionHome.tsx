@@ -137,19 +137,76 @@ export default function SectionHome({
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-start justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">AgroForecast Pro: Поволжье</h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Прогнозирование рынка сельскохозяйственной продукции · 8 регионов · 12 культур · данные апрель 2026
-          </p>
+      {/* ── Hero-блок ── */}
+      <div className="hero-gradient rounded-2xl overflow-hidden relative shadow-lg">
+        <div className="hero-gradient-overlay absolute inset-0" />
+        <div className="bg-dots absolute inset-0 opacity-20" />
+        <div className="relative p-6 sm:p-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/20 border border-white/30 text-white text-[11px] font-medium">
+                  <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse-glow" />
+                  Данные обновлены · апрель 2026
+                </span>
+                <span className="hidden sm:flex items-center gap-1 px-2 py-1 rounded-full bg-accent/25 border border-accent/40 text-accent text-[11px] font-bold">
+                  <Icon name="Brain" size={10} />ARIMA+LSTM
+                </span>
+              </div>
+              <h1 className="font-heading text-2xl sm:text-3xl font-black text-white leading-tight">
+                АгроПорт:<br className="sm:hidden" /> аналитика и торговля<br />
+                <span className="gold-text">для агробизнеса</span>
+              </h1>
+              <p className="text-white/75 mt-2 text-sm font-body max-w-md">
+                Прогнозирование цен и урожайности · 8 регионов Поволжья · 12 культур · спутниковый мониторинг NDVI
+              </p>
+              <div className="flex gap-3 mt-5 flex-wrap">
+                <button onClick={() => setActiveSection("forecasts")}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-white text-primary rounded-xl text-sm font-bold hover:bg-white/90 transition-all shadow-lg active:scale-[0.98]">
+                  <Icon name="TrendingUp" size={15} />Начать работу
+                </button>
+                <button onClick={() => setActiveSection("ai-model")}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-white/15 border border-white/30 text-white rounded-xl text-sm font-semibold hover:bg-white/25 transition-all active:scale-[0.98]">
+                  <Icon name="Brain" size={15} />AI-модель
+                </button>
+              </div>
+            </div>
+            {/* Декоративные stats */}
+            <div className="hidden lg:grid grid-cols-2 gap-3 shrink-0">
+              {[
+                { v: "94.7%", l: "Точность AI" },
+                { v: "8 рег.", l: "Поволжье" },
+                { v: "12", l: "культур" },
+                { v: "LIVE", l: "данные" },
+              ].map((s, i) => (
+                <div key={i} className="bg-white/15 border border-white/25 rounded-xl p-3 text-center backdrop-blur-sm">
+                  <div className="text-white font-mono font-black text-lg leading-none">{s.v}</div>
+                  <div className="text-white/65 text-[10px] mt-1">{s.l}</div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <button onClick={() => setActiveSection("ai-model")} className="px-3 py-1.5 text-xs bg-primary/10 text-primary border border-primary/25 rounded-lg font-medium hover:bg-primary/20 transition-colors flex items-center gap-1.5">
-            <Icon name="Brain" size={12} />AI-модель
+      </div>
+
+      {/* ── Feature-карточки ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {[
+          { icon: "BarChart3", title: "Прогноз урожайности", desc: "По регионам и культурам", section: "forecasts", color: "primary" },
+          { icon: "TrendingUp", title: "Анализ цен и спроса", desc: "Биржа и экспортные котировки", section: "supply", color: "accent" },
+          { icon: "ShoppingCart", title: "Маркетплейс", desc: "Сельхозпродукция Поволжья", section: "business", color: "primary" },
+          { icon: "Plug", title: "Интеграция 1С / ERP", desc: "API и готовые коннекторы", section: "integrations", color: "accent" },
+        ].map((f, i) => (
+          <button key={i} onClick={() => setActiveSection(f.section)}
+            className="feature-card rounded-xl p-4 text-left group">
+            <div className={`w-10 h-10 rounded-xl mb-3 flex items-center justify-center transition-colors
+              ${f.color === "primary" ? "bg-primary/15 text-primary group-hover:bg-primary group-hover:text-white" : "bg-accent/15 text-accent group-hover:bg-accent group-hover:text-white"}`}>
+              <Icon name={f.icon as string} size={18} />
+            </div>
+            <div className="font-heading font-bold text-sm text-foreground">{f.title}</div>
+            <div className="text-xs text-muted-foreground mt-1 font-body">{f.desc}</div>
           </button>
-          <button onClick={() => setActiveSection("pricing")} className="px-3 py-1.5 text-xs bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 transition-colors">Тарифы</button>
-        </div>
+        ))}
       </div>
 
       {/* User profile selector */}
@@ -181,39 +238,54 @@ export default function SectionHome({
         </div>
       </div>
 
-      {/* KPI stats */}
+      {/* ── KPI stats ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {STATS.map((s, i) => (
-          <div key={i} className="glass-card rounded-xl p-4 hover:scale-[1.02] transition-all duration-200">
-            <div className={`w-9 h-9 rounded-lg mb-3 flex items-center justify-center
-              ${s.color === "emerald" ? "bg-primary/15 text-primary" :
-                s.color === "amber" ? "bg-accent/15 text-accent" :
-                s.color === "cyan" ? "bg-cyan-500/15 text-cyan-400" :
-                "bg-destructive/15 text-destructive"}`}>
-              <Icon name={s.icon as string} size={17} />
+          <div key={i} className="kpi-card rounded-xl p-4">
+            <div className="flex items-start justify-between mb-3">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-sm
+                ${s.color === "emerald" ? "bg-primary/15 text-primary" :
+                  s.color === "amber" ? "bg-accent/15 text-accent" :
+                  s.color === "cyan" ? "bg-cyan-500/15 text-cyan-500" :
+                  "bg-destructive/15 text-destructive"}`}>
+                <Icon name={s.icon as string} size={18} />
+              </div>
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full
+                ${s.color === "emerald" ? "text-primary bg-primary/10" :
+                  s.color === "amber" ? "text-amber-600 bg-amber-50" :
+                  s.color === "cyan" ? "text-cyan-600 bg-cyan-50" :
+                  "text-destructive bg-destructive/10"}`}>
+                LIVE
+              </span>
             </div>
-            <div className="text-2xl font-bold font-mono text-foreground">{s.value}<span className="text-base text-muted-foreground">{s.suffix}</span></div>
-            <div className="text-xs text-muted-foreground mt-0.5">{s.label}</div>
+            <div className="font-mono font-black text-2xl text-foreground leading-none">
+              {s.value}<span className="text-sm font-normal text-muted-foreground">{s.suffix}</span>
+            </div>
+            <div className="text-xs text-muted-foreground mt-1.5 font-body">{s.label}</div>
           </div>
         ))}
       </div>
 
-      {/* Interactive Map + Alerts */}
+      {/* ── Interactive Map + Alerts ── */}
       <div className="grid lg:grid-cols-2 gap-4">
         <div className="glass-card rounded-xl p-4">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <Icon name="Satellite" size={15} className="text-primary" />
-              <span className="font-semibold text-sm">Интерактивная карта</span>
+              <div className="w-7 h-7 rounded-lg bg-primary/15 flex items-center justify-center">
+                <Icon name="Satellite" size={13} className="text-primary" />
+              </div>
+              <span className="font-heading font-bold text-sm">Карта Поволжья</span>
               {Object.keys(aiRisks).length > 0 ? (
-                <span className="flex items-center gap-1 text-[10px] text-primary bg-primary/10 px-1.5 py-0.5 rounded font-mono">
-                  <Icon name="Brain" size={9} />AI · live
+                <span className="flex items-center gap-1 text-[10px] text-primary bg-primary/10 border border-primary/20 px-1.5 py-0.5 rounded-full font-mono">
+                  <Icon name="Brain" size={9} />AI
                 </span>
               ) : (
-                <span className="text-[10px] text-muted-foreground animate-pulse">загрузка AI...</span>
+                <span className="text-[10px] text-muted-foreground animate-pulse">загрузка...</span>
               )}
             </div>
-            <button onClick={() => setActiveSection("map")} className="text-xs text-primary hover:text-primary/80 transition-colors">Полная карта →</button>
+            <button onClick={() => setActiveSection("map")} className="text-xs text-primary hover:text-primary/80 transition-colors flex items-center gap-1">
+              Полная карта <Icon name="ArrowRight" size={11} />
+            </button>
           </div>
           <Suspense fallback={
             <div className="h-[340px] rounded-xl bg-secondary/40 animate-pulse flex items-center justify-center text-muted-foreground text-sm">
@@ -242,78 +314,92 @@ export default function SectionHome({
         <div className="glass-card rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <Icon name="Bell" size={16} className="text-accent" />
-              <span className="font-semibold text-sm">Последние события</span>
+              <div className="w-7 h-7 rounded-lg bg-accent/15 flex items-center justify-center">
+                <Icon name="Bell" size={13} className="text-accent" />
+              </div>
+              <span className="font-heading font-bold text-sm">Последние события</span>
+              <span className="px-1.5 py-0.5 rounded-full bg-destructive/15 text-destructive text-[10px] font-bold badge-pulse">7</span>
             </div>
-            <button onClick={() => setActiveSection("alerts")} className="text-xs text-primary hover:text-primary/80 transition-colors">Все →</button>
+            <button onClick={() => setActiveSection("alerts")} className="text-xs text-primary hover:text-primary/80 transition-colors flex items-center gap-1">
+              Все <Icon name="ArrowRight" size={11} />
+            </button>
           </div>
           <div className="space-y-2">
             {ALERTS.slice(0, 5).map(a => (
-              <div key={a.id} className={`flex items-start gap-3 p-2.5 rounded-lg
-                ${a.type === "critical" ? "bg-destructive/10 border border-destructive/20" :
-                  a.type === "warning" ? "bg-accent/8 border border-accent/15" :
-                  "bg-secondary/50 border border-border"}`}>
-                <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0
-                  ${a.type === "critical" ? "bg-destructive/20 text-destructive" :
-                    a.type === "warning" ? "bg-accent/20 text-accent" : "bg-primary/20 text-primary"}`}>
+              <div key={a.id} className={`flex items-start gap-3 p-3 rounded-xl cursor-pointer transition-all hover:scale-[1.01]
+                ${a.type === "critical" ? "bg-destructive/8 border border-destructive/20" :
+                  a.type === "warning" ? "bg-amber-50 border border-amber-200" :
+                  "bg-secondary/60 border border-border"}`}>
+                <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 shadow-sm
+                  ${a.type === "critical" ? "bg-destructive text-white" :
+                    a.type === "warning" ? "bg-accent text-accent-foreground" : "bg-primary text-white"}`}>
                   <Icon name={a.icon as string} size={13} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-xs font-semibold text-foreground truncate">{a.title}</div>
-                  <div className="text-xs text-muted-foreground truncate">{a.desc}</div>
+                  <div className="text-xs font-semibold text-foreground truncate font-heading">{a.title}</div>
+                  <div className="text-xs text-muted-foreground truncate mt-0.5">{a.desc}</div>
                 </div>
-                <span className="text-[10px] text-muted-foreground shrink-0">{a.time}</span>
+                <span className="text-[10px] text-muted-foreground shrink-0 mt-0.5">{a.time}</span>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      {/* Live AI price forecasts */}
+      {/* ── Live AI price forecasts ── */}
       <div className="glass-card rounded-xl p-5">
         <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Icon name="TrendingUp" size={16} className="text-primary" />
-            <span className="font-semibold text-sm">Прогнозы цен AI · +3 месяца · апрель 2026</span>
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <div className="w-8 h-8 rounded-lg bg-primary/15 flex items-center justify-center">
+              <Icon name="TrendingUp" size={16} className="text-primary" />
+            </div>
+            <div>
+              <div className="font-heading font-bold text-sm text-foreground">Прогнозы цен · +3 месяца</div>
+              <div className="text-[11px] text-muted-foreground font-body">апрель 2026 · AI-модель ARIMA+LSTM</div>
+            </div>
             {aiLoading ? (
-              <span className="flex items-center gap-1 text-[10px] text-muted-foreground animate-pulse">
-                <Icon name="Brain" size={10} className="text-primary" />расчёт...
+              <span className="flex items-center gap-1 text-[10px] text-muted-foreground animate-pulse px-2 py-1 bg-secondary rounded-full">
+                <Icon name="Loader" size={9} />расчёт...
               </span>
             ) : (
-              <span className="flex items-center gap-1 text-[10px] text-primary bg-primary/10 px-1.5 py-0.5 rounded font-mono">
-                <Icon name="Brain" size={10} />ARIMA+LSTM
+              <span className="flex items-center gap-1 text-[10px] text-primary bg-primary/10 border border-primary/20 px-2 py-1 rounded-full font-mono">
+                <Icon name="Brain" size={9} />LIVE
               </span>
             )}
           </div>
-          <button onClick={() => setActiveSection("forecasts")} className="text-xs text-primary hover:text-primary/80 transition-colors">Подробнее →</button>
+          <button onClick={() => setActiveSection("forecasts")}
+            className="text-xs text-primary hover:text-primary/80 transition-colors flex items-center gap-1 shrink-0">
+            Все прогнозы <Icon name="ArrowRight" size={12} />
+          </button>
         </div>
         <div className={`grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 transition-opacity ${aiLoading ? "opacity-60" : ""}`}>
           {displayForecasts.map((f, i) => (
-            <div key={i}
-              className="bg-secondary/40 rounded-lg p-3 hover:bg-secondary/70 transition-colors cursor-pointer border border-transparent hover:border-primary/20"
+            <button key={i}
+              className="bg-background rounded-xl p-3.5 text-left hover:bg-secondary transition-colors cursor-pointer border border-border hover:border-primary/30 hover:shadow-sm group"
               onClick={() => { setSelectedCrop(f.crop); setActiveSection("forecasts"); }}>
-              <div className="text-xs text-muted-foreground mb-1 truncate font-medium">{f.crop}</div>
-              <div className="font-bold font-mono text-base text-foreground">
-                {typeof f.forecastPrice === "number" ? f.forecastPrice.toLocaleString("ru") : f.forecastPrice} ₽
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-[11px] text-muted-foreground font-medium truncate flex-1">{f.crop.split(" ")[0]}</div>
+                <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ml-1
+                  ${f.trend === "up" ? "bg-primary/15 text-primary" : "bg-destructive/15 text-destructive"}`}>
+                  <Icon name={f.trend === "up" ? "TrendingUp" : "TrendingDown"} size={11} />
+                </div>
               </div>
-              <div className="text-[10px] text-muted-foreground font-mono">
-                тек. {typeof f.currentPrice === "number" ? f.currentPrice.toLocaleString("ru") : f.currentPrice} ₽/т
+              <div className="font-mono font-black text-[17px] text-foreground leading-tight">
+                {typeof f.forecastPrice === "number" ? f.forecastPrice.toLocaleString("ru") : f.forecastPrice}
+                <span className="text-xs font-normal text-muted-foreground"> ₽/т</span>
               </div>
-              <div className={`flex items-center gap-1 text-xs font-bold mt-1.5 ${f.trend === "up" ? "text-primary" : "text-destructive"}`}>
-                <Icon name={f.trend === "up" ? "TrendingUp" : "TrendingDown"} size={11} />
+              <div className={`text-xs font-bold mt-1 ${f.trend === "up" ? "text-primary" : "text-destructive"}`}>
                 {f.change > 0 ? "+" : ""}{typeof f.change === "number" ? f.change.toFixed(1) : f.change}%
+                <span className="text-[10px] font-normal text-muted-foreground ml-1">прогноз</span>
               </div>
-              <div className="mt-2">
-                <div className="flex justify-between text-[10px] text-muted-foreground mb-1">
-                  <span>Уверенность AI</span>
-                  <span className="font-mono font-bold">{typeof f.confidence === "number" ? f.confidence.toFixed(0) : f.confidence}%</span>
+              <div className="mt-2.5">
+                <div className="h-1 bg-border rounded-full overflow-hidden">
+                  <div className="progress-bar h-full transition-all duration-700"
+                    style={{ width: `${f.confidence}%` }} />
                 </div>
-                <div className="h-1.5 bg-border rounded-full">
-                  <div className="h-full rounded-full bg-primary transition-all duration-700"
-                    style={{ width: `${f.confidence}%`, opacity: (Number(f.confidence) / 100) * 0.7 + 0.3 }} />
-                </div>
+                <div className="text-[10px] text-muted-foreground mt-1 font-mono">AI: {typeof f.confidence === "number" ? f.confidence.toFixed(0) : f.confidence}%</div>
               </div>
-            </div>
+            </button>
           ))}
         </div>
       </div>

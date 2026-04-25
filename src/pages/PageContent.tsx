@@ -21,7 +21,7 @@ export default function PageContent({
   selectedCrop, setSelectedCrop, setActiveSection,
 }: PageContentProps) {
   return (
-    <main className="flex-1 overflow-y-auto p-4 lg:p-6 bg-grid" key={animKey}>
+    <main className="flex-1 overflow-y-auto p-4 lg:p-6 bg-grid bg-background" key={animKey}>
       {activeSection === "home" && (
         <SectionHome
           selectedRegion={selectedRegion}
