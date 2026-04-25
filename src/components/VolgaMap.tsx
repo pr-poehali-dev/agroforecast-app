@@ -1,170 +1,254 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import * as L from "leaflet";
 import { MAP_REGIONS, getRiskColor } from "@/pages/data";
+
+const AI_URL = "https://functions.poehali.dev/3f769f53-b21b-473e-91b9-b7a755123928";
+const WHEAT = "Пшеница озимая";
+
+interface RegionRisk {
+  total_risk_pct: number;
+  total_risk_level: string;
+  drought_risk_pct: number;
+  frost_risk_pct: number;
+  pest_risk_pct: number;
+  yield_cha: number;
+  price_rub_t: number;
+  price_change_pct: number;
+}
 
 interface VolgaMapProps {
   selectedRegion: string | null;
   onSelect: (id: string) => void;
 }
 
-// SVG viewBox: 0 0 1000 600 — схематичная карта России
-// Координаты регионов заданы в data.ts (поле x, y)
+// Реальные координаты регионов [lat, lon]
+const REGION_COORDS: Record<string, [number, number]> = {
+  samara:        [53.19, 50.15],
+  saratov:       [51.53, 46.03],
+  volgograd:     [48.52, 44.52],
+  ulyanovsk:     [54.32, 48.40],
+  penza:         [53.20, 45.00],
+  orenburg:      [51.77, 55.10],
+  tatarstan:     [55.79, 49.12],
+  bashkortostan: [54.73, 55.94],
+  krasnodar:     [45.04, 38.98],
+  rostov:        [47.23, 39.72],
+  stavropol:     [45.05, 41.98],
+  astrakhan:     [46.35, 48.03],
+  voronezh:      [51.67, 39.18],
+  belgorod:      [50.60, 36.59],
+  kursk:         [51.73, 36.19],
+  tambov:        [52.72, 41.44],
+  moscow_obl:    [55.74, 37.62],
+  leningrad:     [59.89, 30.32],
+  chelyabinsk:   [55.15, 61.43],
+  kurgan:        [55.45, 65.33],
+  novosibirsk:   [54.99, 82.90],
+  omsk:          [54.99, 73.37],
+  altai:         [52.73, 82.95],
+};
 
-function riskLabel(risk: number) {
-  if (risk >= 65) return "Высокий";
-  if (risk >= 40) return "Средний";
-  return "Низкий";
+function riskColor(riskPct: number): string {
+  if (riskPct >= 65) return "#ef4444";
+  if (riskPct >= 40) return "#f59e0b";
+  return "#2E7D32";
+}
+
+function makeIcon(color: string, isSelected: boolean, riskPct: number) {
+  const size = isSelected ? 30 : 22;
+  return L.divIcon({
+    html: `
+      <div style="width:52px;height:52px;display:flex;align-items:center;justify-content:center;position:relative;">
+        <div style="position:absolute;width:${isSelected ? 52 : 38}px;height:${isSelected ? 52 : 38}px;border-radius:50%;background:${color}22;border:1.5px solid ${color}55;"></div>
+        <div style="
+          width:${size}px;height:${size}px;border-radius:50%;
+          background:${color};
+          border:${isSelected ? 3 : 2}px solid white;
+          box-shadow:0 2px ${isSelected ? 14 : 7}px rgba(0,0,0,${isSelected ? 0.45 : 0.25});
+          position:relative;z-index:1;cursor:pointer;
+          ${isSelected ? `filter:drop-shadow(0 0 6px ${color});` : ""}
+          display:flex;align-items:center;justify-content:center;
+        ">
+          <span style="color:white;font-size:${isSelected ? 9 : 7}px;font-weight:800;font-family:'IBM Plex Mono',monospace;">${Math.round(riskPct)}%</span>
+        </div>
+      </div>`,
+    className: "",
+    iconSize: [52, 52],
+    iconAnchor: [26, 26],
+    popupAnchor: [0, -28],
+  });
+}
+
+function makePopup(
+  region: typeof MAP_REGIONS[0],
+  color: string,
+  riskPct: number,
+  ai?: RegionRisk,
+) {
+  const riskLabelText = riskPct >= 65 ? "Высокий" : riskPct >= 40 ? "Средний" : "Низкий";
+  const aiBlock = ai ? `
+    <div style="margin-top:8px;padding-top:8px;border-top:1px solid #e5e7eb;">
+      <div style="font-size:10px;color:#9ca3af;font-family:'IBM Plex Mono',monospace;letter-spacing:.5px;margin-bottom:5px;">ИИ-прогноз · ARIMA+LSTM</div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px;">
+        <span style="color:#6b7280;">Урожай (пшеница)</span>
+        <span style="font-weight:700;color:#2E7D32;">${ai.yield_cha ?? "—"} ц/га</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px;">
+        <span style="color:#6b7280;">Цена прогноз</span>
+        <span style="font-weight:700;color:#111827;">${ai.price_rub_t != null ? Math.round(ai.price_rub_t).toLocaleString("ru") : "—"} ₽/т</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:5px;">
+        <span style="color:#6b7280;">Изм. цены</span>
+        <span style="font-weight:700;color:${(ai.price_change_pct ?? 0) > 0 ? "#2E7D32" : "#ef4444"};">${(ai.price_change_pct ?? 0) > 0 ? "+" : ""}${ai.price_change_pct != null ? ai.price_change_pct.toFixed(1) : "0"}%</span>
+      </div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;font-size:10px;color:#6b7280;">
+        <span>☀️ засуха ${ai.drought_risk_pct != null ? ai.drought_risk_pct.toFixed(0) : "—"}%</span>
+        <span>❄️ мороз ${ai.frost_risk_pct != null ? ai.frost_risk_pct.toFixed(0) : "—"}%</span>
+        <span>🐛 вред. ${ai.pest_risk_pct != null ? ai.pest_risk_pct.toFixed(0) : "—"}%</span>
+      </div>
+    </div>
+  ` : "";
+
+  return `
+    <div style="font-family:'Golos Text',sans-serif;min-width:210px;padding:4px 0;font-size:12px;">
+      <div style="font-weight:800;font-size:14px;margin-bottom:10px;color:#111827;display:flex;align-items:center;gap:6px;">
+        <span style="width:10px;height:10px;border-radius:50%;background:${color};display:inline-block;flex-shrink:0;"></span>
+        ${region.name} ${region.id === "tatarstan" || region.id === "bashkortostan" || region.id.endsWith("krai") || region.id === "krasnodar" || region.id === "stavropol" || region.id === "altai" ? "" : "обл."}
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+        <span style="color:#6b7280;">Индекс риска${ai ? " (ИИ)" : ""}</span>
+        <span style="font-weight:700;color:${color};">${Math.round(riskPct)}% · ${riskLabelText}</span>
+      </div>
+      <div style="height:5px;background:#e5e7eb;border-radius:3px;margin-bottom:8px;overflow:hidden;">
+        <div style="height:100%;width:${riskPct}%;background:${color};border-radius:3px;"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:6px;">
+        <div style="background:#f9fafb;border-radius:6px;padding:5px 4px;text-align:center;">
+          <div style="font-size:9px;color:#9ca3af;">NDVI</div>
+          <div style="font-weight:700;color:#111827;font-size:12px;">${region.ndvi.toFixed(2)}</div>
+        </div>
+        <div style="background:#f9fafb;border-radius:6px;padding:5px 4px;text-align:center;">
+          <div style="font-size:9px;color:#9ca3af;">Осадки</div>
+          <div style="font-weight:700;color:#111827;font-size:12px;">${region.rain} мм</div>
+        </div>
+        <div style="background:#f9fafb;border-radius:6px;padding:5px 4px;text-align:center;">
+          <div style="font-size:9px;color:#9ca3af;">Темп.</div>
+          <div style="font-weight:700;color:#111827;font-size:12px;">+${region.temp}°C</div>
+        </div>
+      </div>
+      <div style="font-size:10px;color:#6b7280;">Пашня: ${region.area} тыс. га · Пшеница: ${region.wheat_pct}%</div>
+      ${aiBlock}
+    </div>`;
 }
 
 export default function VolgaMap({ selectedRegion, onSelect }: VolgaMapProps) {
-  const [hovered, setHovered] = useState<string | null>(null);
+  const mapRef = useRef<HTMLDivElement>(null);
+  const leafletMapRef = useRef<L.Map | null>(null);
+  const markersRef = useRef<Record<string, L.Marker>>({});
+  const [aiRisks, setAiRisks] = useState<Record<string, RegionRisk>>({});
+  const [aiLoaded, setAiLoaded] = useState(false);
 
-  const activeId = hovered || selectedRegion;
-  const activeRegion = MAP_REGIONS.find(r => r.id === activeId);
+  // Загрузка ИИ-рисков
+  useEffect(() => {
+    fetch(`${AI_URL}?crop=${encodeURIComponent(WHEAT)}&horizon=3&all=1`)
+      .then(r => r.json())
+      .then(d => {
+        const map: Record<string, RegionRisk> = {};
+        (d.regions || []).forEach((r: RegionRisk & { region_id: string }) => {
+          map[r.region_id] = r;
+        });
+        setAiRisks(map);
+        setAiLoaded(true);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Инициализация карты
+  useEffect(() => {
+    if (!mapRef.current || leafletMapRef.current) return;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    delete (L.Icon.Default.prototype as any)._getIconUrl;
+
+    const map = L.map(mapRef.current, {
+      center: [55.0, 55.0],
+      zoom: 4,
+      zoomControl: false,
+      attributionControl: false,
+      scrollWheelZoom: true,
+    });
+
+    // OpenStreetMap — русские названия для России
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 18,
+      attribution: "© OpenStreetMap",
+    }).addTo(map);
+
+    // Кнопки зума с русскими подписями
+    L.control.zoom({ zoomInTitle: "Увеличить", zoomOutTitle: "Уменьшить" }).addTo(map);
+
+    // Маркеры регионов
+    MAP_REGIONS.forEach(region => {
+      const coords = REGION_COORDS[region.id];
+      if (!coords) return;
+      const color = getRiskColor(region.risk);
+      const marker = L.marker(coords, { icon: makeIcon(color, false, region.risk) })
+        .addTo(map)
+        .bindPopup(makePopup(region, color, region.risk), {
+          maxWidth: 260, className: "leaflet-popup-custom",
+        })
+        .on("click", () => onSelect(region.id));
+      markersRef.current[region.id] = marker;
+    });
+
+    leafletMapRef.current = map;
+
+    return () => {
+      if (leafletMapRef.current) {
+        leafletMapRef.current.remove();
+        leafletMapRef.current = null;
+        markersRef.current = {};
+      }
+    };
+  }, [onSelect]);
+
+  // Обновление маркеров при загрузке ИИ
+  useEffect(() => {
+    if (!aiLoaded || !leafletMapRef.current) return;
+    MAP_REGIONS.forEach(region => {
+      const m = markersRef.current[region.id];
+      if (!m) return;
+      const ai = aiRisks[region.id];
+      const riskPct = ai ? ai.total_risk_pct : region.risk;
+      const color = riskColor(riskPct);
+      const isSelected = region.id === selectedRegion;
+      m.setIcon(makeIcon(color, isSelected, riskPct));
+      m.setPopupContent(makePopup(region, color, riskPct, ai));
+    });
+  }, [aiLoaded, aiRisks, selectedRegion]);
+
+  // Перелёт к выбранному региону
+  useEffect(() => {
+    if (!leafletMapRef.current || !selectedRegion) return;
+    const coords = REGION_COORDS[selectedRegion];
+    if (!coords) return;
+    leafletMapRef.current.flyTo(coords, 6, { duration: 1.0 });
+    setTimeout(() => {
+      const marker = markersRef.current[selectedRegion];
+      if (marker && leafletMapRef.current) marker.openPopup();
+    }, 1100);
+    // Обновляем иконки
+    Object.entries(markersRef.current).forEach(([id, m]) => {
+      const region = MAP_REGIONS.find(r => r.id === id);
+      if (!region) return;
+      const ai = aiRisks[id];
+      const riskPct = ai ? ai.total_risk_pct : region.risk;
+      const color = riskColor(riskPct);
+      m.setIcon(makeIcon(color, id === selectedRegion, riskPct));
+    });
+  }, [selectedRegion, aiRisks]);
 
   return (
-    <div className="relative w-full" style={{ minHeight: 420 }}>
-      <svg
-        viewBox="0 0 1000 600"
-        className="w-full h-full"
-        style={{ minHeight: 380, background: "linear-gradient(135deg, #f0f9f4 0%, #e8f5e9 100%)", borderRadius: 12 }}
-      >
-        <defs>
-          <radialGradient id="vmap-bg" cx="50%" cy="50%" r="70%">
-            <stop offset="0%" stopColor="#2E7D32" stopOpacity="0.04" />
-            <stop offset="100%" stopColor="#1B5E20" stopOpacity="0" />
-          </radialGradient>
-          <filter id="vmap-shadow">
-            <feDropShadow dx="0" dy="2" stdDeviation="3" floodOpacity="0.25" />
-          </filter>
-        </defs>
-
-        <rect width="1000" height="600" fill="url(#vmap-bg)" />
-
-        {/* Сетка */}
-        {[100,200,300,400,500,600,700,800,900].map(x => (
-          <line key={`vx${x}`} x1={x} y1="0" x2={x} y2="600" stroke="#2E7D32" strokeOpacity="0.06" strokeWidth="0.5" />
-        ))}
-        {[100,200,300,400,500].map(y => (
-          <line key={`vy${y}`} x1="0" y1={y} x2="1000" y2={y} stroke="#2E7D32" strokeOpacity="0.06" strokeWidth="0.5" />
-        ))}
-
-        {/* Контуры федеральных округов (условные) */}
-        <text x="500" y="30" textAnchor="middle" fill="#2E7D32" fillOpacity="0.25" fontSize="11" fontFamily="Golos Text, sans-serif" letterSpacing="4">РОССИЙСКАЯ ФЕДЕРАЦИЯ · АГРОМОНИТОРИНГ</text>
-
-        {/* Маркеры регионов */}
-        {MAP_REGIONS.map(r => {
-          const color = getRiskColor(r.risk);
-          const isSelected = selectedRegion === r.id;
-          const isHovered = hovered === r.id;
-          const isActive = isSelected || isHovered;
-          const radius = isActive ? 14 : 10;
-          const shortName = r.name.length > 9 ? r.name.slice(0, 9) + "." : r.name;
-
-          return (
-            <g
-              key={r.id}
-              onClick={() => onSelect(r.id)}
-              onMouseEnter={() => setHovered(r.id)}
-              onMouseLeave={() => setHovered(null)}
-              style={{ cursor: "pointer" }}
-            >
-              {/* Пульсирующий ореол */}
-              <circle
-                cx={r.x} cy={r.y}
-                r={radius + 8}
-                fill={color}
-                fillOpacity={isActive ? 0.15 : 0.07}
-                stroke={color}
-                strokeOpacity={isActive ? 0.3 : 0.15}
-                strokeWidth="1"
-              />
-              {/* Основной маркер */}
-              <circle
-                cx={r.x} cy={r.y}
-                r={radius}
-                fill={isActive ? color : color + "cc"}
-                stroke="white"
-                strokeWidth={isActive ? 2.5 : 1.5}
-                filter={isActive ? "url(#vmap-shadow)" : undefined}
-              />
-              {/* Центральная точка */}
-              <circle cx={r.x} cy={r.y} r={3} fill="white" fillOpacity="0.9" />
-              {/* Название региона */}
-              <text
-                x={r.x} y={r.y + radius + 12}
-                textAnchor="middle"
-                fill="#1a1a1a"
-                fillOpacity={isActive ? 0.9 : 0.6}
-                fontSize={isActive ? "9.5" : "8.5"}
-                fontFamily="Golos Text, sans-serif"
-                fontWeight={isActive ? "600" : "400"}
-              >
-                {shortName}
-              </text>
-              {/* Процент риска */}
-              <text
-                x={r.x} y={r.y + 4}
-                textAnchor="middle"
-                fill="white"
-                fontSize="7"
-                fontFamily="IBM Plex Mono, monospace"
-                fontWeight="700"
-              >
-                {r.risk}%
-              </text>
-            </g>
-          );
-        })}
-
-        {/* Легенда */}
-        <g transform="translate(20, 545)">
-          {[
-            { color: "#ef4444", label: "Высокий риск (≥65%)" },
-            { color: "#f59e0b", label: "Средний риск (40–65%)" },
-            { color: "#10b981", label: "Низкий риск (<40%)" },
-          ].map((l, i) => (
-            <g key={i} transform={`translate(${i * 200}, 0)`}>
-              <circle cx="6" cy="6" r="5" fill={l.color} />
-              <text x="15" y="10" fill="#555" fontSize="9" fontFamily="Golos Text, sans-serif">{l.label}</text>
-            </g>
-          ))}
-        </g>
-      </svg>
-
-      {/* Всплывающая карточка региона */}
-      {activeRegion && (
-        <div
-          className="absolute bg-white rounded-xl shadow-lg border border-border p-4 text-xs z-10 pointer-events-none"
-          style={{
-            left: Math.min(activeRegion.x / 1000 * 100 + 5, 65) + "%",
-            top: Math.max(activeRegion.y / 600 * 100 - 30, 2) + "%",
-            minWidth: 200,
-          }}
-        >
-          <div className="font-heading font-bold text-sm text-foreground mb-2">
-            {activeRegion.name} {activeRegion.id !== "tatarstan" && activeRegion.id !== "bashkortostan" ? "обл." : ""}
-          </div>
-          <div className="space-y-1.5">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Индекс риска</span>
-              <span className="font-mono font-bold" style={{ color: getRiskColor(activeRegion.risk) }}>
-                {activeRegion.risk}% · {riskLabel(activeRegion.risk)}
-              </span>
-            </div>
-            <div className="h-1.5 bg-border rounded-full overflow-hidden">
-              <div className="h-full rounded-full" style={{ width: `${activeRegion.risk}%`, backgroundColor: getRiskColor(activeRegion.risk) }} />
-            </div>
-            <div className="flex justify-between"><span className="text-muted-foreground">NDVI</span><span className="font-mono">{activeRegion.ndvi.toFixed(2)}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Осадки</span><span className="font-mono">{activeRegion.rain} мм</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Температура</span><span className="font-mono">+{activeRegion.temp}°C</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Площадь пашни</span><span className="font-mono">{activeRegion.area} тыс. га</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Пшеница</span><span className="font-mono">{activeRegion.wheat_pct}%</span></div>
-          </div>
-          <div className="mt-2 pt-2 border-t border-border text-[10px] text-muted-foreground">
-            Нажмите для подробной информации
-          </div>
-        </div>
-      )}
-    </div>
+    <div ref={mapRef} style={{ height: 440, width: "100%", borderRadius: 12, overflow: "hidden" }} />
   );
 }
