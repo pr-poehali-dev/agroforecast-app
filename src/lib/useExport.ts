@@ -313,3 +313,187 @@ export function exportCommercialPdf() {
 function today() {
   return new Date().toISOString().slice(0, 10);
 }
+
+// ─── Экспорт плана посевных площадей (CSV + PDF) ──────────────────────────────
+
+interface PlanCrop {
+  crop: string; area_ha: number; share_pct: number;
+  revenue_rub: number; cost_rub: number; profit_rub: number;
+  margin_pct: number; roi_pct: number; yield_cha: number;
+  harvest_month: string; water_need: string; sow_season: string;
+}
+interface Plan {
+  recommended: PlanCrop[];
+  total_area_ha: number; total_revenue_rub: number;
+  total_cost_rub: number; total_profit_rub: number; avg_margin_pct: number;
+  region_climate: { drought_risk: number; frost_risk: number; rain_apr_may: number; temp_may: number };
+}
+
+export function exportPlanCsv(plan: Plan, region: string, goals: string[]) {
+  const headers = [
+    "Культура", "Площадь (га)", "Доля (%)",
+    "Выручка (₽)", "Затраты (₽)", "Прибыль (₽)",
+    "Маржа (%)", "ROI (%)", "Урожайность (ц/га)",
+    "Уборка", "Потребность в воде", "Сезон посева",
+  ];
+  const rows: (string | number)[][] = plan.recommended.map(c => [
+    c.crop, c.area_ha, c.share_pct,
+    c.revenue_rub, c.cost_rub, c.profit_rub,
+    c.margin_pct, c.roi_pct, c.yield_cha,
+    c.harvest_month, c.water_need, c.sow_season === "осень" ? "Озимая (осень)" : "Яровая (весна)",
+  ]);
+  rows.push([]);
+  rows.push(["ИТОГО", plan.total_area_ha, 100, plan.total_revenue_rub, plan.total_cost_rub, plan.total_profit_rub, plan.avg_margin_pct, "", "", "", "", ""]);
+  rows.push([]);
+  rows.push(["Регион", region, "", "", "", "", "", "", "", "", "", ""]);
+  rows.push(["Цели", goals.join("; "), "", "", "", "", "", "", "", "", "", ""]);
+  rows.push(["Риск засухи", Math.round(plan.region_climate.drought_risk * 100) + "%", "", "", "", "", "", "", "", "", "", ""]);
+  rows.push(["Осадки апр-май", plan.region_climate.rain_apr_may + " мм", "", "", "", "", "", "", "", "", "", ""]);
+  rows.push(["Источник", "AgroForecast Pro · НТБ + ФГБУ Агроэкспорт · апрель 2026", "", "", "", "", "", "", "", "", "", ""]);
+  downloadBlob(toCsv(headers, rows), `agro_plan_${region}_${today()}.csv`, "text/csv;charset=utf-8");
+}
+
+export function exportPlanPdf(plan: Plan, region: string, goals: string[]) {
+  const date = new Date().toLocaleDateString("ru-RU", { day: "2-digit", month: "long", year: "numeric" });
+  const REGION_LABELS: Record<string, string> = {
+    samara: "Самарская", saratov: "Саратовская", volgograd: "Волгоградская",
+    ulyanovsk: "Ульяновская", penza: "Пензенская", orenburg: "Оренбургская",
+    tatarstan: "Татарстан", bashkortostan: "Башкортостан",
+  };
+  const GOAL_LABELS: Record<string, string> = {
+    max_profit: "Максимальная прибыль", min_risk: "Минимальный риск", price_growth: "Рост цен",
+  };
+  const CROP_COLORS: Record<string, string> = {
+    "Пшеница озимая": "#10b981", "Подсолнечник": "#f59e0b",
+    "Кукуруза": "#f97316", "Ячмень яровой": "#84cc16",
+    "Рожь": "#94a3b8", "Соя": "#06b6d4",
+  };
+
+  const cropRows = plan.recommended.map(c => `
+    <tr>
+      <td><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${CROP_COLORS[c.crop] || "#94a3b8"};margin-right:6px;vertical-align:middle;"></span>${c.crop}</td>
+      <td style="font-weight:700">${c.area_ha.toLocaleString("ru")} га</td>
+      <td style="color:${CROP_COLORS[c.crop] || "#94a3b8"};font-weight:700">${c.share_pct}%</td>
+      <td>${c.revenue_rub.toLocaleString("ru")} ₽</td>
+      <td>${c.cost_rub.toLocaleString("ru")} ₽</td>
+      <td style="font-weight:700;color:#10b981">${c.profit_rub.toLocaleString("ru")} ₽</td>
+      <td style="color:${c.margin_pct > 35 ? "#10b981" : c.margin_pct > 25 ? "#f59e0b" : "#ef4444"};font-weight:700">${c.margin_pct}%</td>
+      <td style="font-weight:700">${c.roi_pct}%</td>
+      <td>${c.yield_cha} ц/га</td>
+      <td>${c.harvest_month}</td>
+    </tr>`).join("");
+
+  // Bar chart via CSS widths
+  const barChart = plan.recommended.map(c => `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+      <div style="width:130px;font-size:11px;color:#374151;">${c.crop}</div>
+      <div style="flex:1;height:18px;background:#f1f5f9;border-radius:4px;overflow:hidden;">
+        <div style="height:100%;width:${c.share_pct}%;background:${CROP_COLORS[c.crop] || "#94a3b8"};border-radius:4px;display:flex;align-items:center;padding-left:6px;">
+          <span style="color:#fff;font-size:10px;font-weight:700;">${c.share_pct}% · ${c.area_ha.toLocaleString("ru")} га</span>
+        </div>
+      </div>
+      <div style="width:70px;text-align:right;font-size:11px;font-weight:700;color:${CROP_COLORS[c.crop] || "#94a3b8"}">ROI ${c.roi_pct}%</div>
+    </div>`).join("");
+
+  const html = `<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"/>
+<title>План посевных площадей · AgroForecast Pro</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Arial',sans-serif; color:#1a1a1a; background:#fff; font-size:12px; }
+  .page { padding:20mm 18mm; max-width:210mm; margin:0 auto; }
+  .header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px; padding-bottom:14px; border-bottom:3px solid #10b981; }
+  .logo { font-size:18px; font-weight:800; color:#10b981; }
+  .logo span { color:#1a1a1a; }
+  .meta { text-align:right; font-size:10px; color:#666; }
+  h2 { font-size:13px; font-weight:700; color:#065f46; margin:18px 0 10px; padding-left:8px; border-left:3px solid #10b981; }
+  table { width:100%; border-collapse:collapse; font-size:11px; margin-bottom:8px; }
+  th { background:#f0fdf4; color:#166534; font-weight:700; padding:7px 9px; text-align:left; border-bottom:2px solid #10b981; }
+  td { padding:6px 9px; border-bottom:1px solid #e5e7eb; vertical-align:middle; }
+  tr:last-child td { border-bottom:none; }
+  tr.total td { background:#f0fdf4; font-weight:700; border-top:2px solid #10b981; }
+  .kpi-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin:16px 0; }
+  .kpi { background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:10px 12px; }
+  .kpi .val { font-size:16px; font-weight:800; color:#10b981; }
+  .kpi .lbl { font-size:10px; color:#666; margin-top:2px; }
+  .info-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin:12px 0; }
+  .info-box { background:#fafafa; border:1px solid #e5e7eb; border-radius:6px; padding:10px; }
+  .info-box .key { font-size:10px; color:#888; }
+  .info-box .val { font-size:13px; font-weight:700; color:#1a1a1a; margin-top:2px; }
+  .footer { margin-top:20px; padding-top:10px; border-top:1px solid #e5e7eb; color:#999; font-size:10px; display:flex; justify-content:space-between; }
+  .warn { background:#fef9c3; border:1px solid #fbbf24; border-radius:6px; padding:10px 14px; font-size:11px; color:#92400e; margin:8px 0; }
+  @media print { @page { margin:0; size:A4; } .page { padding:12mm; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <div>
+      <div class="logo">Agro<span>Forecast</span> Pro · Поволжье</div>
+      <div style="font-size:11px;color:#666;margin-top:3px">
+        Plan посевных площадей · ${REGION_LABELS[region] || region} обл.
+      </div>
+    </div>
+    <div class="meta">
+      <div style="font-weight:700;font-size:13px">${date}</div>
+      <div>Цели: ${goals.map(g => GOAL_LABELS[g] || g).join(", ")}</div>
+      <div>НТБ + ФГБУ Агроэкспорт · апрель 2026</div>
+    </div>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi"><div class="val">${plan.total_area_ha.toLocaleString("ru")} га</div><div class="lbl">Общая площадь</div></div>
+    <div class="kpi"><div class="val">${(plan.total_revenue_rub / 1_000_000).toFixed(1)} млн ₽</div><div class="lbl">Прогноз выручки</div></div>
+    <div class="kpi"><div class="val">${(plan.total_profit_rub / 1_000_000).toFixed(1)} млн ₽</div><div class="lbl">Прогноз прибыли</div></div>
+    <div class="kpi"><div class="val">${plan.avg_margin_pct}%</div><div class="lbl">Средняя маржа</div></div>
+  </div>
+
+  ${plan.region_climate.drought_risk > 0.5 ? `<div class="warn">⚠️ Высокий риск засухи в регионе (${Math.round(plan.region_climate.drought_risk * 100)}%). Структура посевов скорректирована под засухоустойчивые культуры.</div>` : ""}
+
+  <h2>Структура посевных площадей</h2>
+  <div style="margin-bottom:16px;">${barChart}</div>
+
+  <h2>Детальный план по культурам</h2>
+  <table>
+    <thead>
+      <tr><th>Культура</th><th>Площадь</th><th>Доля</th><th>Выручка</th><th>Затраты</th><th>Прибыль</th><th>Маржа</th><th>ROI</th><th>Урожай</th><th>Уборка</th></tr>
+    </thead>
+    <tbody>
+      ${cropRows}
+      <tr class="total">
+        <td>ИТОГО</td>
+        <td>${plan.total_area_ha.toLocaleString("ru")} га</td>
+        <td>100%</td>
+        <td>${plan.total_revenue_rub.toLocaleString("ru")} ₽</td>
+        <td>${plan.total_cost_rub.toLocaleString("ru")} ₽</td>
+        <td style="color:#10b981">${plan.total_profit_rub.toLocaleString("ru")} ₽</td>
+        <td>${plan.avg_margin_pct}%</td>
+        <td>—</td><td>—</td><td>—</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Климатические условия региона</h2>
+  <div class="info-grid">
+    <div class="info-box"><div class="key">Риск засухи</div><div class="val">${Math.round(plan.region_climate.drought_risk * 100)}%</div></div>
+    <div class="info-box"><div class="key">Риск заморозков</div><div class="val">${Math.round(plan.region_climate.frost_risk * 100)}%</div></div>
+    <div class="info-box"><div class="key">Осадки апрель–май</div><div class="val">${plan.region_climate.rain_apr_may} мм</div></div>
+    <div class="info-box"><div class="key">Температура май</div><div class="val">+${plan.region_climate.temp_may}°C</div></div>
+  </div>
+
+  <div class="footer">
+    <span>AgroForecast Pro · ${REGION_LABELS[region] || region} · ${date}</span>
+    <span>Источник: НТБ · ФГБУ Агроэкспорт · Росгидромет · апрель 2026</span>
+  </div>
+</div>
+</body>
+</html>`;
+
+  const win = window.open("", "_blank", "width=960,height=720");
+  if (!win) return;
+  win.document.write(html);
+  win.document.close();
+  win.onload = () => { win.focus(); win.print(); };
+}

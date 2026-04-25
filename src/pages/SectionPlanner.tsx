@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
+import { exportPlanCsv, exportPlanPdf } from "@/lib/useExport";
 
 const PLANNER_URL = "https://functions.poehali.dev/62858383-50f0-4d73-879f-111b5f96cf2b";
 
@@ -53,6 +54,16 @@ export default function SectionPlanner() {
   const [plan, setPlan] = useState<Plan | null>(null);
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<"plan" | "crops">("plan");
+  const [exporting, setExporting] = useState<"csv" | "pdf" | null>(null);
+
+  const doExport = async (type: "csv" | "pdf") => {
+    if (!plan) return;
+    setExporting(type);
+    await new Promise(r => setTimeout(r, 200));
+    if (type === "csv") exportPlanCsv(plan, region, goals);
+    else exportPlanPdf(plan, region, goals);
+    setTimeout(() => setExporting(null), 700);
+  };
 
   // Inputs
   const [area, setArea] = useState(1000);
@@ -179,6 +190,24 @@ export default function SectionPlanner() {
                     <div className="text-xs text-muted-foreground mt-0.5">{s.label}</div>
                   </div>
                 ))}
+              </div>
+
+              {/* Export buttons */}
+              <div className="flex gap-2 flex-wrap">
+                <button onClick={() => doExport("pdf")} disabled={exporting !== null}
+                  className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:bg-primary/90 transition-all disabled:opacity-60 active:scale-[0.98]">
+                  {exporting === "pdf"
+                    ? <Icon name="Loader" size={14} className="animate-spin" />
+                    : <Icon name="FileText" size={14} />}
+                  {exporting === "pdf" ? "Генерирую PDF..." : "Скачать план PDF"}
+                </button>
+                <button onClick={() => doExport("csv")} disabled={exporting !== null}
+                  className="flex items-center gap-2 px-4 py-2 bg-secondary border border-border text-foreground rounded-xl text-sm font-semibold hover:bg-secondary/80 transition-all disabled:opacity-60 active:scale-[0.98]">
+                  {exporting === "csv"
+                    ? <Icon name="Loader" size={14} className="animate-spin" />
+                    : <Icon name="Table" size={14} />}
+                  {exporting === "csv" ? "Создаю CSV..." : "Экспорт в Excel (CSV)"}
+                </button>
               </div>
 
               {/* Pie chart (SVG bars) */}
