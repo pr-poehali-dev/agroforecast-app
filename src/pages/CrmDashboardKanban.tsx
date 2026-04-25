@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Icon } from "@/components/ui/icon";
+import Icon from "@/components/ui/icon";
 import { apiCRM } from "@/lib/auth";
 import { KpiData, Deal, KANBAN_STAGES, ACTIVITY_TYPES, Skeleton } from "./CrmTypes";
 
