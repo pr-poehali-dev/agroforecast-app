@@ -144,14 +144,16 @@ export default function HomeMap({ selectedRegion, onSelect, aiRisks = {} }: Home
     const map = L.map(mapRef.current, {
       center: [52.5, 50.0],
       zoom: 5,
-      zoomControl: true,
-      attributionControl: true,
+      zoomControl: false,
+      attributionControl: false,
       scrollWheelZoom: true,
     });
 
+    L.control.zoom({ zoomInTitle: "Увеличить", zoomOutTitle: "Уменьшить" }).addTo(map);
+
     L.tileLayer(
       "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-      { attribution: "Esri, Maxar, Earthstar Geographics", maxZoom: 19 }
+      { attribution: "© Esri, Maxar, Earthstar Geographics", maxZoom: 19 }
     ).addTo(map);
 
     L.tileLayer(
