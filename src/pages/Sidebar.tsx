@@ -140,20 +140,7 @@ export default function Sidebar({ activeSection, sidebarOpen, onNavigate, onClos
             </button>
           </div>
 
-          {/* API-лимит */}
-          <div className="space-y-1.5">
-            <div className="flex justify-between text-[10px] text-muted-foreground">
-              <span className="flex items-center gap-1"><Icon name="Zap" size={9} />API запросы</span>
-              <span className="font-mono font-medium text-foreground">340 / 500</span>
-            </div>
-            <div className="h-1.5 bg-border rounded-full overflow-hidden">
-              <div className="progress-bar h-full" style={{ width: "68%" }} />
-            </div>
-            <div className="flex justify-between text-[10px] text-muted-foreground">
-              <span>Осталось 160 запросов</span>
-              <span className="text-primary font-medium">68%</span>
-            </div>
-          </div>
+
         </div>
       </aside>
 
