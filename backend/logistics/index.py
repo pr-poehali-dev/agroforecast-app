@@ -177,28 +177,49 @@ def handler(event: dict, context) -> dict:
 
     # ── Расчёт маршрута ───────────────────────────────────────────────────────
     if action == "calculate":
-        from_city = body.get("from_city", "")
-        to_city = body.get("to_city", "")
+        from_city   = body.get("from_city", "")
+        to_city     = body.get("to_city", "")
         weight_tons = float(body.get("weight_tons", 20))
         vehicle_type = body.get("vehicle_type", "truck_20t")
-        cargo_type = body.get("cargo_type", "grain")
+        cargo_type   = body.get("cargo_type", "grain")
 
-        c1 = CITY_MAP.get(from_city)
-        c2 = CITY_MAP.get(to_city)
+        # Координаты можно передать напрямую (от геокодера на фронте)
+        from_lat = body.get("from_lat")
+        from_lon = body.get("from_lon")
+        to_lat   = body.get("to_lat")
+        to_lon   = body.get("to_lon")
 
-        if not c1:
-            return err(f"Город отправления не найден: {from_city}")
-        if not c2:
-            return err(f"Город назначения не найден: {to_city}")
-        if from_city == to_city:
-            return err("Города отправления и назначения совпадают")
+        if from_lat is not None and from_lon is not None and to_lat is not None and to_lon is not None:
+            lat1, lon1 = float(from_lat), float(from_lon)
+            lat2, lon2 = float(to_lat),   float(to_lon)
+            from_region = body.get("from_region", "")
+            to_region   = body.get("to_region", "")
+        else:
+            # fallback: поиск в локальном справочнике городов
+            c1 = CITY_MAP.get(from_city)
+            c2 = CITY_MAP.get(to_city)
+            if not c1:
+                return err(f"Город отправления не найден: {from_city}")
+            if not c2:
+                return err(f"Город назначения не найден: {to_city}")
+            lat1, lon1 = c1["lat"], c1["lon"]
+            lat2, lon2 = c2["lat"], c2["lon"]
+            from_region = c1["region"]
+            to_region   = c2["region"]
 
-        distance = haversine(c1["lat"], c1["lon"], c2["lat"], c2["lon"])
+        if from_city == to_city and from_city:
+            return err("Пункты отправления и назначения совпадают")
+
+        distance = haversine(lat1, lon1, lat2, lon2)
         result = calculate_cost(distance, weight_tons, vehicle_type, cargo_type)
-        result["from_city"] = from_city
-        result["to_city"] = to_city
-        result["from_region"] = c1["region"]
-        result["to_region"] = c2["region"]
+        result["from_city"]   = from_city
+        result["to_city"]     = to_city
+        result["from_lat"]    = lat1
+        result["from_lon"]    = lon1
+        result["to_lat"]      = lat2
+        result["to_lon"]      = lon2
+        result["from_region"] = from_region
+        result["to_region"]   = to_region
 
         # Сравнение альтернативных транспортов
         alternatives = []
