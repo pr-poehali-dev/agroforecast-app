@@ -1,6 +1,21 @@
 import Icon from "@/components/ui/icon";
 import { ChartPoint, ModelMeta, REGION_NAMES } from "./AiModelTypes";
 
+// Нормализуем строки из API — заменяем иностранные географические названия
+function ruText(s: string): string {
+  if (!s) return s;
+  return s
+    .replace(/United States/gi, "США")
+    .replace(/United Kingdom/gi, "Великобритания")
+    .replace(/European Union/gi, "ЕС")
+    .replace(/China/gi, "Китай")
+    .replace(/Russia/gi, "Россия")
+    .replace(/Germany/gi, "Германия")
+    .replace(/France/gi, "Франция")
+    .replace(/\bUS\b/g, "США")
+    .replace(/\bEU\b/g, "ЕС");
+}
+
 interface AiModelChartTabProps {
   chart: ChartPoint[];
   crop: string;
@@ -106,8 +121,8 @@ export default function AiModelChartTab({ chart, crop, region, horizon, meta }: 
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
             {[
-              { label: "Период обучения", value: meta.training_period },
-              { label: "Обновление данных", value: meta.update_frequency },
+              { label: "Период обучения", value: ruText(meta.training_period) },
+              { label: "Обновление данных", value: ruText(meta.update_frequency) },
               { label: "Горизонты прогноза", value: "3 / 6 / 9 / 12 мес" },
               { label: "Последнее обновление", value: meta.last_updated.slice(0, 16).replace("T", " ") },
             ].map((s, i) => (

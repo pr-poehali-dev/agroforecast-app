@@ -4,41 +4,179 @@ import { MAP_REGIONS, PRICE_CHART, SUPPLY_DATA, PROFITABILITY_DATA, getRiskColor
 
 const CALC_URL = "https://functions.poehali.dev/b54f9de1-da43-4c7f-b32f-63fbdcdbc6fd";
 
-// ─── SVG Chart: Price ────────────────────────────────────────────────────────
+// ─── SVG Chart: Price (интерактивный) ─────────────────────────────────────────
 
 export function PriceChart() {
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+
   const max = Math.max(...PRICE_CHART.map(d => d.price));
-  const min = Math.min(...PRICE_CHART.map(d => d.price)) - 500;
+  const min = Math.min(...PRICE_CHART.map(d => d.price)) - 800;
   const range = max - min;
-  const w = 600; const h = 180;
-  const realItems = PRICE_CHART.filter(d => !d.forecast);
+  const w = 620; const h = 200; const padL = 65; const padR = 10;
+  const chartW = w - padL - padR;
   const forecastStartIdx = PRICE_CHART.findIndex(d => d.forecast);
-  const allPts = PRICE_CHART.map((d, i) => `${(i / (PRICE_CHART.length - 1)) * w},${h - ((d.price - min) / range) * h}`);
-  const realPts = realItems.map((d, i) => `${(i / (PRICE_CHART.length - 1)) * w},${h - ((d.price - min) / range) * h}`).join(" ");
-  const forecastPts = PRICE_CHART.slice(forecastStartIdx - 1).map((d, i) => `${((forecastStartIdx - 1 + i) / (PRICE_CHART.length - 1)) * w},${h - ((d.price - min) / range) * h}`).join(" ");
-  const areaPath = `M ${allPts[0]} ${realPts} L ${(realItems.length - 1) / (PRICE_CHART.length - 1) * w},${h} L 0,${h} Z`;
+  const realItems = PRICE_CHART.filter(d => !d.forecast);
+
+  const px = (i: number) => padL + (i / (PRICE_CHART.length - 1)) * chartW;
+  const py = (v: number) => h - ((v - min) / range) * h;
+
+  const realPts = realItems.map((_, i) => `${px(i)},${py(PRICE_CHART[i].price)}`).join(" ");
+  const forecastPts = PRICE_CHART.slice(forecastStartIdx - 1)
+    .map((d, i) => `${px(forecastStartIdx - 1 + i)},${py(d.price)}`).join(" ");
+
+  const areaPathReal = realItems.length > 0
+    ? `M ${padL},${h} L ${realPts} L ${px(realItems.length - 1)},${h} Z`
+    : "";
+
+  const yTicks = [11500, 12500, 13500, 14500];
+  const hovered = hoveredIdx !== null ? PRICE_CHART[hoveredIdx] : null;
+  const hx = hoveredIdx !== null ? px(hoveredIdx) : 0;
+  const hy = hoveredIdx !== null ? py(PRICE_CHART[hoveredIdx].price) : 0;
+
   return (
-    <div className="relative w-full overflow-x-auto">
-      <svg viewBox={`0 0 ${w} ${h + 30}`} className="w-full">
+    <div className="relative w-full select-none">
+      <svg
+        viewBox={`0 0 ${w} ${h + 50}`}
+        className="w-full"
+        onMouseLeave={() => setHoveredIdx(null)}
+      >
         <defs>
-          <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#2E7D32" stopOpacity="0.28" />
+          <linearGradient id="chartGrad2" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#2E7D32" stopOpacity="0.22" />
             <stop offset="100%" stopColor="#2E7D32" stopOpacity="0" />
           </linearGradient>
+          <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#2E7D32" />
+            <stop offset="100%" stopColor="#43A047" />
+          </linearGradient>
+          <filter id="glow">
+            <feGaussianBlur stdDeviation="2.5" result="coloredBlur" />
+            <feMerge><feMergeNode in="coloredBlur" /><feMergeNode in="SourceGraphic" /></feMerge>
+          </filter>
         </defs>
-        {[0, 0.25, 0.5, 0.75, 1].map((t, i) => (
-          <line key={i} x1="0" y1={h * t} x2={w} y2={h * t} stroke="rgba(0,0,0,0.06)" strokeWidth="1" />
+
+        {/* Фон прогноза */}
+        {forecastStartIdx >= 0 && (
+          <rect
+            x={px(forecastStartIdx - 1)} y={0}
+            width={chartW - (px(forecastStartIdx - 1) - padL)} height={h}
+            fill="#FFC107" fillOpacity="0.05"
+          />
+        )}
+        {forecastStartIdx >= 0 && (
+          <line
+            x1={px(forecastStartIdx - 1)} y1={0}
+            x2={px(forecastStartIdx - 1)} y2={h}
+            stroke="#FFC107" strokeOpacity="0.35" strokeWidth="1" strokeDasharray="4,3"
+          />
+        )}
+
+        {/* Горизонтальные сетки + оси Y */}
+        {yTicks.map(v => (
+          <g key={v}>
+            <line x1={padL} y1={py(v)} x2={w - padR} y2={py(v)} stroke="rgba(0,0,0,0.06)" strokeWidth="1" />
+            <text x={padL - 6} y={py(v) + 4} textAnchor="end" fill="rgba(0,0,0,0.38)" fontSize="9" fontFamily="IBM Plex Mono">
+              {(v / 1000).toFixed(1)}к
+            </text>
+          </g>
         ))}
+
+        {/* Заливка под линией (факт) */}
+        {areaPathReal && <path d={areaPathReal} fill="url(#chartGrad2)" />}
+
+        {/* Линия факта */}
+        {realPts && (
+          <polyline points={realPts} fill="none" stroke="url(#lineGrad)" strokeWidth="2.5"
+            strokeLinecap="round" strokeLinejoin="round" />
+        )}
+
+        {/* Линия прогноза */}
+        {forecastPts && (
+          <polyline points={forecastPts} fill="none" stroke="#FFC107" strokeWidth="2.2"
+            strokeDasharray="7,4" strokeLinecap="round" strokeLinejoin="round" />
+        )}
+
+        {/* Точки + hover-зоны */}
+        {PRICE_CHART.map((d, i) => {
+          const cx = px(i); const cy = py(d.price);
+          const isHov = hoveredIdx === i;
+          return (
+            <g key={i}>
+              <circle cx={cx} cy={cy} r={14} fill="transparent"
+                onMouseEnter={() => setHoveredIdx(i)} style={{ cursor: "crosshair" }} />
+              {isHov && <circle cx={cx} cy={cy} r={10} fill={d.forecast ? "#FFC107" : "#2E7D32"} fillOpacity="0.15" />}
+              <circle cx={cx} cy={cy}
+                r={isHov ? 6 : (d.forecast ? 3.5 : 4.5)}
+                fill={d.forecast ? "#FFC107" : "#2E7D32"}
+                stroke="white" strokeWidth="2"
+                filter={isHov ? "url(#glow)" : undefined}
+                style={{ transition: "r 0.15s" }}
+              />
+            </g>
+          );
+        })}
+
+        {/* Вертикальная линия hover */}
+        {hoveredIdx !== null && (
+          <line x1={hx} y1={0} x2={hx} y2={h}
+            stroke={hovered?.forecast ? "#FFC107" : "#2E7D32"}
+            strokeOpacity="0.3" strokeWidth="1.5" strokeDasharray="3,2" />
+        )}
+
+        {/* Tooltip */}
+        {hoveredIdx !== null && hovered && (() => {
+          const tipW = 120; const tipH = 48;
+          const tipX = Math.min(Math.max(hx - tipW / 2, padL), w - padR - tipW);
+          const tipY = hy > h / 2 ? hy - tipH - 12 : hy + 14;
+          return (
+            <g>
+              <rect x={tipX} y={tipY} width={tipW} height={tipH} rx="7"
+                fill="white" stroke={hovered.forecast ? "#FFC107" : "#2E7D32"}
+                strokeWidth="1.5" strokeOpacity="0.6"
+                style={{ filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.12))" }} />
+              <text x={tipX + tipW / 2} y={tipY + 16} textAnchor="middle"
+                fill="rgba(0,0,0,0.5)" fontSize="10" fontFamily="Golos Text, sans-serif">
+                {hovered.month} {hovered.forecast ? "· прогноз" : "· факт"}
+              </text>
+              <text x={tipX + tipW / 2} y={tipY + 35} textAnchor="middle"
+                fill={hovered.forecast ? "#b45309" : "#1B5E20"} fontSize="13"
+                fontFamily="IBM Plex Mono, monospace" fontWeight="700">
+                {hovered.price.toLocaleString("ru")} ₽/т
+              </text>
+            </g>
+          );
+        })()}
+
+        {/* Подписи месяцев */}
         {PRICE_CHART.map((d, i) => (
-          <text key={i} x={(i / (PRICE_CHART.length - 1)) * w} y={h + 20} textAnchor="middle" fill="rgba(0,0,0,0.35)" fontSize="11" fontFamily="IBM Plex Mono">{d.month}</text>
+          <text key={i} x={px(i)} y={h + 18} textAnchor="middle"
+            fill={hoveredIdx === i ? "#2E7D32" : "rgba(0,0,0,0.35)"}
+            fontSize="10" fontFamily="IBM Plex Mono" fontWeight={hoveredIdx === i ? "700" : "400"}>
+            {d.month}
+          </text>
         ))}
-        <path d={areaPath} fill="url(#chartGrad)" />
-        <polyline points={realPts} fill="none" stroke="#2E7D32" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-        <polyline points={forecastPts} fill="none" stroke="#FFC107" strokeWidth="2" strokeDasharray="6,4" strokeLinecap="round" strokeLinejoin="round" />
-        {PRICE_CHART.map((d, i) => (
-          <circle key={i} cx={(i / (PRICE_CHART.length - 1)) * w} cy={h - ((d.price - min) / range) * h} r={d.forecast ? 3 : 4} fill={d.forecast ? "#FFC107" : "#2E7D32"} stroke="white" strokeWidth="2" />
-        ))}
+
+        {/* Метки факт/прогноз */}
+        {forecastStartIdx >= 0 && (
+          <>
+            <text x={padL + 6} y={14} fill="#2E7D32" fontSize="9" fontFamily="Golos Text" fillOpacity="0.7">▶ Факт 2025</text>
+            <text x={px(forecastStartIdx) + 4} y={14} fill="#b45309" fontSize="9" fontFamily="Golos Text" fillOpacity="0.75">▷ Прогноз AI</text>
+          </>
+        )}
       </svg>
+
+      {/* Нижняя легенда */}
+      <div className="flex items-center gap-5 mt-1 px-1">
+        <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          <svg width="24" height="4"><line x1="0" y1="2" x2="24" y2="2" stroke="#2E7D32" strokeWidth="2.5" strokeLinecap="round" /></svg>
+          Факт (НТБ, ₽/т)
+        </span>
+        <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          <svg width="24" height="4"><line x1="0" y1="2" x2="24" y2="2" stroke="#FFC107" strokeWidth="2" strokeDasharray="5,3" strokeLinecap="round" /></svg>
+          Прогноз AI
+        </span>
+        <span className="ml-auto text-[10px] text-muted-foreground font-mono">Наведите на точку</span>
+      </div>
     </div>
   );
 }
@@ -106,7 +244,7 @@ export function MapSVGSmall({ selectedRegion, onSelect }: { selectedRegion: stri
             </g>
           );
         })}
-        <text x="50" y="97" textAnchor="middle" fill="rgba(16,185,129,0.3)" fontSize="3" fontFamily="IBM Plex Mono" letterSpacing="2">ПОВОЛЖЬЕ</text>
+        <text x="50" y="97" textAnchor="middle" fill="rgba(46,125,50,0.3)" fontSize="3" fontFamily="IBM Plex Mono" letterSpacing="2">РОССИЯ</text>
       </svg>
     </div>
   );

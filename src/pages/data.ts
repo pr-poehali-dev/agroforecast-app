@@ -132,7 +132,7 @@ export const SUPPLY_DATA = [
 export const MARKET_SOURCES = [
   { name: "АгроСервер",       volume: 164_000, change: +7.2,  trend: "up",   icon: "Store" },
   { name: "НТБ (биржа)",      volume:  98_500, change: -4.1,  trend: "down", icon: "BarChart2" },
-  { name: "CBOT (мировой)",   volume: 558_000, change: +3.8,  trend: "up",   icon: "Globe" },
+  { name: "Мировая биржа",    volume: 558_000, change: +3.8,  trend: "up",   icon: "Globe" },
   { name: "Своё Фермерство",  volume:  41_200, change: +11.6, trend: "up",   icon: "Leaf" },
 ];
 
