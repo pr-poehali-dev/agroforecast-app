@@ -57,12 +57,12 @@ function makePopupHtml(
   riskLevel: string,
   ai?: { yield_cha: number; price_rub_t: number; price_change_pct: number; drought_risk_pct: number; frost_risk_pct: number; pest_risk_pct: number },
 ) {
-  const yieldForecast = ai ? ai.yield_cha : (region.ndvi * 50).toFixed(1);
-  const priceForecast = ai ? ai.price_rub_t.toLocaleString("ru") : "—";
-  const priceChange = ai ? ai.price_change_pct : 0;
-  const droughtRisk = ai ? ai.drought_risk_pct.toFixed(0) : "—";
-  const frostRisk = ai ? ai.frost_risk_pct.toFixed(0) : "—";
-  const pestRisk = ai ? ai.pest_risk_pct.toFixed(0) : "—";
+  const yieldForecast = ai?.yield_cha ?? (region.ndvi * 50).toFixed(1);
+  const priceForecast = ai?.price_rub_t != null ? Math.round(ai.price_rub_t).toLocaleString("ru") : "—";
+  const priceChange = ai?.price_change_pct ?? 0;
+  const droughtRisk = ai?.drought_risk_pct != null ? ai.drought_risk_pct.toFixed(0) : "—";
+  const frostRisk = ai?.frost_risk_pct != null ? ai.frost_risk_pct.toFixed(0) : "—";
+  const pestRisk = ai?.pest_risk_pct != null ? ai.pest_risk_pct.toFixed(0) : "—";
 
   const riskLabelRu = riskLevel === "critical" ? "Критический" : riskLevel === "high" ? "Высокий" : riskLevel === "medium" ? "Средний" : getRiskLabel(riskPct);
 

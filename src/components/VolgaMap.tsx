@@ -71,16 +71,16 @@ function makePopup(
       </div>
       <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px;">
         <span style="color:#666;">Цена прогноз</span>
-        <span style="font-weight:700;color:#1a1a1a;">${ai.price_rub_t.toLocaleString()} ₽/т</span>
+        <span style="font-weight:700;color:#1a1a1a;">${ai.price_rub_t != null ? Math.round(ai.price_rub_t).toLocaleString() : "—"} ₽/т</span>
       </div>
       <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:5px;">
         <span style="color:#666;">Изм. цены</span>
-        <span style="font-weight:700;color:${ai.price_change_pct > 0 ? "#10b981" : "#ef4444"};">${ai.price_change_pct > 0 ? "+" : ""}${ai.price_change_pct.toFixed(1)}%</span>
+        <span style="font-weight:700;color:${(ai.price_change_pct ?? 0) > 0 ? "#10b981" : "#ef4444"};">${(ai.price_change_pct ?? 0) > 0 ? "+" : ""}${ai.price_change_pct != null ? ai.price_change_pct.toFixed(1) : "0"}%</span>
       </div>
       <div style="display:flex;gap:4px;flex-wrap:wrap;font-size:10px;color:#888;">
-        <span>☀️ засуха ${ai.drought_risk_pct.toFixed(0)}%</span>
-        <span>❄️ мороз ${ai.frost_risk_pct.toFixed(0)}%</span>
-        <span>🐛 вред. ${ai.pest_risk_pct.toFixed(0)}%</span>
+        <span>☀️ засуха ${ai.drought_risk_pct != null ? ai.drought_risk_pct.toFixed(0) : "—"}%</span>
+        <span>❄️ мороз ${ai.frost_risk_pct != null ? ai.frost_risk_pct.toFixed(0) : "—"}%</span>
+        <span>🐛 вред. ${ai.pest_risk_pct != null ? ai.pest_risk_pct.toFixed(0) : "—"}%</span>
       </div>
     </div>
   ` : "";
