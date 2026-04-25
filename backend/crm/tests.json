@@ -1,0 +1,12 @@
+{
+  "tests": [
+    {
+      "name": "GET /dashboard — без токена отказ",
+      "method": "GET",
+      "path": "/?action=dashboard",
+      "expectedStatus": 401,
+      "expectedBody": {"error": "Не авторизован"},
+      "bodyMatcher": "partial"
+    }
+  ]
+}

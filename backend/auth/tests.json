@@ -1,0 +1,39 @@
+{
+  "tests": [
+    {
+      "name": "GET me — неавторизован",
+      "method": "GET",
+      "path": "/?action=me",
+      "expectedStatus": 401,
+      "expectedBody": {"error": "Не авторизован"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST register — валидация email",
+      "method": "POST",
+      "path": "/?action=register",
+      "body": {"email": "not-email", "password": "123456"},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "Введите корректный email"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST register — короткий пароль",
+      "method": "POST",
+      "path": "/?action=register",
+      "body": {"email": "test@test.ru", "password": "123"},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "Пароль должен быть не менее 6 символов"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST login — неверные данные",
+      "method": "POST",
+      "path": "/?action=login",
+      "body": {"email": "notexist@test.ru", "password": "wrongpass"},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "Неверный email или пароль"},
+      "bodyMatcher": "partial"
+    }
+  ]
+}
