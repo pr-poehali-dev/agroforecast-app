@@ -42,12 +42,56 @@ interface SectionHomeProps {
   setActiveSection: (section: string) => void;
 }
 
+const USER_PROFILES = [
+  {
+    id: "farmer", label: "Фермер", icon: "Wheat",
+    desc: "Урожайность, NDVI, агрономия",
+    shortcuts: [
+      { label: "NDVI полей", section: "ndvi", icon: "Satellite" },
+      { label: "Риски", section: "risks", icon: "ShieldAlert" },
+      { label: "Планирование", section: "planner", icon: "ClipboardList" },
+      { label: "Новости/погода", section: "news", icon: "Newspaper" },
+    ],
+  },
+  {
+    id: "trader", label: "Трейдер", icon: "TrendingUp",
+    desc: "Цены, экспорт, биржа",
+    shortcuts: [
+      { label: "Прогнозы цен", section: "forecasts", icon: "TrendingUp" },
+      { label: "Спрос/предложение", section: "supply", icon: "ArrowLeftRight" },
+      { label: "AI-модель", section: "ai-model", icon: "Brain" },
+      { label: "Новости", section: "news", icon: "Newspaper" },
+    ],
+  },
+  {
+    id: "processor", label: "Переработчик", icon: "Factory",
+    desc: "Сырьё, логистика, себестоимость",
+    shortcuts: [
+      { label: "Карта сырья", section: "map", icon: "Map" },
+      { label: "Аналитика", section: "analytics", icon: "BarChart3" },
+      { label: "Бизнес-инстр.", section: "business", icon: "Calculator" },
+      { label: "Интеграции", section: "integrations", icon: "Plug" },
+    ],
+  },
+  {
+    id: "investor", label: "Инвестор", icon: "DollarSign",
+    desc: "Рентабельность, риски, макро",
+    shortcuts: [
+      { label: "Рентабельность", section: "analytics", icon: "BarChart3" },
+      { label: "Риски", section: "risks", icon: "ShieldAlert" },
+      { label: "AI-прогноз", section: "ai-model", icon: "Brain" },
+      { label: "Тарифы", section: "pricing", icon: "CreditCard" },
+    ],
+  },
+];
+
 export default function SectionHome({
   selectedRegion, setSelectedRegion, setSelectedCrop, setActiveSection,
 }: SectionHomeProps) {
   const [forecasts, setForecasts] = useState<AiForecastItem[]>([]);
   const [aiLoading, setAiLoading] = useState(true);
   const [aiRisks, setAiRisks] = useState<Record<string, AiRegionRisk>>({});
+  const [profile, setProfile] = useState("farmer");
 
   // Load all-regions AI data for map markers
   useEffect(() => {
@@ -105,6 +149,35 @@ export default function SectionHome({
             <Icon name="Brain" size={12} />AI-модель
           </button>
           <button onClick={() => setActiveSection("pricing")} className="px-3 py-1.5 text-xs bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 transition-colors">Тарифы</button>
+        </div>
+      </div>
+
+      {/* User profile selector */}
+      <div className="glass-card rounded-xl p-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-xs text-muted-foreground font-medium shrink-0">Профиль:</span>
+          <div className="flex gap-2 flex-wrap flex-1">
+            {USER_PROFILES.map(p => (
+              <button key={p.id} onClick={() => setProfile(p.id)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border transition-all font-medium
+                  ${profile === p.id ? "bg-primary/15 text-primary border-primary/30" : "bg-secondary text-muted-foreground border-border hover:border-primary/30"}`}>
+                <Icon name={p.icon as string} size={11} />{p.label}
+              </button>
+            ))}
+          </div>
+          {(() => {
+            const cur = USER_PROFILES.find(p => p.id === profile)!;
+            return (
+              <div className="flex gap-1.5 flex-wrap">
+                {cur.shortcuts.map(s => (
+                  <button key={s.section} onClick={() => setActiveSection(s.section)}
+                    className="flex items-center gap-1 px-2.5 py-1 text-[11px] rounded-lg bg-primary/8 text-primary border border-primary/20 hover:bg-primary/15 transition-colors font-medium">
+                    <Icon name={s.icon as string} size={10} />{s.label}
+                  </button>
+                ))}
+              </div>
+            );
+          })()}
         </div>
       </div>
 

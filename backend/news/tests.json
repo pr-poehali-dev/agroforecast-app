@@ -1,0 +1,28 @@
+{
+  "tests": [
+    {
+      "name": "GET — все новости",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200,
+      "expectedBody": {"total": 10},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET — погода все регионы",
+      "method": "GET",
+      "path": "/?weather=1",
+      "expectedStatus": 200,
+      "expectedBody": {"source": "Росгидромет, апрель 2026"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET — погода Волгоград",
+      "method": "GET",
+      "path": "/?weather=1&region=volgograd",
+      "expectedStatus": 200,
+      "expectedBody": {"region_id": "volgograd"},
+      "bodyMatcher": "partial"
+    }
+  ]
+}

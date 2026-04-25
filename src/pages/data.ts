@@ -5,6 +5,8 @@ export const NAV_ITEMS = [
   { id: "supply", label: "Спрос и предложение", icon: "ArrowLeftRight" },
   { id: "risks", label: "Риски", icon: "ShieldAlert" },
   { id: "ndvi", label: "NDVI-мониторинг", icon: "Satellite" },
+  { id: "news", label: "Новости и погода", icon: "Newspaper" },
+  { id: "planner", label: "Планирование посевов", icon: "ClipboardList" },
   { id: "ai-model", label: "AI‑модель", icon: "Brain" },
   { id: "analytics", label: "Аналитика", icon: "BarChart3" },
   { id: "business", label: "Бизнес-инструменты", icon: "Calculator" },

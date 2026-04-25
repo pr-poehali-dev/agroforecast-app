@@ -1,0 +1,30 @@
+{
+  "tests": [
+    {
+      "name": "GET — список культур",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200,
+      "expectedBody": {"data_source": "НТБ + ФГБУ Агроэкспорт, апрель 2026"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST — план 1000 га, Самара, макс.прибыль",
+      "method": "POST",
+      "path": "/",
+      "body": {"total_ha": 1000, "region": "samara", "goals": ["max_profit"]},
+      "expectedStatus": 200,
+      "expectedBody": {"total_area_ha": 1000.0},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST — план 500 га, Волгоград, мин.риск",
+      "method": "POST",
+      "path": "/",
+      "body": {"total_ha": 500, "region": "volgograd", "goals": ["min_risk"]},
+      "expectedStatus": 200,
+      "expectedBody": {"region": "volgograd"},
+      "bodyMatcher": "partial"
+    }
+  ]
+}

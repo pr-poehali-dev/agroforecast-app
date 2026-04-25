@@ -11,11 +11,11 @@ interface SidebarProps {
 const NAV_GROUPS = [
   {
     label: "Мониторинг",
-    items: ["home", "forecasts", "map", "supply", "ndvi"],
+    items: ["home", "forecasts", "map", "supply", "ndvi", "news"],
   },
   {
     label: "Управление",
-    items: ["risks", "ai-model", "analytics", "business", "alerts"],
+    items: ["risks", "ai-model", "analytics", "business", "planner", "alerts"],
   },
   {
     label: "Платформа",
