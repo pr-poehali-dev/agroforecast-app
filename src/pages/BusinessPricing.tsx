@@ -9,8 +9,8 @@ export default function BusinessPricing() {
       <div className="glass-card rounded-2xl overflow-hidden shadow-md">
         <div className="relative h-52 overflow-hidden">
           <img
-            src="https://cdn.poehali.dev/projects/31e2ff5d-24f0-43ce-888c-a6833c49513a/files/575017c4-0707-42ab-9815-55c71fb2b881.jpg"
-            alt="АгроПорт — мониторинг агрорынка России"
+            src="https://cdn.poehali.dev/projects/31e2ff5d-24f0-43ce-888c-a6833c49513a/files/6afcbe50-6a55-4dde-a0ee-875369234543.jpg"
+            alt="АгроПорт — поля пшеницы России, уборка урожая"
             className="w-full h-full object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
