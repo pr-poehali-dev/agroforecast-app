@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
-import { NAV_ITEMS } from "./data";
 import Sidebar from "./Sidebar";
 import PageContent from "./PageContent";
 
@@ -26,6 +25,7 @@ export default function Index() {
   const [selectedRegion, setSelectedRegion] = useState<string | null>("volgograd");
   const [selectedCrop, setSelectedCrop] = useState("Пшеница озимая");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [animKey, setAnimKey] = useState(0);
   const [time, setTime] = useState(new Date());
 
@@ -45,19 +45,30 @@ export default function Index() {
       <Sidebar
         activeSection={activeSection}
         sidebarOpen={sidebarOpen}
+        collapsed={sidebarCollapsed}
         onNavigate={setActiveSection}
         onClose={() => setSidebarOpen(false)}
+        onToggleCollapse={() => setSidebarCollapsed(c => !c)}
       />
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
         {/* ── Header ── */}
-        <header className="h-14 border-b border-border flex items-center px-4 gap-4 bg-white/80 backdrop-blur-md shrink-0 shadow-sm">
+        <header className="h-14 border-b border-border flex items-center px-4 gap-3 bg-white/80 backdrop-blur-md shrink-0 shadow-sm">
+
           {/* Бургер (мобайл) */}
           <button
             className="lg:hidden w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
             onClick={() => setSidebarOpen(true)}>
             <Icon name="Menu" size={18} />
+          </button>
+
+          {/* Свернуть/развернуть сайдбар (desktop) */}
+          <button
+            className="hidden lg:flex w-8 h-8 rounded-lg items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+            title={sidebarCollapsed ? "Развернуть меню" : "Свернуть меню"}
+            onClick={() => setSidebarCollapsed(c => !c)}>
+            <Icon name={sidebarCollapsed ? "PanelLeftOpen" : "PanelLeftClose"} size={18} />
           </button>
 
           {/* Breadcrumb */}
@@ -97,7 +108,9 @@ export default function Index() {
             </button>
 
             {/* Профиль */}
-            <button className="flex items-center gap-2 pl-2 border-l border-border ml-1">
+            <button
+              className="flex items-center gap-2 pl-2 border-l border-border ml-1"
+              onClick={() => setActiveSection("pricing")}>
               <div className="w-7 h-7 rounded-full hero-gradient flex items-center justify-center text-white shadow-sm">
                 <Icon name="User" size={14} className="text-white" />
               </div>
