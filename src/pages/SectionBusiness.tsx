@@ -30,66 +30,107 @@ export default function SectionBusiness({ activeSection }: SectionBusinessProps)
       {/* ── ANALYTICS ── */}
       {activeSection === "analytics" && (
         <div className="space-y-6 animate-fade-in">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Аналитика и рекомендации</h1>
-            <p className="text-muted-foreground mt-1 text-sm">Рентабельность культур · севооборот · оптимальные сроки продаж</p>
-          </div>
-          <div className="grid lg:grid-cols-2 gap-4">
-            <div className="glass-card rounded-xl p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <Icon name="BarChart3" size={16} className="text-primary" />
-                <span className="font-semibold text-sm">Рентабельность по культурам</span>
+          {/* Hero */}
+          <div className="hero-gradient rounded-2xl p-5 sm:p-6 relative overflow-hidden shadow-md">
+            <div className="hero-gradient-overlay absolute inset-0" />
+            <div className="bg-dots absolute inset-0 opacity-15" />
+            <div className="relative">
+              <div className="flex items-center gap-2 mb-1.5">
+                <Icon name="BarChart3" size={13} className="text-white/75" />
+                <span className="text-white/60 text-xs font-mono uppercase tracking-widest">Аналитика</span>
               </div>
-              <div className="space-y-3">
+              <h1 className="font-heading font-black text-2xl sm:text-3xl text-white">Аналитика и <span className="gold-text">рекомендации</span></h1>
+              <p className="text-white/60 text-sm mt-1 font-body">Рентабельность культур · севооборот · оптимальные сроки продаж</p>
+            </div>
+          </div>
+
+          {/* Метрики платформы */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              { label: "Точность прогнозов цен", value: "87.4%", sub: "+2.1%", up: true, icon: "TrendingUp" },
+              { label: "Точность урожая", value: "82.1%", sub: "+0.8%", up: true, icon: "Sprout" },
+              { label: "Данных обработано", value: "1.2M", sub: "записей/сут", up: true, icon: "Database" },
+              { label: "Время обновления", value: "15 мин", sub: "задержка", up: false, icon: "Clock" },
+            ].map((m, i) => (
+              <div key={i} className="kpi-card rounded-xl p-4">
+                <div className={`w-9 h-9 rounded-xl mb-3 flex items-center justify-center ${m.up ? "bg-primary/15 text-primary" : "bg-secondary text-muted-foreground"}`}>
+                  <Icon name={m.icon as string} size={16} />
+                </div>
+                <div className="font-mono font-black text-2xl text-foreground">{m.value}</div>
+                <div className="text-[11px] text-muted-foreground mt-1 font-body">{m.label}</div>
+                <div className={`text-[11px] font-mono font-bold mt-0.5 ${m.up ? "text-primary" : "text-muted-foreground"}`}>{m.sub}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-4">
+            {/* Рентабельность */}
+            <div className="glass-card rounded-2xl p-5">
+              <div className="flex items-center gap-2.5 mb-5">
+                <div className="w-8 h-8 rounded-lg bg-primary/15 flex items-center justify-center">
+                  <Icon name="BarChart3" size={15} className="text-primary" />
+                </div>
+                <div>
+                  <div className="font-heading font-bold text-sm text-foreground">Рентабельность по культурам</div>
+                  <div className="text-[11px] text-muted-foreground">маржа и ROI · апрель 2026</div>
+                </div>
+              </div>
+              <div className="space-y-4">
                 {PROFITABILITY_DATA.map((f, i) => (
-                  <div key={i} className="space-y-1">
-                    <div className="flex justify-between text-xs"><span className="font-medium">{f.crop.split(" ")[0]}</span><span className="font-mono text-muted-foreground">маржа <span className={f.margin > 35 ? "text-primary font-bold" : ""}>{f.margin}%</span> · ROI {f.roi}%</span></div>
-                    <div className="h-2.5 bg-border rounded-full overflow-hidden">
-                      <div className="h-full rounded-full transition-all duration-700" style={{ width: `${f.margin * 2}%`, background: f.margin > 35 ? "linear-gradient(90deg, hsl(152,55%,36%), hsl(152,55%,50%))" : "linear-gradient(90deg, hsl(38,88%,46%), hsl(38,88%,60%))" }} />
+                  <div key={i}>
+                    <div className="flex justify-between text-xs mb-1.5">
+                      <span className="font-semibold font-heading text-foreground">{f.crop.split(" ")[0]}</span>
+                      <span className="font-mono text-muted-foreground">
+                        маржа <span className={f.margin > 35 ? "text-primary font-bold" : "text-accent font-bold"}>{f.margin}%</span>
+                        {" · "}ROI <span className="text-foreground font-bold">{f.roi}%</span>
+                      </span>
+                    </div>
+                    <div className="h-3 bg-border rounded-full overflow-hidden">
+                      <div className="h-full rounded-full transition-all duration-700" style={{
+                        width: `${f.margin * 2}%`,
+                        background: f.margin > 35
+                          ? "linear-gradient(90deg, #2E7D32, #4CAF50)"
+                          : "linear-gradient(90deg, #FFC107, #FFD54F)"
+                      }} />
                     </div>
                   </div>
                 ))}
               </div>
             </div>
-            <div className="glass-card rounded-xl p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <Icon name="Lightbulb" size={16} className="text-accent" />
-                <span className="font-semibold text-sm">AI-рекомендации</span>
-                <span className="ml-auto px-2 py-0.5 text-[10px] font-mono bg-accent/15 text-accent rounded">NLP + LSTM</span>
+
+            {/* AI-рекомендации */}
+            <div className="glass-card rounded-2xl p-5">
+              <div className="flex items-center gap-2.5 mb-5">
+                <div className="w-8 h-8 rounded-lg bg-accent/15 flex items-center justify-center">
+                  <Icon name="Lightbulb" size={15} className="text-accent" />
+                </div>
+                <div>
+                  <div className="font-heading font-bold text-sm text-foreground">AI-рекомендации</div>
+                  <div className="text-[11px] text-muted-foreground font-mono">NLP + LSTM · live</div>
+                </div>
               </div>
               <div className="space-y-3">
                 {[
                   { icon: "TrendingUp", color: "primary", title: "Увеличить долю пшеницы", desc: "Прогноз +11.3% к июлю. Оптимальное окно для наращивания позиций." },
                   { icon: "AlertTriangle", color: "amber", title: "Хеджировать риски подсолнечника", desc: "Цена снизится на 8.4%. Рекомендуется форвардный контракт." },
-                  { icon: "Droplets", color: "cyan", title: "Дополнительный полив — Волгоград", desc: "ИЗМ влажности критический. Риск снижения урожайности 25%." },
-                  { icon: "Calendar", color: "primary", title: "Оптимальные сроки продаж", desc: "Реализовывать пшеницу в августе-сентябре: прогноз +8% к летнему минимуму." },
+                  { icon: "Droplets", color: "cyan", title: "Дополнительный полив — Волгоград", desc: "Риск снижения урожайности 25%. Критический уровень влажности." },
+                  { icon: "Calendar", color: "primary", title: "Оптимальные сроки продаж", desc: "Пшеницу в августе-сентябре: прогноз +8% к летнему минимуму." },
                 ].map((r, i) => (
-                  <div key={i} className="flex gap-3 p-3 rounded-lg bg-secondary/30">
-                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${r.color === "primary" ? "bg-primary/20 text-primary" : r.color === "amber" ? "bg-accent/20 text-accent" : "bg-cyan-500/20 text-cyan-400"}`}><Icon name={r.icon as string} size={13} /></div>
-                    <div><div className="text-sm font-medium text-foreground">{r.title}</div><div className="text-xs text-muted-foreground mt-0.5">{r.desc}</div></div>
+                  <div key={i} className={`flex gap-3 p-3.5 rounded-xl border transition-all
+                    ${r.color === "primary" ? "bg-primary/5 border-primary/15 hover:bg-primary/8" :
+                      r.color === "amber" ? "bg-amber-50 border-amber-200/60 hover:bg-amber-50" :
+                      "bg-cyan-50/50 border-cyan-200/40"}`}>
+                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 shadow-sm
+                      ${r.color === "primary" ? "bg-primary text-white" : r.color === "amber" ? "bg-accent text-accent-foreground" : "bg-cyan-500 text-white"}`}>
+                      <Icon name={r.icon as string} size={14} />
+                    </div>
+                    <div>
+                      <div className="text-sm font-semibold font-heading text-foreground">{r.title}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5 font-body">{r.desc}</div>
+                    </div>
                   </div>
                 ))}
               </div>
-            </div>
-          </div>
-          <div className="glass-card rounded-xl p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <Icon name="Activity" size={16} className="text-primary" />
-              <span className="font-semibold text-sm">Метрики платформы</span>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              {[
-                { label: "Точность прогнозов цен", value: "87.4%", sub: "+2.1%", up: true },
-                { label: "Точность прогн. урожая", value: "82.1%", sub: "+0.8%", up: true },
-                { label: "Данных обработано", value: "1.2M", sub: "записей/сут", up: true },
-                { label: "Время обновления", value: "15 мин", sub: "задержка", up: false },
-              ].map((m, i) => (
-                <div key={i} className="text-center p-3 rounded-lg bg-secondary/40">
-                  <div className="text-xl font-bold font-mono text-foreground">{m.value}</div>
-                  <div className="text-xs text-muted-foreground mt-1">{m.label}</div>
-                  <div className={`text-xs font-mono mt-1 ${m.up ? "text-primary" : "text-muted-foreground"}`}>{m.sub}</div>
-                </div>
-              ))}
             </div>
           </div>
         </div>
@@ -98,52 +139,78 @@ export default function SectionBusiness({ activeSection }: SectionBusinessProps)
       {/* ── BUSINESS ── */}
       {activeSection === "business" && (
         <div className="space-y-6 animate-fade-in">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Бизнес-инструменты</h1>
-            <p className="text-muted-foreground mt-1 text-sm">Калькулятор себестоимости · маржинальность · коммерческие предложения · экспорт</p>
+          {/* Hero */}
+          <div className="hero-gradient rounded-2xl p-5 sm:p-6 relative overflow-hidden shadow-md">
+            <div className="hero-gradient-overlay absolute inset-0" />
+            <div className="bg-dots absolute inset-0 opacity-15" />
+            <div className="relative">
+              <div className="flex items-center gap-2 mb-1.5">
+                <Icon name="Briefcase" size={13} className="text-white/75" />
+                <span className="text-white/60 text-xs font-mono uppercase tracking-widest">Бизнес-инструменты</span>
+              </div>
+              <h1 className="font-heading font-black text-2xl sm:text-3xl text-white">Инструменты для <span className="gold-text">бизнеса</span></h1>
+              <p className="text-white/60 text-sm mt-1 font-body">Калькулятор себестоимости · маржинальность · коммерческие предложения · экспорт</p>
+            </div>
           </div>
+
           <div className="grid lg:grid-cols-2 gap-4">
-            <div className="glass-card rounded-xl p-6">
-              <div className="flex items-center gap-2 mb-5">
-                <Icon name="Calculator" size={16} className="text-primary" />
-                <h2 className="font-semibold">Калькулятор маржинальности</h2>
+            <div className="glass-card rounded-2xl p-6">
+              <div className="flex items-center gap-2.5 mb-5">
+                <div className="w-8 h-8 rounded-lg bg-primary/15 flex items-center justify-center">
+                  <Icon name="Calculator" size={15} className="text-primary" />
+                </div>
+                <div>
+                  <h2 className="font-heading font-bold text-sm text-foreground">Калькулятор маржинальности</h2>
+                  <div className="text-[11px] text-muted-foreground">на основе API · реальные данные</div>
+                </div>
               </div>
               <Calculator />
             </div>
             <div className="space-y-4">
-              <div className="glass-card rounded-xl p-5">
-                <div className="flex items-center gap-2 mb-4">
-                  <Icon name="GitCompare" size={16} className="text-primary" />
-                  <h2 className="font-semibold text-sm">Сравнение культур по ROI</h2>
+              <div className="glass-card rounded-2xl p-5">
+                <div className="flex items-center gap-2.5 mb-4">
+                  <div className="w-8 h-8 rounded-lg bg-accent/15 flex items-center justify-center">
+                    <Icon name="GitCompare" size={15} className="text-accent" />
+                  </div>
+                  <div>
+                    <h2 className="font-heading font-bold text-sm text-foreground">Рейтинг культур по ROI</h2>
+                    <div className="text-[11px] text-muted-foreground">от лучшего к худшему</div>
+                  </div>
                 </div>
-                <div className="space-y-2.5">
+                <div className="space-y-3">
                   {[...PROFITABILITY_DATA].sort((a, b) => b.roi - a.roi).map((c, i) => (
                     <div key={i} className="flex items-center gap-3">
-                      <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${i === 0 ? "bg-accent text-accent-foreground" : "bg-secondary text-muted-foreground"}`}>{i + 1}</span>
-                      <span className="text-sm flex-1">{c.crop.split(" ")[0]}</span>
-                      <div className="w-20 h-2 bg-border rounded-full overflow-hidden">
-                        <div className="h-full rounded-full bg-primary/70" style={{ width: `${c.roi}%` }} />
+                      <span className={`w-6 h-6 rounded-lg flex items-center justify-center text-[11px] font-black shrink-0
+                        ${i === 0 ? "hero-gradient text-white shadow-sm" : i === 1 ? "bg-accent/20 text-accent" : "bg-secondary text-muted-foreground"}`}>{i + 1}</span>
+                      <span className="text-sm flex-1 font-medium font-body">{c.crop.split(" ")[0]}</span>
+                      <div className="w-24 h-2.5 bg-border rounded-full overflow-hidden">
+                        <div className="h-full rounded-full progress-bar" style={{ width: `${c.roi}%` }} />
                       </div>
-                      <span className="font-mono text-xs font-bold w-12 text-right">{c.roi}%</span>
+                      <span className="font-mono text-xs font-black w-14 text-right text-primary">{c.roi}%</span>
                     </div>
                   ))}
                 </div>
               </div>
-              <div className="glass-card rounded-xl p-5">
-                <div className="flex items-center gap-2 mb-4">
-                  <Icon name="Download" size={16} className="text-primary" />
-                  <h2 className="font-semibold text-sm">Экспорт и отчёты</h2>
+              <div className="glass-card rounded-2xl p-5">
+                <div className="flex items-center gap-2.5 mb-4">
+                  <div className="w-8 h-8 rounded-lg bg-primary/15 flex items-center justify-center">
+                    <Icon name="Download" size={15} className="text-primary" />
+                  </div>
+                  <div>
+                    <h2 className="font-heading font-bold text-sm text-foreground">Экспорт и отчёты</h2>
+                    <div className="text-[11px] text-muted-foreground">PDF · Excel · JSON · 1С</div>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   {EXPORT_ACTIONS.map((r, i) => (
                     <button key={i}
                       onClick={() => doExport(r.tag, r.fn)}
                       disabled={exporting !== null}
-                      className="w-full flex items-center gap-3 p-3 rounded-lg bg-secondary/40 hover:bg-secondary/70 transition-colors text-sm text-left disabled:opacity-60 active:scale-[0.99]">
+                      className="w-full flex items-center gap-3 p-3.5 rounded-xl bg-background border border-border hover:border-primary/30 hover:bg-primary/4 transition-all text-sm text-left disabled:opacity-60 active:scale-[0.99] group">
                       {exporting === r.tag ? (
                         <Icon name="Loader" size={15} className="text-primary animate-spin" />
                       ) : (
-                        <Icon name={r.icon as string} size={15} className="text-muted-foreground" />
+                        <Icon name={r.icon as string} size={15} className="text-muted-foreground group-hover:text-primary transition-colors" />
                       )}
                       <span className="flex-1">{r.label}</span>
                       <span className={`px-1.5 py-0.5 text-[10px] font-mono rounded transition-colors ${exporting === r.tag ? "bg-primary/20 text-primary" : "bg-border text-muted-foreground"}`}>
@@ -186,12 +253,17 @@ export default function SectionBusiness({ activeSection }: SectionBusinessProps)
       {/* ── ALERTS ── */}
       {activeSection === "alerts" && (
         <div className="space-y-6 animate-fade-in">
-          <div className="flex items-start justify-between flex-wrap gap-3">
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">Центр уведомлений</h1>
-              <p className="text-muted-foreground mt-1 text-sm">Критические события · погодные аномалии · изменения цен · госрегулирование</p>
+          <div className="hero-gradient rounded-2xl p-5 relative overflow-hidden shadow-md">
+            <div className="hero-gradient-overlay absolute inset-0" />
+            <div className="relative flex items-center justify-between gap-4">
+              <div>
+                <h1 className="font-heading font-black text-2xl text-white">Центр <span className="gold-text">уведомлений</span></h1>
+                <p className="text-white/60 text-sm mt-1 font-body">Критические события · погода · цены · госрегулирование</p>
+              </div>
+              <button className="px-4 py-2 bg-white/15 border border-white/30 text-white text-xs rounded-xl hover:bg-white/25 transition-colors font-semibold shrink-0">
+                Настроить
+              </button>
             </div>
-            <button className="text-xs px-3 py-1.5 bg-secondary text-muted-foreground rounded-lg border border-border hover:border-primary/30 transition-colors">Настроить уведомления</button>
           </div>
           <div className="flex gap-2 flex-wrap">
             {["Все", "Критические", "Предупреждения", "Инфо"].map(f => (
@@ -224,9 +296,13 @@ export default function SectionBusiness({ activeSection }: SectionBusinessProps)
       {/* ── INTEGRATIONS ── */}
       {activeSection === "integrations" && (
         <div className="space-y-6 animate-fade-in">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Внешние интеграции и источники данных</h1>
-            <p className="text-muted-foreground mt-1 text-sm">Биржи · спутники · метео · статистика · маркетплейсы</p>
+          <div className="hero-gradient rounded-2xl p-5 relative overflow-hidden shadow-md">
+            <div className="hero-gradient-overlay absolute inset-0" />
+            <div className="bg-dots absolute inset-0 opacity-15" />
+            <div className="relative">
+              <h1 className="font-heading font-black text-2xl text-white">Интеграции и <span className="gold-text">источники данных</span></h1>
+              <p className="text-white/60 text-sm mt-1 font-body">Биржи · спутники · метео · статистика · маркетплейсы</p>
+            </div>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {[

@@ -94,20 +94,36 @@ export default function SectionPlanner() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Планирование посевных площадей</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Оптимизация структуры посевов под ваши цели · AI-алгоритм · цены НТБ апрель 2026
-        </p>
+      {/* ── Hero ── */}
+      <div className="hero-gradient rounded-2xl p-5 sm:p-6 relative overflow-hidden shadow-md">
+        <div className="hero-gradient-overlay absolute inset-0" />
+        <div className="bg-dots absolute inset-0 opacity-15" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1.5">
+              <Icon name="ClipboardList" size={13} className="text-white/75" />
+              <span className="text-white/60 text-xs font-mono uppercase tracking-widest">AI-планировщик</span>
+            </div>
+            <h1 className="font-heading font-black text-2xl sm:text-3xl text-white">Планирование <span className="gold-text">посевов</span></h1>
+            <p className="text-white/60 text-sm mt-1 font-body">Оптимизация структуры под ваши цели · AI-алгоритм · цены НТБ 2026</p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 border border-white/25 text-white text-xs font-mono">
+              <Icon name="Brain" size={10} />AI · LIVE
+            </span>
+          </div>
+        </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 bg-secondary/50 p-1 rounded-xl w-fit">
+      {/* Вкладки */}
+      <div className="flex gap-1 bg-secondary p-1.5 rounded-2xl w-fit shadow-inner">
         {(["plan", "crops"] as const).map(t => (
           <button key={t} onClick={() => setTab(t)}
-            className={`px-4 py-1.5 text-xs rounded-lg font-medium transition-all
-              ${tab === t ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
+            className={`flex items-center gap-1.5 px-4 py-2 text-xs rounded-xl font-semibold transition-all
+              ${tab === t
+                ? "bg-white text-primary shadow-md shadow-black/8 border border-border"
+                : "text-muted-foreground hover:text-foreground"}`}>
+            <Icon name={t === "plan" ? "LayoutGrid" : "BookOpen"} size={12} />
             {t === "plan" ? "Оптимальный план" : "Справочник культур"}
           </button>
         ))}

@@ -22,8 +22,8 @@ export function PriceChart() {
       <svg viewBox={`0 0 ${w} ${h + 30}`} className="w-full">
         <defs>
           <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#10b981" stopOpacity="0.25" />
-            <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
+            <stop offset="0%" stopColor="#2E7D32" stopOpacity="0.28" />
+            <stop offset="100%" stopColor="#2E7D32" stopOpacity="0" />
           </linearGradient>
         </defs>
         {[0, 0.25, 0.5, 0.75, 1].map((t, i) => (
@@ -33,10 +33,10 @@ export function PriceChart() {
           <text key={i} x={(i / (PRICE_CHART.length - 1)) * w} y={h + 20} textAnchor="middle" fill="rgba(0,0,0,0.35)" fontSize="11" fontFamily="IBM Plex Mono">{d.month}</text>
         ))}
         <path d={areaPath} fill="url(#chartGrad)" />
-        <polyline points={realPts} fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-        <polyline points={forecastPts} fill="none" stroke="#f59e0b" strokeWidth="2" strokeDasharray="6,4" strokeLinecap="round" strokeLinejoin="round" />
+        <polyline points={realPts} fill="none" stroke="#2E7D32" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        <polyline points={forecastPts} fill="none" stroke="#FFC107" strokeWidth="2" strokeDasharray="6,4" strokeLinecap="round" strokeLinejoin="round" />
         {PRICE_CHART.map((d, i) => (
-          <circle key={i} cx={(i / (PRICE_CHART.length - 1)) * w} cy={h - ((d.price - min) / range) * h} r={d.forecast ? 3 : 4} fill={d.forecast ? "#f59e0b" : "#10b981"} stroke="white" strokeWidth="2" />
+          <circle key={i} cx={(i / (PRICE_CHART.length - 1)) * w} cy={h - ((d.price - min) / range) * h} r={d.forecast ? 3 : 4} fill={d.forecast ? "#FFC107" : "#2E7D32"} stroke="white" strokeWidth="2" />
         ))}
       </svg>
     </div>
@@ -62,8 +62,8 @@ export function SupplyChart() {
           const dh = (d.demand / max) * h;
           return (
             <g key={i}>
-              <rect x={x} y={h - sh} width={w2} height={sh} fill="#10b981" opacity="0.7" rx="2" />
-              <rect x={x + w2 + 2} y={h - dh} width={w2} height={dh} fill="#f59e0b" opacity="0.7" rx="2" />
+              <rect x={x} y={h - sh} width={w2} height={sh} fill="#2E7D32" opacity="0.75" rx="2" />
+              <rect x={x + w2 + 2} y={h - dh} width={w2} height={dh} fill="#FFC107" opacity="0.8" rx="2" />
               <text x={x + w2} y={h + 18} textAnchor="middle" fill="rgba(0,0,0,0.4)" fontSize="10" fontFamily="IBM Plex Mono">{d.month}</text>
             </g>
           );
@@ -228,6 +228,12 @@ export function Calculator() {
               </div>
             </div>
           </div>
+          <button
+            className="w-full hero-gradient text-white font-heading font-bold py-3 px-6 rounded-xl shadow-lg hover:opacity-90 transition-opacity text-sm tracking-wide"
+            onClick={() => {}}
+          >
+            Скачать расчёт PDF
+          </button>
         </>
       )}
     </div>

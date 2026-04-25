@@ -102,28 +102,44 @@ export default function SectionNews() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Новости и метеопрогноз</h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            zerno.ru · agroinvestor.ru · oilworld.ru · НГС.ру · Минсельхоз РФ · Росгидромет · апрель 2026
-          </p>
-        </div>
-        {!loading && news.filter(n => n.urgency === "critical").length > 0 && (
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-destructive/10 border border-destructive/25 rounded-lg text-xs text-destructive font-medium">
-            <Icon name="AlertOctagon" size={13} />
-            {news.filter(n => n.urgency === "critical").length} срочных события
+      {/* ── Hero-шапка ── */}
+      <div className="hero-gradient rounded-2xl p-5 sm:p-6 relative overflow-hidden shadow-md">
+        <div className="hero-gradient-overlay absolute inset-0" />
+        <div className="bg-dots absolute inset-0 opacity-15" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1.5">
+              <Icon name="Newspaper" size={13} className="text-white/75" />
+              <span className="text-white/60 text-xs font-mono uppercase tracking-widest">Агроновости · Метео</span>
+            </div>
+            <h1 className="font-heading font-black text-2xl sm:text-3xl text-white">
+              Новости <span className="gold-text">АПК</span>
+            </h1>
+            <p className="text-white/60 text-sm mt-1 font-body">zerno.ru · Минсельхоз РФ · Росгидромет · апрель 2026</p>
           </div>
-        )}
+          <div className="flex gap-2 flex-wrap shrink-0">
+            {!loading && news.filter(n => n.urgency === "critical").length > 0 && (
+              <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-destructive/30 border border-white/20 text-white text-xs font-bold">
+                <Icon name="AlertOctagon" size={11} />
+                {news.filter(n => n.urgency === "critical").length} срочных
+              </span>
+            )}
+            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 border border-white/25 text-white text-xs font-mono">
+              <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse-glow" />LIVE
+            </span>
+          </div>
+        </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 bg-secondary/50 p-1 rounded-xl w-fit">
+      {/* ── Вкладки ── */}
+      <div className="flex gap-1 bg-secondary p-1.5 rounded-2xl w-fit shadow-inner">
         {(["news", "weather"] as const).map(t => (
           <button key={t} onClick={() => setTab(t)}
-            className={`px-4 py-1.5 text-xs rounded-lg font-medium transition-all
-              ${tab === t ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
+            className={`flex items-center gap-1.5 px-4 py-2 text-xs rounded-xl font-semibold transition-all
+              ${tab === t
+                ? "bg-white text-primary shadow-md shadow-black/8 border border-border"
+                : "text-muted-foreground hover:text-foreground"}`}>
+            <Icon name={t === "news" ? "Newspaper" : "CloudSun"} size={12} />
             {t === "news" ? "Лента новостей" : "Метеопрогноз"}
           </button>
         ))}

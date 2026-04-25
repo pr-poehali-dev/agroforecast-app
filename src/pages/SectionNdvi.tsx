@@ -93,43 +93,58 @@ export default function SectionNdvi() {
   return (
     <div className="space-y-6 animate-fade-in">
 
-      {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">NDVI-мониторинг</h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Sentinel-2 (ESA) · 10 м/пиксель · обновление каждые 5 дней · апрель 2025
-          </p>
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          <div className="px-3 py-1.5 bg-primary/10 border border-primary/20 rounded-lg text-xs font-mono text-primary">NDVI = (NIR − Red) / (NIR + Red)</div>
-          {!loading && (
-            <div className="px-3 py-1.5 bg-secondary rounded-lg text-xs font-mono text-muted-foreground border border-border">
-              {summary.filter(r => r.anomaly_pct < -10).length} аномалий
+      {/* ── Hero-шапка ── */}
+      <div className="hero-gradient rounded-2xl p-5 sm:p-6 relative overflow-hidden shadow-md">
+        <div className="hero-gradient-overlay absolute inset-0" />
+        <div className="bg-dots absolute inset-0 opacity-15" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1.5">
+              <Icon name="Satellite" size={13} className="text-white/75" />
+              <span className="text-white/60 text-xs font-mono uppercase tracking-widest">Спутниковый мониторинг</span>
             </div>
-          )}
+            <h1 className="font-heading font-black text-2xl sm:text-3xl text-white">
+              NDVI-<span className="gold-text">мониторинг</span>
+            </h1>
+            <p className="text-white/60 text-sm mt-1 font-body">Sentinel-2 (ESA) · 10 м/пиксель · обновление каждые 5 дней</p>
+          </div>
+          <div className="flex gap-2 flex-wrap shrink-0">
+            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 border border-white/25 text-white text-xs font-mono">
+              <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse-glow" />LIVE
+            </span>
+            <span className="px-3 py-1.5 rounded-full bg-white/15 border border-white/25 text-white/80 text-xs font-mono">
+              NDVI = (NIR − Red) / (NIR + Red)
+            </span>
+            {!loading && summary.filter(r => r.anomaly_pct < -10).length > 0 && (
+              <span className="px-3 py-1.5 rounded-full bg-destructive/30 border border-white/20 text-white text-xs font-bold">
+                ⚠ {summary.filter(r => r.anomaly_pct < -10).length} аномалий
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* NDVI шкала */}
+      {/* ── NDVI шкала ── */}
       <div className="glass-card rounded-xl p-4">
         <div className="flex items-center gap-2 mb-3">
-          <Icon name="Sliders" size={14} className="text-primary" />
-          <span className="text-xs font-semibold text-foreground">Шкала значений NDVI · апрель 2026</span>
+          <div className="w-7 h-7 rounded-lg bg-primary/15 flex items-center justify-center">
+            <Icon name="Sliders" size={13} className="text-primary" />
+          </div>
+          <span className="text-xs font-semibold font-heading text-foreground">Шкала значений NDVI · апрель 2026</span>
         </div>
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-3 flex-wrap">
           {[
             { range: "< 0.10", label: "Вода / почва", color: "#64748b" },
             { range: "0.10–0.20", label: "Открытая почва", color: "#ef4444" },
             { range: "0.20–0.40", label: "Слабая расти.", color: "#f97316" },
-            { range: "0.40–0.55", label: "Умеренная расти.", color: "#f59e0b" },
-            { range: "0.55–0.70", label: "Хорошая расти.", color: "#84cc16" },
-            { range: "> 0.70", label: "Оптимальная расти.", color: "#10b981" },
+            { range: "0.40–0.55", label: "Умеренная", color: "#f59e0b" },
+            { range: "0.55–0.70", label: "Хорошая", color: "#84cc16" },
+            { range: "> 0.70", label: "Оптимальная", color: "#2E7D32" },
           ].map((s, i) => (
-            <div key={i} className="flex items-center gap-1.5 text-xs">
-              <span className="w-3 h-3 rounded-sm shrink-0" style={{ background: s.color }} />
+            <div key={i} className="flex items-center gap-1.5 px-2.5 py-1.5 bg-background rounded-lg border border-border text-xs">
+              <span className="w-3 h-3 rounded-full shrink-0" style={{ background: s.color }} />
               <span className="font-mono text-muted-foreground">{s.range}</span>
-              <span className="text-foreground">{s.label}</span>
+              <span className="text-foreground font-medium">{s.label}</span>
             </div>
           ))}
         </div>
