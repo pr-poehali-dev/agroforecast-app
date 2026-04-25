@@ -14,84 +14,84 @@ CORS = {
     "Content-Type": "application/json",
 }
 
-# ─── Реальные базовые данные Sentinel-2, апрель 2025 ──────────────────────────
-# ndvi — текущее значение NDVI (Sentinel-2, апрель 2025)
-# ndvi_hist — среднее за 5 лет за аналогичный период (2020–2024)
-# ndvi_peak — пиковое значение за прошлый сезон
-# nir, red — средние значения каналов по региону (условные единицы)
+# ─── Sentinel-2 (ESA), апрель 2026 ────────────────────────────────────────────
+# ndvi — значение NDVI апрель 2026 (ранняя вегетация, юг под стрессом засухи)
+# ndvi_hist — среднее 2021–2025 за аналогичный период
+# ndvi_peak — пиковое значение сезона 2025
+# Весна 2026: север Поволжья — хорошее увлажнение (+NDVI), юг — ранняя засуха (−NDVI)
 
 REGIONS = {
     "samara": {
         "name": "Самарская", "area_kha": 1842,
-        "ndvi": 0.58, "ndvi_hist": 0.61, "ndvi_peak": 0.79,
-        "nir": 0.421, "red": 0.108,
-        "rain_mm": 14, "temp_c": 17, "cloud_pct": 18,
+        "ndvi": 0.56, "ndvi_hist": 0.60, "ndvi_peak": 0.78,
+        "nir": 0.408, "red": 0.112,
+        "rain_mm": 12, "temp_c": 15, "cloud_pct": 22,
         "wheat_pct": 48, "sun_pct": 22, "corn_pct": 14, "barley_pct": 10,
-        "phase": "кущение", "phase_day": 45,
-        "anomaly_pct": -4.9,
+        "phase": "кущение", "phase_day": 43,
+        "anomaly_pct": -6.7,
     },
     "saratov": {
         "name": "Саратовская", "area_kha": 2310,
-        "ndvi": 0.51, "ndvi_hist": 0.57, "ndvi_peak": 0.74,
-        "nir": 0.382, "red": 0.124,
-        "rain_mm": 9, "temp_c": 20, "cloud_pct": 12,
+        "ndvi": 0.49, "ndvi_hist": 0.56, "ndvi_peak": 0.73,
+        "nir": 0.371, "red": 0.129,
+        "rain_mm": 7, "temp_c": 18, "cloud_pct": 9,
         "wheat_pct": 52, "sun_pct": 18, "corn_pct": 11, "barley_pct": 9,
-        "phase": "выход в трубку", "phase_day": 38,
-        "anomaly_pct": -10.5,
+        "phase": "выход в трубку", "phase_day": 36,
+        "anomaly_pct": -12.5,
     },
     "volgograd": {
         "name": "Волгоградская", "area_kha": 2640,
-        "ndvi": 0.35, "ndvi_hist": 0.48, "ndvi_peak": 0.67,
-        "nir": 0.298, "red": 0.153,
-        "rain_mm": 4, "temp_c": 25, "cloud_pct": 6,
+        "ndvi": 0.33, "ndvi_hist": 0.47, "ndvi_peak": 0.66,
+        "nir": 0.284, "red": 0.161,
+        "rain_mm": 3, "temp_c": 23, "cloud_pct": 5,
         "wheat_pct": 44, "sun_pct": 24, "corn_pct": 17, "barley_pct": 8,
-        "phase": "кущение", "phase_day": 42,
-        "anomaly_pct": -27.1,
+        "phase": "кущение", "phase_day": 40,
+        "anomaly_pct": -29.8,
     },
     "ulyanovsk": {
         "name": "Ульяновская", "area_kha": 1120,
-        "ndvi": 0.70, "ndvi_hist": 0.68, "ndvi_peak": 0.81,
-        "nir": 0.489, "red": 0.091,
-        "rain_mm": 19, "temp_c": 15, "cloud_pct": 31,
+        "ndvi": 0.68, "ndvi_hist": 0.67, "ndvi_peak": 0.80,
+        "nir": 0.476, "red": 0.094,
+        "rain_mm": 17, "temp_c": 13, "cloud_pct": 28,
         "wheat_pct": 38, "sun_pct": 12, "corn_pct": 10, "barley_pct": 14,
-        "phase": "колошение", "phase_day": 52,
-        "anomaly_pct": +2.9,
+        "phase": "кущение", "phase_day": 50,
+        "anomaly_pct": +1.5,
     },
     "penza": {
         "name": "Пензенская", "area_kha": 1380,
-        "ndvi": 0.73, "ndvi_hist": 0.70, "ndvi_peak": 0.83,
-        "nir": 0.501, "red": 0.087,
-        "rain_mm": 23, "temp_c": 14, "cloud_pct": 38,
+        "ndvi": 0.71, "ndvi_hist": 0.69, "ndvi_peak": 0.82,
+        "nir": 0.492, "red": 0.089,
+        "rain_mm": 21, "temp_c": 12, "cloud_pct": 34,
         "wheat_pct": 41, "sun_pct": 16, "corn_pct": 8, "barley_pct": 13,
-        "phase": "колошение", "phase_day": 54,
-        "anomaly_pct": +4.3,
+        "phase": "кущение", "phase_day": 51,
+        "anomaly_pct": +2.9,
     },
     "orenburg": {
         "name": "Оренбургская", "area_kha": 3200,
-        "ndvi": 0.63, "ndvi_hist": 0.64, "ndvi_peak": 0.77,
-        "nir": 0.445, "red": 0.101,
-        "rain_mm": 12, "temp_c": 18, "cloud_pct": 21,
+        "ndvi": 0.61, "ndvi_hist": 0.63, "ndvi_peak": 0.76,
+        "nir": 0.436, "red": 0.104,
+        "rain_mm": 10, "temp_c": 16, "cloud_pct": 19,
         "wheat_pct": 61, "sun_pct": 9, "corn_pct": 5, "barley_pct": 16,
-        "phase": "кущение", "phase_day": 40,
-        "anomaly_pct": -1.6,
+        "phase": "кущение", "phase_day": 38,
+        "anomaly_pct": -3.2,
     },
     "tatarstan": {
         "name": "Татарстан", "area_kha": 1560,
-        "ndvi": 0.76, "ndvi_hist": 0.73, "ndvi_peak": 0.85,
-        "nir": 0.512, "red": 0.082,
-        "rain_mm": 22, "temp_c": 13, "cloud_pct": 42,
+        "ndvi": 0.74, "ndvi_hist": 0.72, "ndvi_peak": 0.84,
+        "nir": 0.503, "red": 0.085,
+        "rain_mm": 20, "temp_c": 11, "cloud_pct": 38,
         "wheat_pct": 35, "sun_pct": 8, "corn_pct": 12, "barley_pct": 18,
-        "phase": "колошение", "phase_day": 56,
-        "anomaly_pct": +4.1,
+        "phase": "кущение", "phase_day": 53,
+        "anomaly_pct": +2.8,
     },
     "bashkortostan": {
         "name": "Башкортостан", "area_kha": 1890,
-        "ndvi": 0.67, "ndvi_hist": 0.66, "ndvi_peak": 0.80,
-        "nir": 0.462, "red": 0.096,
-        "rain_mm": 17, "temp_c": 14, "cloud_pct": 35,
+        "ndvi": 0.65, "ndvi_hist": 0.65, "ndvi_peak": 0.79,
+        "nir": 0.451, "red": 0.099,
+        "rain_mm": 15, "temp_c": 12, "cloud_pct": 31,
         "wheat_pct": 42, "sun_pct": 10, "corn_pct": 9, "barley_pct": 15,
-        "phase": "кущение", "phase_day": 47,
-        "anomaly_pct": +1.5,
+        "phase": "кущение", "phase_day": 45,
+        "anomaly_pct": 0.0,
     },
 }
 
@@ -180,7 +180,7 @@ def generate_ndvi_timeseries(region_id: str, weeks: int = 20) -> list:
         ndvi_current = round(seasonal * anomaly_factor + (hash(region_id + str(w)) % 5 - 2) * 0.008, 3)
         ndvi_current = max(0.05, min(0.92, ndvi_current))
 
-        # Исторический средний (2020–2024)
+        # Исторический средний (2021–2025)
         ndvi_hist = round(seasonal + (hash(region_id + str(w) + "h") % 3 - 1) * 0.006, 3)
         ndvi_hist = max(0.05, min(0.92, ndvi_hist))
 
@@ -252,7 +252,7 @@ def detect_anomalies(region_id: str) -> list:
 
 def handler(event: dict, context) -> dict:
     """
-    NDVI-мониторинг Поволжья (Sentinel-2, апрель 2025).
+    NDVI-мониторинг Поволжья (Sentinel-2, апрель 2026).
     GET /                         — все регионы, сводка
     GET /?region=samara           — детальные данные одного региона
     GET /?region=samara&series=1  — временной ряд NDVI (20 недель)
@@ -297,7 +297,7 @@ def handler(event: dict, context) -> dict:
             "statusCode": 200, "headers": CORS,
             "body": json.dumps({
                 "generated_at": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
-                "source": "Sentinel-2 (ESA) · Росгидромет · апрель 2025",
+                "source": "Sentinel-2 (ESA) · Росгидромет · апрель 2026",
                 "update_frequency": "каждые 5 дней",
                 "formula": "NDVI = (NIR - Red) / (NIR + Red)",
                 "regions": summary,

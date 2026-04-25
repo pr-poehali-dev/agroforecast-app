@@ -13,7 +13,7 @@
       "method": "GET",
       "path": "/?region=samara",
       "expectedStatus": 200,
-      "expectedBody": {"region_id": "samara", "ndvi": 0.58},
+      "expectedBody": {"region_id": "samara", "ndvi": 0.56},
       "bodyMatcher": "partial"
     },
     {

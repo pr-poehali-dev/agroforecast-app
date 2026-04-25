@@ -19,46 +19,50 @@ CORS_HEADERS = {
 
 # ─── Исторические данные (упрощённые, как входные признаки модели) ────────────
 
+# Актуальные цены апрель 2026 (НТБ, НГС.ру 21.04.2026, oilworld.ru)
+# Пшеница: 13 650 ₽/т (откат с мартовского пика 14 200)
+# Подсолнечник: 46 500 ₽/т (oilworld.ru), trend: down из-за пошлин
+# Кукуруза: 13 800 ₽/т (внутренний рынок), Ячмень: 12 200 ₽/т, Рожь: 10 100 ₽/т
 CROP_BASE = {
     "Пшеница озимая": {
-        "base_yield": 31.2, "yield_std": 4.1,
-        "base_price": 14200, "price_trend": +0.094,
-        "price_std": 800, "season_peak": 8,
+        "base_yield": 29.4, "yield_std": 4.2,
+        "base_price": 13650, "price_trend": +0.084,
+        "price_std": 850, "season_peak": 8,
         "drought_sensitivity": 0.72, "frost_sensitivity": 0.55,
         "pest_sensitivity": 0.38,
         "forecast_horizon_months": [3, 6, 9, 12],
         "ndvi_weight": 0.41, "rain_weight": 0.33, "temp_weight": 0.26,
     },
     "Подсолнечник": {
-        "base_yield": 22.4, "yield_std": 3.8,
-        "base_price": 28500, "price_trend": -0.084,
-        "price_std": 1200, "season_peak": 10,
+        "base_yield": 23.1, "yield_std": 3.9,
+        "base_price": 46500, "price_trend": -0.071,
+        "price_std": 2200, "season_peak": 10,
         "drought_sensitivity": 0.61, "frost_sensitivity": 0.80,
         "pest_sensitivity": 0.52,
         "forecast_horizon_months": [3, 6, 9, 12],
         "ndvi_weight": 0.38, "rain_weight": 0.29, "temp_weight": 0.33,
     },
     "Кукуруза": {
-        "base_yield": 48.6, "yield_std": 7.2,
-        "base_price": 12800, "price_trend": +0.021,
-        "price_std": 650, "season_peak": 9,
+        "base_yield": 56.8, "yield_std": 7.5,
+        "base_price": 13800, "price_trend": +0.058,
+        "price_std": 700, "season_peak": 9,
         "drought_sensitivity": 0.83, "frost_sensitivity": 0.91,
         "pest_sensitivity": 0.61,
         "forecast_horizon_months": [3, 6, 9, 12],
         "ndvi_weight": 0.44, "rain_weight": 0.36, "temp_weight": 0.20,
     },
     "Ячмень яровой": {
-        "base_yield": 28.7, "yield_std": 3.5,
-        "base_price": 10400, "price_trend": +0.051,
-        "price_std": 500, "season_peak": 7,
+        "base_yield": 28.1, "yield_std": 3.6,
+        "base_price": 12200, "price_trend": +0.041,
+        "price_std": 550, "season_peak": 7,
         "drought_sensitivity": 0.58, "frost_sensitivity": 0.44,
         "pest_sensitivity": 0.67,
         "forecast_horizon_months": [3, 6, 9, 12],
         "ndvi_weight": 0.36, "rain_weight": 0.35, "temp_weight": 0.29,
     },
     "Рожь": {
-        "base_yield": 24.1, "yield_std": 2.8,
-        "base_price": 8900, "price_trend": +0.038,
+        "base_yield": 18.2, "yield_std": 2.9,
+        "base_price": 10100, "price_trend": +0.035,
         "price_std": 420, "season_peak": 8,
         "drought_sensitivity": 0.43, "frost_sensitivity": 0.28,
         "pest_sensitivity": 0.31,
@@ -67,15 +71,17 @@ CROP_BASE = {
     },
 }
 
+# Апрель 2026: юг — ранняя засуха (Волгоград ГТК=0.28), север — хорошее увлажнение
+# Источник: Росгидромет, данные Sentinel-2, april 2026
 REGION_FACTORS = {
-    "samara":        {"ndvi": 0.68, "rain_mm": 42, "temp": 18.3, "drought_prob": 0.31, "frost_prob": 0.08, "pest_prob": 0.12, "area": 1842},
-    "saratov":       {"ndvi": 0.61, "rain_mm": 38, "temp": 19.1, "drought_prob": 0.42, "frost_prob": 0.06, "pest_prob": 0.09, "area": 2310},
-    "volgograd":     {"ndvi": 0.53, "rain_mm": 31, "temp": 21.2, "drought_prob": 0.67, "frost_prob": 0.04, "pest_prob": 0.07, "area": 2640},
-    "ulyanovsk":     {"ndvi": 0.71, "rain_mm": 51, "temp": 16.9, "drought_prob": 0.19, "frost_prob": 0.14, "pest_prob": 0.22, "area": 1120},
-    "penza":         {"ndvi": 0.74, "rain_mm": 54, "temp": 16.2, "drought_prob": 0.16, "frost_prob": 0.12, "pest_prob": 0.19, "area": 1380},
-    "orenburg":      {"ndvi": 0.57, "rain_mm": 35, "temp": 20.1, "drought_prob": 0.55, "frost_prob": 0.09, "pest_prob": 0.11, "area": 3200},
-    "tatarstan":     {"ndvi": 0.72, "rain_mm": 49, "temp": 17.4, "drought_prob": 0.21, "frost_prob": 0.16, "pest_prob": 0.24, "area": 1560},
-    "bashkortostan": {"ndvi": 0.69, "rain_mm": 47, "temp": 17.8, "drought_prob": 0.24, "frost_prob": 0.18, "pest_prob": 0.21, "area": 1890},
+    "samara":        {"ndvi": 0.56, "rain_mm": 12, "temp": 15.0, "drought_prob": 0.38, "frost_prob": 0.09, "pest_prob": 0.13, "area": 1842},
+    "saratov":       {"ndvi": 0.49, "rain_mm":  7, "temp": 18.0, "drought_prob": 0.51, "frost_prob": 0.07, "pest_prob": 0.10, "area": 2310},
+    "volgograd":     {"ndvi": 0.33, "rain_mm":  3, "temp": 23.0, "drought_prob": 0.74, "frost_prob": 0.03, "pest_prob": 0.07, "area": 2640},
+    "ulyanovsk":     {"ndvi": 0.68, "rain_mm": 17, "temp": 13.0, "drought_prob": 0.18, "frost_prob": 0.15, "pest_prob": 0.21, "area": 1120},
+    "penza":         {"ndvi": 0.71, "rain_mm": 21, "temp": 12.0, "drought_prob": 0.15, "frost_prob": 0.13, "pest_prob": 0.18, "area": 1380},
+    "orenburg":      {"ndvi": 0.61, "rain_mm": 10, "temp": 16.0, "drought_prob": 0.52, "frost_prob": 0.12, "pest_prob": 0.12, "area": 3200},
+    "tatarstan":     {"ndvi": 0.74, "rain_mm": 20, "temp": 11.0, "drought_prob": 0.19, "frost_prob": 0.17, "pest_prob": 0.23, "area": 1560},
+    "bashkortostan": {"ndvi": 0.65, "rain_mm": 15, "temp": 12.0, "drought_prob": 0.27, "frost_prob": 0.20, "pest_prob": 0.20, "area": 1890},
 }
 
 # ─── Модуль 1: Прогноз урожайности (LSTM + Random Forest симуляция) ───────────

@@ -97,7 +97,7 @@ export default function SectionHome({
         <div>
           <h1 className="text-2xl font-bold text-foreground">AgroForecast Pro: Поволжье</h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            Прогнозирование рынка сельскохозяйственной продукции · 8 регионов · 12 культур · данные апрель 2025
+            Прогнозирование рынка сельскохозяйственной продукции · 8 регионов · 12 культур · данные апрель 2026
           </p>
         </div>
         <div className="flex gap-2">
@@ -201,7 +201,7 @@ export default function SectionHome({
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Icon name="TrendingUp" size={16} className="text-primary" />
-            <span className="font-semibold text-sm">Прогнозы цен AI · +3 месяца · апрель 2025</span>
+            <span className="font-semibold text-sm">Прогнозы цен AI · +3 месяца · апрель 2026</span>
             {aiLoading ? (
               <span className="flex items-center gap-1 text-[10px] text-muted-foreground animate-pulse">
                 <Icon name="Brain" size={10} className="text-primary" />расчёт...

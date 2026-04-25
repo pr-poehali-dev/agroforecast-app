@@ -22,7 +22,7 @@
       "path": "/",
       "body": {"crop": "Пшеница озимая", "area": 500},
       "expectedStatus": 200,
-      "expectedBody": {"crop": "Пшеница озимая", "profit_rub": 8700000},
+      "expectedBody": {"crop": "Пшеница озимая", "profit_rub": 6250000},
       "bodyMatcher": "partial"
     },
     {
@@ -31,7 +31,7 @@
       "path": "/",
       "body": {"crop": "Подсолнечник", "area": 100},
       "expectedStatus": 200,
-      "expectedBody": {"roi_pct": 65.2},
+      "expectedBody": {"roi_pct": 113.7},
       "bodyMatcher": "partial"
     }
   ]

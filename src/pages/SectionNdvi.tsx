@@ -115,7 +115,7 @@ export default function SectionNdvi() {
       <div className="glass-card rounded-xl p-4">
         <div className="flex items-center gap-2 mb-3">
           <Icon name="Sliders" size={14} className="text-primary" />
-          <span className="text-xs font-semibold text-foreground">Шкала значений NDVI</span>
+          <span className="text-xs font-semibold text-foreground">Шкала значений NDVI · апрель 2026</span>
         </div>
         <div className="flex gap-2 flex-wrap">
           {[
