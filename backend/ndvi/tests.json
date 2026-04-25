@@ -1,0 +1,36 @@
+{
+  "tests": [
+    {
+      "name": "GET — сводка всех регионов",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200,
+      "expectedBody": {"formula": "NDVI = (NIR - Red) / (NIR + Red)"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET — детальные данные Самарской обл.",
+      "method": "GET",
+      "path": "/?region=samara",
+      "expectedStatus": 200,
+      "expectedBody": {"region_id": "samara", "ndvi": 0.58},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET — временной ряд Татарстан",
+      "method": "GET",
+      "path": "/?region=tatarstan&series=1",
+      "expectedStatus": 200,
+      "expectedBody": {"region_id": "tatarstan"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET — прогноз урожайности Пенза",
+      "method": "GET",
+      "path": "/?region=penza&yield=1",
+      "expectedStatus": 200,
+      "expectedBody": {"region_id": "penza"},
+      "bodyMatcher": "partial"
+    }
+  ]
+}

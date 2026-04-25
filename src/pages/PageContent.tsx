@@ -2,6 +2,7 @@ import SectionHome from "./SectionHome";
 import SectionForecasts from "./SectionForecasts";
 import SectionBusiness from "./SectionBusiness";
 import SectionAiModel from "./SectionAiModel";
+import SectionNdvi from "./SectionNdvi";
 
 interface PageContentProps {
   activeSection: string;
@@ -38,6 +39,7 @@ export default function PageContent({
         />
       )}
 
+      {activeSection === "ndvi" && <SectionNdvi />}
       {activeSection === "ai-model" && <SectionAiModel />}
 
       {(activeSection === "analytics" || activeSection === "business" || activeSection === "alerts" || activeSection === "integrations" || activeSection === "pricing") && (

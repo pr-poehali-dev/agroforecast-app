@@ -11,7 +11,7 @@ interface SidebarProps {
 const NAV_GROUPS = [
   {
     label: "Мониторинг",
-    items: ["home", "forecasts", "map", "supply"],
+    items: ["home", "forecasts", "map", "supply", "ndvi"],
   },
   {
     label: "Управление",
