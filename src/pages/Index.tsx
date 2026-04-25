@@ -40,9 +40,9 @@ export default function Index() {
               LIVE
             </div>
             <span className="text-xs text-muted-foreground font-mono hidden sm:block">25 апр 2026</span>
-            <button className="relative text-muted-foreground hover:text-foreground transition-colors">
+            <button className="relative text-muted-foreground hover:text-foreground transition-colors" onClick={() => setActiveSection("alerts")}>
               <Icon name="Bell" size={18} />
-              <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-destructive text-[9px] text-white flex items-center justify-center font-bold">3</span>
+              <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-destructive text-[9px] text-white flex items-center justify-center font-bold">7</span>
             </button>
           </div>
         </header>

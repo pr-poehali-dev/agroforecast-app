@@ -1,12 +1,14 @@
 export const NAV_ITEMS = [
   { id: "home", label: "Главная", icon: "LayoutDashboard" },
-  { id: "forecasts", label: "Прогнозы", icon: "TrendingUp" },
-  { id: "map", label: "Карта", icon: "Map" },
+  { id: "forecasts", label: "Прогнозы цен", icon: "TrendingUp" },
+  { id: "map", label: "Карта урожайности", icon: "Map" },
+  { id: "supply", label: "Спрос и предложение", icon: "ArrowLeftRight" },
   { id: "risks", label: "Риски", icon: "ShieldAlert" },
   { id: "analytics", label: "Аналитика", icon: "BarChart3" },
+  { id: "business", label: "Бизнес-инструменты", icon: "Calculator" },
   { id: "alerts", label: "Уведомления", icon: "Bell" },
-  { id: "profile", label: "Кабинет", icon: "User" },
-  { id: "integrations", label: "API", icon: "Plug" },
+  { id: "integrations", label: "Интеграции", icon: "Plug" },
+  { id: "pricing", label: "Тарифы", icon: "CreditCard" },
 ];
 
 export const CROPS = ["Пшеница", "Подсолнечник", "Кукуруза", "Ячмень", "Рожь"];
@@ -34,17 +36,19 @@ export const ALERTS = [
   { id: 3, type: "warning", title: "Заморозки: риск 65%", desc: "Саратовская обл. — возможны заморозки 27-28 апреля", time: "1 ч назад", icon: "Snowflake" },
   { id: 4, type: "info", title: "Новая интеграция", desc: "Росгидромет API подключён успешно", time: "3 ч назад", icon: "CheckCircle" },
   { id: 5, type: "info", title: "Отчёт готов", desc: "Еженедельный аналитический отчёт доступен", time: "5 ч назад", icon: "FileText" },
+  { id: 6, type: "warning", title: "Изменение квот на экспорт", desc: "Минсельхоз: квота на экспорт пшеницы снижена на 15%", time: "8 ч назад", icon: "Globe" },
+  { id: 7, type: "info", title: "Данные CBOT обновлены", desc: "Мировые цены на пшеницу выросли на $4.2/бушель", time: "12 ч назад", icon: "BarChart2" },
 ];
 
 export const MAP_REGIONS = [
-  { id: "samara", name: "Самарская", x: 68, y: 35, risk: 72, area: 21 },
-  { id: "saratov", name: "Саратовская", x: 52, y: 52, risk: 45, area: 34 },
-  { id: "volgograd", name: "Волгоградская", x: 50, y: 72, risk: 88, area: 28 },
-  { id: "ulyanovsk", name: "Ульяновская", x: 62, y: 22, risk: 28, area: 12 },
-  { id: "penza", name: "Пензенская", x: 38, y: 28, risk: 61, area: 11 },
-  { id: "orenburg", name: "Оренбургская", x: 82, y: 45, risk: 34, area: 47 },
-  { id: "tatarstan", name: "Татарстан", x: 60, y: 12, risk: 19, area: 18 },
-  { id: "bashkortostan", name: "Башкортостан", x: 80, y: 18, risk: 41, area: 32 },
+  { id: "samara", name: "Самарская", x: 68, y: 35, risk: 72, area: 21, ndvi: 0.61, rain: 12, temp: 18 },
+  { id: "saratov", name: "Саратовская", x: 52, y: 52, risk: 45, area: 34, ndvi: 0.54, rain: 8, temp: 21 },
+  { id: "volgograd", name: "Волгоградская", x: 50, y: 72, risk: 88, area: 28, ndvi: 0.38, rain: 3, temp: 26 },
+  { id: "ulyanovsk", name: "Ульяновская", x: 62, y: 22, risk: 28, area: 12, ndvi: 0.72, rain: 18, temp: 16 },
+  { id: "penza", name: "Пензенская", x: 38, y: 28, risk: 61, area: 11, ndvi: 0.49, rain: 22, temp: 15 },
+  { id: "orenburg", name: "Оренбургская", x: 82, y: 45, risk: 34, area: 47, ndvi: 0.67, rain: 14, temp: 19 },
+  { id: "tatarstan", name: "Татарстан", x: 60, y: 12, risk: 19, area: 18, ndvi: 0.78, rain: 20, temp: 14 },
+  { id: "bashkortostan", name: "Башкортостан", x: 80, y: 18, risk: 41, area: 32, ndvi: 0.65, rain: 16, temp: 15 },
 ];
 
 export const STATS = [
@@ -65,6 +69,91 @@ export const PRICE_CHART = [
   { month: "Май", price: 15000, forecast: true },
   { month: "Июн", price: 15400, forecast: true },
   { month: "Июл", price: 15800, forecast: true },
+];
+
+export const SUPPLY_DATA = [
+  { month: "Янв", supply: 4200, demand: 3900 },
+  { month: "Фев", supply: 3800, demand: 4100 },
+  { month: "Мар", supply: 4500, demand: 4000 },
+  { month: "Апр", supply: 5200, demand: 4300 },
+  { month: "Май", supply: 6100, demand: 4500 },
+  { month: "Июн", supply: 7800, demand: 4800 },
+  { month: "Июл", supply: 9200, demand: 5100 },
+  { month: "Авг", supply: 8500, demand: 5400 },
+];
+
+export const MARKET_SOURCES = [
+  { name: "АгроСервер", volume: 142000, change: +8.2, trend: "up", icon: "Store" },
+  { name: "НТБ (биржа)", volume: 89400, change: -3.1, trend: "down", icon: "BarChart2" },
+  { name: "CBOT (мировой)", volume: 524000, change: +5.7, trend: "up", icon: "Globe" },
+  { name: "Своё Фермерство", volume: 31200, change: +12.4, trend: "up", icon: "Leaf" },
+];
+
+export const EXPORT_DATA = [
+  { direction: "Экспорт в Турцию", volume: 2840, share: 34, trend: "up" },
+  { direction: "Экспорт в Египет", volume: 1920, share: 23, trend: "stable" },
+  { direction: "Экспорт в Иран", volume: 1100, share: 13, trend: "down" },
+  { direction: "Внутренний рынок", volume: 2500, share: 30, trend: "up" },
+];
+
+export const PROFITABILITY_DATA = [
+  { crop: "Пшеница озимая", revenue: 45600, cost: 28400, margin: 37.7, roi: 60.6 },
+  { crop: "Подсолнечник", revenue: 71250, cost: 41800, margin: 41.3, roi: 70.5 },
+  { crop: "Кукуруза", revenue: 38400, cost: 26100, margin: 32.0, roi: 47.1 },
+  { crop: "Ячмень яровой", revenue: 31500, cost: 21200, margin: 32.7, roi: 48.6 },
+  { crop: "Рожь", revenue: 24800, cost: 18900, margin: 23.8, roi: 31.2 },
+];
+
+export const PRICING_PLANS = [
+  {
+    name: "Базовый",
+    price: 0,
+    period: "бесплатно",
+    color: "secondary",
+    features: [
+      "Общие тренды цен (3 культуры)",
+      "Погода по регионам",
+      "Новости АПК",
+      "Базовая карта Поволжья",
+      "Email-уведомления",
+    ],
+    disabled: ["Детализированные прогнозы", "Персональные рекомендации", "API-доступ", "Экспорт отчётов"],
+  },
+  {
+    name: "Профессионал",
+    price: 1490,
+    period: "в месяц",
+    color: "primary",
+    popular: true,
+    features: [
+      "Все 12 культур Поволжья",
+      "Прогнозы на 3-6-12 месяцев",
+      "Интерактивная карта с NDVI",
+      "Модуль рисков и оповещений",
+      "AI-рекомендации",
+      "Калькулятор маржинальности",
+      "Экспорт в PDF/Excel",
+      "Данные бирж CBOT/НТБ",
+    ],
+    disabled: [],
+  },
+  {
+    name: "Корпоративный",
+    price: 8900,
+    period: "в месяц",
+    color: "accent",
+    features: [
+      "Всё из Профессионала",
+      "Выделенный API-доступ",
+      "Интеграция с 1С / SAP",
+      "Расширенная аналитика",
+      "Кастомные дашборды",
+      "B2G отчёты для Минсельхоза",
+      "SLA и выделенная поддержка",
+      "Обучение персонала",
+    ],
+    disabled: [],
+  },
 ];
 
 export function getRiskColor(risk: number) {
