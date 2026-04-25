@@ -1,11 +1,134 @@
 """
-Лента новостей АПК + метеопрогноз для Поволжья.
-Новости: zerno.ru, agroinvestor.ru, oilworld.ru, НГС.ру, Минсельхоз РФ.
-Метео: Росгидромет, OpenWeatherMap-совместимый формат.
+Лента новостей АПК + метеопрогноз.
+Новости: реальный RSS zerno.ru, agroinvestor.ru, oilworld.ru + статичный fallback.
+Метео: Росгидромет-совместимый формат.
 """
 import json
+import re
+import urllib.request
+import urllib.error
 from datetime import datetime, timedelta
 import math
+
+# ─── RSS-парсинг реальных новостей ────────────────────────────────────────────
+
+RSS_SOURCES = [
+    {"url": "https://zerno.ru/rss.xml",          "name": "zerno.ru",          "category": "рынок"},
+    {"url": "https://agroinvestor.ru/rss/",       "name": "agroinvestor.ru",   "category": "рынок"},
+    {"url": "https://oilworld.ru/rss/",           "name": "oilworld.ru",       "category": "цены"},
+    {"url": "https://mcx.gov.ru/press-service/news/rss/", "name": "Минсельхоз РФ", "category": "регулирование"},
+]
+
+CROP_KEYWORDS = {
+    "Пшеница":     ["пшениц", "зерно", "озимая", "яровая", "wheat"],
+    "Подсолнечник":["подсолнечник", "масло", "масличн", "sunflower"],
+    "Кукуруза":    ["кукуруз", "corn", "maize"],
+    "Ячмень":      ["ячмень", "barley"],
+    "Рожь":        ["рожь", "rye"],
+    "Все культуры":["агро", "сельхоз", "урожай", "посевная", "экспорт зерна"],
+}
+
+def _detect_crop(text: str) -> str:
+    text_l = text.lower()
+    for crop, kws in CROP_KEYWORDS.items():
+        if any(kw in text_l for kw in kws):
+            return crop
+    return "Все культуры"
+
+def _detect_impact(text: str) -> str:
+    text_l = text.lower()
+    neg = ["снизил", "упал", "потер", "засух", "заморо", "риск", "угроза", "проблем", "сократ", "дефицит"]
+    pos = ["вырос", "повысил", "рекорд", "прогноз ро", "субсид", "льгот", "увелич", "профицит"]
+    if any(w in text_l for w in neg): return "negative"
+    if any(w in text_l for w in pos): return "positive"
+    return "neutral"
+
+def _parse_rss_item(xml_block: str, source_name: str, category: str, news_id: int) -> dict | None:
+    def tag(t):
+        m = re.search(rf"<{t}[^>]*>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?</{t}>", xml_block, re.S)
+        return m.group(1).strip() if m else ""
+
+    title   = tag("title")
+    desc    = tag("description") or tag("summary")
+    link    = tag("link")
+    pubdate = tag("pubDate") or tag("dc:date") or ""
+
+    if not title or len(title) < 5:
+        return None
+
+    # Очистка HTML-тегов и HTML-сущностей (тройной проход: теги → сущности → теги)
+    def clean(s):
+        # Сначала убрать реальные теги (внутри CDATA у zerno.ru)
+        s = re.sub(r"<[^>]+>", " ", s)
+        # Раскрыть экранированные теги
+        s = s.replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&") \
+             .replace("&quot;", '"').replace("&#039;", "'").replace("&nbsp;", " ")
+        # Второй проход по тегам
+        s = re.sub(r"<[^>]+>", " ", s)
+        # Убрать остаточные сущности
+        s = re.sub(r"&[a-zA-Z#0-9]+;", " ", s)
+        # Убрать лишние пробелы/переносы
+        s = re.sub(r"\s+", " ", s).strip()
+        return s
+
+    title = clean(title)
+    desc  = clean(desc)[:400]
+
+    if len(title) < 5:
+        return None
+
+    # Дата
+    try:
+        for fmt in ["%a, %d %b %Y %H:%M:%S %z", "%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%d"]:
+            try:
+                dt = datetime.strptime(pubdate[:30].strip(), fmt)
+                date_str = dt.strftime("%Y-%m-%d")
+                time_str = dt.strftime("%H:%M")
+                break
+            except Exception:
+                continue
+        else:
+            date_str = datetime.now().strftime("%Y-%m-%d")
+            time_str = datetime.now().strftime("%H:%M")
+    except Exception:
+        date_str = datetime.now().strftime("%Y-%m-%d")
+        time_str = "00:00"
+
+    crop   = _detect_crop(title + " " + desc)
+    impact = _detect_impact(title + " " + desc)
+
+    return {
+        "id": news_id, "date": date_str, "time": time_str,
+        "source": source_name, "source_url": link,
+        "category": category, "crop": crop,
+        "title": title, "summary": desc,
+        "impact": impact,
+        "urgency": "high" if impact == "negative" else "medium",
+        "regions": [], "action": "Следить за развитием ситуации на рынке",
+    }
+
+def fetch_live_news(max_per_source: int = 5) -> list:
+    """Пробует получить реальные новости по RSS. При ошибке — пустой список."""
+    results = []
+    news_id = 100
+    for src in RSS_SOURCES:
+        try:
+            req = urllib.request.Request(src["url"], headers={"User-Agent": "AgroPort/3.0"})
+            with urllib.request.urlopen(req, timeout=4) as resp:
+                xml = resp.read().decode("utf-8", errors="replace")
+            items = re.findall(r"<item>(.*?)</item>", xml, re.S)
+            count = 0
+            for item_xml in items:
+                if count >= max_per_source:
+                    break
+                parsed = _parse_rss_item(item_xml, src["name"], src["category"], news_id)
+                if parsed:
+                    results.append(parsed)
+                    news_id += 1
+                    count += 1
+        except Exception:
+            pass
+    return results
 
 CORS = {
     "Access-Control-Allow-Origin": "*",
@@ -284,16 +407,31 @@ def handler(event: dict, context) -> dict:
                     "regions": list(WEATHER.values()),
                 }, ensure_ascii=False)}
 
-    filtered = NEWS
+    # Пробуем получить живые новости из RSS, добавляем к статичным
+    live = fetch_live_news(max_per_source=4)
+    all_news = live + NEWS  # живые впереди, статичные как fallback
+
+    filtered = all_news
     if category != "все":
         filtered = [n for n in filtered if n["category"] == category]
     if crop_filter:
         filtered = [n for n in filtered if crop_filter.lower() in n["crop"].lower() or "все" in n["crop"].lower()]
 
+    # Дедупликация по заголовку
+    seen = set()
+    deduped = []
+    for item in filtered:
+        key = item["title"][:60].lower()
+        if key not in seen:
+            seen.add(key)
+            deduped.append(item)
+    filtered = deduped[:25]  # не более 25
+
     return {"statusCode": 200, "headers": CORS,
             "body": json.dumps({
                 "generated_at": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
                 "total": len(filtered),
+                "live_count": len(live),
                 "categories": CATEGORIES,
                 "news": filtered,
             }, ensure_ascii=False)}

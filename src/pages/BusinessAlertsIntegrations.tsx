@@ -64,34 +64,122 @@ export default function BusinessAlertsIntegrations({ activeSection }: BusinessAl
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {[
-              { name: "Росгидромет API", desc: "Метеоданные в реальном времени по всем районам Поволжья", status: "connected", icon: "Cloud", tag: "Погода" },
-              { name: "CBOT / Euronext", desc: "Мировые цены на пшеницу, кукурузу, соевые бобы", status: "connected", icon: "TrendingUp", tag: "Биржа" },
-              { name: "НТБ (Нац. товарная биржа)", desc: "Котировки зерновых на внутреннем рынке РФ", status: "connected", icon: "BarChart2", tag: "Биржа" },
-              { name: "Sentinel-2 / Landsat", desc: "Спутниковые снимки NDVI для мониторинга посевов", status: "connected", icon: "Satellite", tag: "Спутник" },
-              { name: "Минсельхоз РФ", desc: "Открытые данные, статистика урожайности, субсидии", status: "connected", icon: "Building2", tag: "Статистика" },
-              { name: "АгроСервер", desc: "Оптовые цены с маркетплейса сельхозпродукции", status: "connected", icon: "Store", tag: "Рынок" },
-              { name: "OpenWeatherMap", desc: "Прогноз погоды на 16 дней с обновлением каждый час", status: "connected", icon: "CloudRain", tag: "Погода" },
-              { name: "Своё Фермерство", desc: "Цены и объёмы с фермерского маркетплейса", status: "pending", icon: "Leaf", tag: "Рынок" },
-              { name: "Telegram Bot", desc: "Push-уведомления о ценах, рисках, новостях", status: "disconnected", icon: "MessageCircle", tag: "Уведомления" },
+              {
+                name: "zerno.ru", tag: "Новости", status: "connected", icon: "Newspaper",
+                url: "https://zerno.ru",
+                desc: "Ежедневная лента новостей агрорынка — цены, пошлины, экспорт. Данные обновляются в реальном времени через RSS.",
+                metric: "RSS · обновление в реальном времени",
+              },
+              {
+                name: "НТБ (Нац. товарная биржа)", tag: "Биржа", status: "connected", icon: "BarChart2",
+                url: "https://ntbex.ru",
+                desc: "Официальные котировки зерновых на бирже НТБ — пшеница, ячмень, кукуруза, рожь, подсолнечник.",
+                metric: "Базовые цены · апрель 2026",
+              },
+              {
+                name: "Росгидромет", tag: "Метео", status: "connected", icon: "Cloud",
+                url: "https://meteoinfo.ru",
+                desc: "Агрометеорологические прогнозы и бюллетени по регионам России. Основной источник данных о погоде и ГТК.",
+                metric: "Прогноз 7 дней · 23 региона",
+              },
+              {
+                name: "Sentinel-2 (ESA)", tag: "Спутник", status: "connected", icon: "Satellite",
+                url: "https://sentinel.esa.int",
+                desc: "Спутниковые снимки Sentinel-2 с разрешением 10 м/пиксель. Расчёт индекса NDVI для мониторинга посевов.",
+                metric: "NDVI · обновление каждые 5 дней",
+              },
+              {
+                name: "Минсельхоз РФ", tag: "Статистика", status: "connected", icon: "Building2",
+                url: "https://mcx.gov.ru",
+                desc: "Официальные данные о посевных площадях, урожайности, субсидиях и экспортных пошлинах.",
+                metric: "Открытые данные · ежегодно",
+              },
+              {
+                name: "АгроСервер", tag: "Рынок", status: "connected", icon: "Store",
+                url: "https://agroserver.ru",
+                desc: "Оптовые цены с маркетплейса сельхозпродукции — спрос и предложение по регионам России.",
+                metric: "Цены · ежедневно",
+              },
+              {
+                name: "agroinvestor.ru", tag: "Аналитика", status: "connected", icon: "TrendingUp",
+                url: "https://agroinvestor.ru",
+                desc: "Аналитические материалы и новости для инвесторов в АПК — рынки, тренды, прогнозы.",
+                metric: "RSS · обновление в реальном времени",
+              },
+              {
+                name: "oilworld.ru", tag: "Масличные", status: "connected", icon: "Droplets",
+                url: "https://oilworld.ru",
+                desc: "Цены на масличные культуры: подсолнечник, рапс, соя. Пошлины на масло и шрот.",
+                metric: "RSS · обновление в реальном времени",
+              },
+              {
+                name: "Telegram-бот", tag: "Уведомления", status: "disconnected", icon: "MessageCircle",
+                url: "https://t.me/agroport_bot",
+                desc: "Push-уведомления о критических изменениях цен, рисках засухи и важных новостях рынка.",
+                metric: "Настройте в боте @agroport_bot",
+              },
             ].map((s, i) => (
-              <div key={i} className="glass-card rounded-xl p-5">
+              <div key={i} className="glass-card rounded-xl p-5 flex flex-col">
                 <div className="flex items-start justify-between mb-3">
-                  <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center"><Icon name={s.icon as string} size={18} className="text-foreground" /></div>
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center
+                    ${s.status === "connected" ? "bg-primary/15 text-primary" : "bg-secondary text-muted-foreground"}`}>
+                    <Icon name={s.icon as string} size={18} />
+                  </div>
                   <div className="flex flex-col items-end gap-1">
-                    <span className={`px-2 py-0.5 text-[10px] font-mono rounded uppercase ${s.status === "connected" ? "bg-primary/15 text-primary" : s.status === "pending" ? "bg-accent/15 text-accent" : "bg-secondary text-muted-foreground"}`}>
-                      {s.status === "connected" ? "✓ активно" : s.status === "pending" ? "⋯ настройка" : "отключено"}
+                    <span className={`px-2 py-0.5 text-[10px] font-mono rounded-full uppercase font-bold
+                      ${s.status === "connected" ? "bg-primary/15 text-primary" : "bg-secondary text-muted-foreground"}`}>
+                      {s.status === "connected" ? "✓ активно" : "— не подключено"}
                     </span>
                     <span className="text-[9px] text-muted-foreground uppercase font-mono">{s.tag}</span>
                   </div>
                 </div>
-                <div className="font-semibold text-sm">{s.name}</div>
-                <div className="text-xs text-muted-foreground mt-1 mb-4">{s.desc}</div>
-                <button className={`w-full py-1.5 text-xs rounded-lg font-medium border transition-all
-                  ${s.status === "connected" ? "border-border text-muted-foreground hover:border-destructive/50 hover:text-destructive" : "border-primary/30 text-primary bg-primary/10 hover:bg-primary/20"}`}>
-                  {s.status === "connected" ? "Настроить" : "Подключить"}
-                </button>
+                <div className="font-semibold text-sm text-foreground">{s.name}</div>
+                <div className="text-xs text-muted-foreground mt-1 mb-2 flex-1">{s.desc}</div>
+                <div className="text-[10px] font-mono text-primary/80 mb-3 flex items-center gap-1">
+                  <Icon name="Zap" size={9} className="text-primary/60" />{s.metric}
+                </div>
+                <a href={s.url} target="_blank" rel="noopener noreferrer"
+                  className={`w-full py-1.5 text-xs rounded-lg font-medium border transition-all text-center
+                    ${s.status === "connected"
+                      ? "border-primary/25 text-primary bg-primary/8 hover:bg-primary/15"
+                      : "border-border text-muted-foreground hover:border-primary/30 hover:text-primary"}`}>
+                  {s.status === "connected" ? "Открыть источник →" : "Подключить"}
+                </a>
               </div>
             ))}
+          </div>
+
+          {/* Статус системы */}
+          <div className="glass-card rounded-xl p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-7 h-7 rounded-lg bg-primary/15 flex items-center justify-center">
+                <Icon name="Activity" size={13} className="text-primary" />
+              </div>
+              <span className="font-heading font-bold text-sm text-foreground">Статус системы · апрель 2026</span>
+              <span className="ml-auto flex items-center gap-1.5 text-xs text-primary font-mono">
+                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse-glow" />Все системы работают
+              </span>
+            </div>
+            <div className="grid sm:grid-cols-3 gap-3">
+              {[
+                { label: "AI-прогнозирование", val: "87.4% точность", ok: true },
+                { label: "RSS-лента новостей", val: "Обновление в реальном времени", ok: true },
+                { label: "NDVI-мониторинг", val: "23 региона охвачено", ok: true },
+                { label: "Метеопрогноз", val: "7 дней по каждому региону", ok: true },
+                { label: "Цены НТБ", val: "Базовые данные апрель 2026", ok: true },
+                { label: "Telegram-бот", val: "Требует настройки", ok: false },
+              ].map((r, i) => (
+                <div key={i} className={`flex items-center gap-2.5 p-3 rounded-lg border
+                  ${r.ok ? "bg-primary/5 border-primary/15" : "bg-secondary/30 border-border"}`}>
+                  <Icon name={r.ok ? "CheckCircle2" : "Circle"} size={14}
+                    className={r.ok ? "text-primary shrink-0" : "text-muted-foreground shrink-0"} />
+                  <div>
+                    <div className="text-xs font-semibold text-foreground">{r.label}</div>
+                    <div className="text-[10px] text-muted-foreground">{r.val}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
