@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import {
   CROPS, FORECAST_DATA, RISK_DATA, MAP_REGIONS,
@@ -8,6 +8,27 @@ import {
 import { PriceChart, SupplyChart } from "./PageWidgets";
 
 const VolgaMap = lazy(() => import("@/components/VolgaMap"));
+
+const AI_URL = "https://functions.poehali.dev/3f769f53-b21b-473e-91b9-b7a755123928";
+
+const CROP_REGION_MAP: Record<string, string> = {
+  "Пшеница озимая": "samara",
+  "Подсолнечник": "samara",
+  "Кукуруза": "volgograd",
+  "Ячмень яровой": "tatarstan",
+  "Рожь": "penza",
+};
+
+interface AiTableRow {
+  crop: string;
+  currentPrice: number;
+  forecastPrice: number;
+  change: number;
+  confidence: number;
+  trend: "up" | "down";
+  yieldForecast: number;
+  yield: number;
+}
 
 interface SectionForecastsProps {
   activeSection: string;
@@ -20,8 +41,79 @@ interface SectionForecastsProps {
 export default function SectionForecasts({
   activeSection, selectedRegion, setSelectedRegion, selectedCrop, setSelectedCrop,
 }: SectionForecastsProps) {
-  const selectedForecast = FORECAST_DATA.find(f => f.crop === selectedCrop) || FORECAST_DATA[0];
   const selectedRegionData = MAP_REGIONS.find(r => r.id === selectedRegion);
+
+  // AI data for single selected crop detail card
+  const [aiSingle, setAiSingle] = useState<{ currentPrice: number; forecastPrice: number; change: number; confidence: number; trend: "up" | "down"; yieldForecast: number } | null>(null);
+  const [aiSingleLoading, setAiSingleLoading] = useState(false);
+
+  // AI data for summary table
+  const [aiTable, setAiTable] = useState<AiTableRow[]>([]);
+  const [aiTableLoading, setAiTableLoading] = useState(false);
+
+  const cropFull = FORECAST_DATA.find(f => f.crop.includes(selectedCrop) || selectedCrop.includes(f.crop.split(" ")[0]))?.crop
+    || selectedCrop;
+  const region = CROP_REGION_MAP[cropFull] || "samara";
+
+  // Load single crop AI forecast when section or crop changes
+  useEffect(() => {
+    if (activeSection !== "forecasts") return;
+    const abort = new AbortController();
+    setAiSingleLoading(true);
+    fetch(`${AI_URL}?crop=${encodeURIComponent(cropFull)}&region=${region}&horizon=3`, { signal: abort.signal })
+      .then(r => r.json())
+      .then(d => {
+        const pf = d.price_forecast;
+        const yf = d.yield_forecast;
+        if (!pf) return;
+        setAiSingle({
+          currentPrice: Math.round(pf.price_rub_t / (1 + pf.change_pct / 100)),
+          forecastPrice: pf.price_rub_t,
+          change: pf.change_pct,
+          confidence: pf.confidence_pct,
+          trend: pf.trend,
+          yieldForecast: yf?.yield_cha ?? 0,
+        });
+        setAiSingleLoading(false);
+      })
+      .catch(() => setAiSingleLoading(false));
+    return () => abort.abort();
+  }, [activeSection, cropFull, region]);
+
+  // Load all crops for summary table
+  useEffect(() => {
+    if (activeSection !== "forecasts") return;
+    const abort = new AbortController();
+    setAiTableLoading(true);
+    Promise.all(
+      FORECAST_DATA.map(f =>
+        fetch(`${AI_URL}?crop=${encodeURIComponent(f.crop)}&region=${CROP_REGION_MAP[f.crop] || "samara"}&horizon=3`, { signal: abort.signal })
+          .then(r => r.json())
+          .then(d => ({
+            crop: f.crop,
+            currentPrice: d.price_forecast ? Math.round(d.price_forecast.price_rub_t / (1 + d.price_forecast.change_pct / 100)) : f.currentPrice,
+            forecastPrice: d.price_forecast?.price_rub_t ?? f.forecastPrice,
+            change: d.price_forecast?.change_pct ?? f.change,
+            confidence: d.price_forecast?.confidence_pct ?? f.confidence,
+            trend: (d.price_forecast?.trend ?? f.trend) as "up" | "down",
+            yieldForecast: d.yield_forecast?.yield_cha ?? f.yieldForecast,
+            yield: d.yield_forecast?.yield_low ?? f.yield,
+          }))
+          .catch(() => ({ ...f, trend: f.trend as "up" | "down" }))
+      )
+    )
+      .then(rows => { setAiTable(rows); setAiTableLoading(false); })
+      .catch(() => setAiTableLoading(false));
+    return () => abort.abort();
+  }, [activeSection]);
+
+  // Merge AI data into selected forecast display
+  const baseForecast = FORECAST_DATA.find(f => f.crop === cropFull) || FORECAST_DATA[0];
+  const selectedForecast = aiSingle
+    ? { ...baseForecast, ...aiSingle }
+    : baseForecast;
+
+  const tableData: AiTableRow[] = aiTable.length > 0 ? aiTable : FORECAST_DATA.map(f => ({ ...f, trend: f.trend as "up" | "down" }));
 
   return (
     <>
@@ -41,31 +133,38 @@ export default function SectionForecasts({
               </button>
             ))}
           </div>
-          <div className="glass-card rounded-xl p-6">
+          <div className={`glass-card rounded-xl p-6 transition-opacity ${aiSingleLoading ? "opacity-70" : ""}`}>
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
               <div>
-                <h2 className="text-lg font-bold text-foreground">{selectedForecast.crop}</h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-bold text-foreground">{selectedForecast.crop}</h2>
+                  {aiSingleLoading ? (
+                    <span className="text-[10px] text-muted-foreground animate-pulse flex items-center gap-1"><Icon name="Brain" size={10} className="text-primary" />AI считает...</span>
+                  ) : aiSingle ? (
+                    <span className="text-[10px] text-primary bg-primary/10 px-1.5 py-0.5 rounded font-mono flex items-center gap-1"><Icon name="Brain" size={10} />AI · live</span>
+                  ) : null}
+                </div>
                 <div className="flex items-center gap-3 mt-2 flex-wrap">
                   <div><div className="text-xs text-muted-foreground">Текущая цена</div><div className="text-xl font-bold font-mono text-foreground">{selectedForecast.currentPrice.toLocaleString()} ₽/т</div></div>
                   <Icon name="ArrowRight" size={16} className="text-muted-foreground mt-3" />
-                  <div><div className="text-xs text-muted-foreground">Прогноз (июль)</div>
+                  <div><div className="text-xs text-muted-foreground">Прогноз (+3 мес)</div>
                     <div className={`text-xl font-bold font-mono ${selectedForecast.trend === "up" ? "text-primary" : "text-destructive"}`}>{selectedForecast.forecastPrice.toLocaleString()} ₽/т</div>
                   </div>
                 </div>
               </div>
               <div className="flex gap-3">
                 <div className={`px-4 py-3 rounded-xl border text-center ${selectedForecast.trend === "up" ? "bg-primary/10 border-primary/25 text-primary" : "bg-destructive/10 border-destructive/25 text-destructive"}`}>
-                  <div className="text-2xl font-bold font-mono">{selectedForecast.change > 0 ? "+" : ""}{selectedForecast.change}%</div>
+                  <div className="text-2xl font-bold font-mono">{selectedForecast.change > 0 ? "+" : ""}{typeof selectedForecast.change === "number" ? selectedForecast.change.toFixed(1) : selectedForecast.change}%</div>
                   <div className="text-xs opacity-70">изменение</div>
                 </div>
                 <div className="px-4 py-3 rounded-xl border border-accent/25 bg-accent/10 text-center">
-                  <div className="text-2xl font-bold font-mono text-accent">{selectedForecast.confidence}%</div>
+                  <div className="text-2xl font-bold font-mono text-accent">{typeof selectedForecast.confidence === "number" ? selectedForecast.confidence.toFixed(0) : selectedForecast.confidence}%</div>
                   <div className="text-xs text-muted-foreground">уверенность</div>
                 </div>
               </div>
             </div>
             <div className="mb-6">
-              <div className="flex justify-between text-xs text-muted-foreground mb-2"><span>Уровень уверенности модели (LSTM)</span><span className="font-mono font-medium text-accent">{selectedForecast.confidence}%</span></div>
+              <div className="flex justify-between text-xs text-muted-foreground mb-2"><span>Уровень уверенности модели (ARIMA + LSTM)</span><span className="font-mono font-medium text-accent">{typeof selectedForecast.confidence === "number" ? selectedForecast.confidence.toFixed(0) : selectedForecast.confidence}%</span></div>
               <div className="h-2 bg-border rounded-full"><div className="h-full rounded-full bg-gradient-to-r from-accent/70 to-accent transition-all duration-700" style={{ width: `${selectedForecast.confidence}%` }} /></div>
               <div className="flex justify-between text-[10px] text-muted-foreground mt-1"><span>Низкая</span><span>Средняя</span><span>Высокая</span></div>
             </div>
@@ -81,23 +180,28 @@ export default function SectionForecasts({
             <div className="flex items-center gap-2 mb-4">
               <Icon name="Table" size={16} className="text-primary" />
               <h2 className="font-semibold">Сводная таблица прогнозов</h2>
+              {aiTableLoading ? (
+                <span className="text-[10px] text-muted-foreground animate-pulse flex items-center gap-1 ml-1"><Icon name="Brain" size={10} className="text-primary" />AI обновляет...</span>
+              ) : aiTable.length > 0 ? (
+                <span className="text-[10px] text-primary bg-primary/10 px-1.5 py-0.5 rounded font-mono flex items-center gap-1 ml-1"><Icon name="Brain" size={10} />AI · live</span>
+              ) : null}
             </div>
-            <div className="overflow-x-auto">
+            <div className={`overflow-x-auto transition-opacity ${aiTableLoading ? "opacity-60" : ""}`}>
               <table className="w-full text-sm">
                 <thead><tr className="border-b border-border">
-                  {["Культура", "Цена сейчас", "Прогноз", "Изменение", "Уверенность", "Урожайность"].map(h => (
+                  {["Культура", "Цена сейчас", "Прогноз AI", "Изменение", "Уверенность", "Урожайность"].map(h => (
                     <th key={h} className="text-left text-xs text-muted-foreground font-medium py-2 pr-4 last:pr-0">{h}</th>
                   ))}
                 </tr></thead>
                 <tbody>
-                  {FORECAST_DATA.map((f, i) => (
+                  {tableData.map((f, i) => (
                     <tr key={i} className="border-b border-border/40 hover:bg-secondary/30 transition-colors cursor-pointer" onClick={() => setSelectedCrop(f.crop)}>
                       <td className="py-3 pr-4 font-medium text-foreground">{f.crop}</td>
                       <td className="py-3 pr-4 font-mono text-muted-foreground">{f.currentPrice.toLocaleString()}</td>
                       <td className="py-3 pr-4 font-mono font-bold">{f.forecastPrice.toLocaleString()} ₽</td>
-                      <td className={`py-3 pr-4 font-mono font-bold ${f.trend === "up" ? "text-primary" : "text-destructive"}`}>{f.change > 0 ? "+" : ""}{f.change}%</td>
-                      <td className="py-3 pr-4"><div className="flex items-center gap-2"><div className="w-16 h-1.5 bg-border rounded-full"><div className="h-full rounded-full bg-accent" style={{ width: `${f.confidence}%` }} /></div><span className="font-mono text-xs">{f.confidence}%</span></div></td>
-                      <td className="py-3 font-mono text-xs"><span className={f.yieldForecast > f.yield ? "text-primary" : "text-destructive"}>{f.yieldForecast} ц/га</span></td>
+                      <td className={`py-3 pr-4 font-mono font-bold ${f.trend === "up" ? "text-primary" : "text-destructive"}`}>{f.change > 0 ? "+" : ""}{typeof f.change === "number" ? f.change.toFixed(1) : f.change}%</td>
+                      <td className="py-3 pr-4"><div className="flex items-center gap-2"><div className="w-16 h-1.5 bg-border rounded-full"><div className="h-full rounded-full bg-accent" style={{ width: `${f.confidence}%` }} /></div><span className="font-mono text-xs">{typeof f.confidence === "number" ? f.confidence.toFixed(0) : f.confidence}%</span></div></td>
+                      <td className="py-3 font-mono text-xs"><span className={f.yieldForecast > f.yield ? "text-primary" : "text-destructive"}>{typeof f.yieldForecast === "number" ? f.yieldForecast.toFixed(1) : f.yieldForecast} ц/га</span></td>
                     </tr>
                   ))}
                 </tbody>
