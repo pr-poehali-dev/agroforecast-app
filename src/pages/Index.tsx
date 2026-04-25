@@ -75,14 +75,24 @@ export default function Index() {
           <div className="flex-1 flex items-center gap-2 min-w-0">
             <div className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground">
               <Icon name="Wheat" size={11} className="text-primary shrink-0" />
-              <span className="text-primary font-medium">АгроПорт</span>
+              <button
+                onClick={() => setActiveSection("home")}
+                className="text-primary font-medium hover:text-primary/80 hover:underline transition-colors cursor-pointer">
+                АгроПорт
+              </button>
               <Icon name="ChevronRight" size={12} />
-              <span className="text-foreground font-medium truncate">{section.label}</span>
+              <button
+                onClick={() => setActiveSection(activeSection)}
+                className="text-foreground font-medium hover:text-primary transition-colors cursor-pointer truncate">
+                {section.label}
+              </button>
             </div>
             {section.desc && (
-              <span className="hidden md:block text-[11px] text-muted-foreground border-l border-border pl-2 ml-1 truncate">
+              <button
+                onClick={() => setActiveSection("home")}
+                className="hidden md:block text-[11px] text-muted-foreground border-l border-border pl-2 ml-1 truncate hover:text-primary transition-colors cursor-pointer">
                 {section.desc}
-              </span>
+              </button>
             )}
           </div>
 
