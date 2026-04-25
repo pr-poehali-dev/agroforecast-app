@@ -18,6 +18,8 @@ const SECTION_TITLES: Record<string, { label: string; desc: string }> = {
   alerts:       { label: "Алерты",             desc: "Уведомления и события" },
   integrations: { label: "Интеграции",         desc: "1С, ERP, API" },
   pricing:      { label: "Тарифы",             desc: "Планы и возможности" },
+  logistics:    { label: "Логистика",          desc: "Расчёт маршрутов и стоимости доставки" },
+  profile:      { label: "Личный кабинет",     desc: "Профиль и CRM-система" },
 };
 
 export default function Index() {
@@ -120,7 +122,7 @@ export default function Index() {
             {/* Профиль */}
             <button
               className="flex items-center gap-2 pl-2 border-l border-border ml-1"
-              onClick={() => setActiveSection("pricing")}>
+              onClick={() => setActiveSection("profile")}>
               <div className="w-7 h-7 rounded-full hero-gradient flex items-center justify-center text-white shadow-sm">
                 <Icon name="User" size={14} className="text-white" />
               </div>

@@ -10,9 +10,11 @@ export const NAV_ITEMS = [
   { id: "ai-model", label: "AI‑модель", icon: "Brain" },
   { id: "analytics", label: "Аналитика", icon: "BarChart3" },
   { id: "business", label: "Бизнес-инструменты", icon: "Calculator" },
+  { id: "logistics", label: "Логистика", icon: "Truck" },
   { id: "alerts", label: "Уведомления", icon: "Bell" },
   { id: "integrations", label: "Интеграции", icon: "Plug" },
   { id: "pricing", label: "Тарифы", icon: "CreditCard" },
+  { id: "profile", label: "Личный кабинет", icon: "UserCircle" },
 ];
 
 export const CROPS = ["Пшеница", "Подсолнечник", "Кукуруза", "Ячмень", "Рожь"];

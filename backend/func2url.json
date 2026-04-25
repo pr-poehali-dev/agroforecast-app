@@ -1,4 +1,7 @@
 {
+  "logistics": "https://functions.poehali.dev/1aefb5aa-0f0b-4575-b1c2-3547538663cc",
+  "crm": "https://functions.poehali.dev/b82b5560-b8a7-4691-a429-f458f67c2b78",
+  "auth": "https://functions.poehali.dev/3a6fb358-74b8-46ff-8b89-6eb8c01db47d",
   "news": "https://functions.poehali.dev/be0f7858-8fb0-425f-b039-4a119700c633",
   "planner": "https://functions.poehali.dev/62858383-50f0-4d73-879f-111b5f96cf2b",
   "ndvi": "https://functions.poehali.dev/8612f76e-67f1-4185-856e-5fd372e40e23",

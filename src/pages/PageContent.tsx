@@ -5,6 +5,8 @@ import SectionAiModel from "./SectionAiModel";
 import SectionNdvi from "./SectionNdvi";
 import SectionNews from "./SectionNews";
 import SectionPlanner from "./SectionPlanner";
+import SectionLogistics from "./SectionLogistics";
+import SectionProfile from "./SectionProfile";
 
 interface PageContentProps {
   activeSection: string;
@@ -20,8 +22,13 @@ export default function PageContent({
   activeSection, animKey, selectedRegion, setSelectedRegion,
   selectedCrop, setSelectedCrop, setActiveSection,
 }: PageContentProps) {
+  const isFullscreen = activeSection === "profile";
+
   return (
-    <main className="flex-1 overflow-y-auto p-4 lg:p-6 bg-grid bg-background" key={animKey}>
+    <main
+      className={`flex-1 overflow-y-auto bg-grid bg-background ${isFullscreen ? "" : "p-4 lg:p-6"}`}
+      key={animKey}
+    >
       {activeSection === "home" && (
         <SectionHome
           selectedRegion={selectedRegion}
@@ -45,6 +52,11 @@ export default function PageContent({
       {activeSection === "news" && <SectionNews />}
       {activeSection === "planner" && <SectionPlanner />}
       {activeSection === "ai-model" && <SectionAiModel />}
+      {activeSection === "logistics" && <SectionLogistics />}
+
+      {activeSection === "profile" && (
+        <SectionProfile onLogout={() => setActiveSection("home")} />
+      )}
 
       {(activeSection === "analytics" || activeSection === "business" || activeSection === "alerts" || activeSection === "integrations" || activeSection === "pricing") && (
         <SectionBusiness activeSection={activeSection} />

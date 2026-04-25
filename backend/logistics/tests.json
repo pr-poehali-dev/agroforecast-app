@@ -1,0 +1,29 @@
+{
+  "tests": [
+    {
+      "name": "Список городов",
+      "method": "GET",
+      "path": "/?action=cities_list",
+      "expectedStatus": 200,
+      "expectedBody": {"vehicle_types": {}},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Расчёт маршрута Москва-Ростов",
+      "method": "POST",
+      "path": "/?action=calculate",
+      "body": {"from_city": "Москва", "to_city": "Ростов-на-Дону", "weight_tons": 20, "vehicle_type": "truck_20t", "cargo_type": "grain"},
+      "expectedStatus": 200,
+      "expectedBody": {"from_city": "Москва"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Список маршрутов",
+      "method": "GET",
+      "path": "/?action=routes_list",
+      "expectedStatus": 200,
+      "expectedBody": {"routes": []},
+      "bodyMatcher": "partial"
+    }
+  ]
+}

@@ -19,12 +19,12 @@ const NAV_GROUPS = [
   {
     label: "Управление",
     icon: "Settings2",
-    items: ["risks", "ai-model", "analytics", "business", "planner", "alerts"],
+    items: ["risks", "ai-model", "analytics", "business", "logistics", "planner", "alerts"],
   },
   {
     label: "Платформа",
     icon: "Layers",
-    items: ["integrations", "pricing"],
+    items: ["integrations", "pricing", "profile"],
   },
 ];
 
@@ -43,6 +43,8 @@ const SECTION_ICONS: Record<string, string> = {
   alerts: "Bell",
   integrations: "Plug",
   pricing: "CreditCard",
+  logistics: "Truck",
+  profile: "UserCircle",
 };
 
 export default function Sidebar({ activeSection, sidebarOpen, collapsed, onNavigate, onClose, onToggleCollapse }: SidebarProps) {
