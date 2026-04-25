@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import * as L from "leaflet";
 import { MAP_REGIONS, getRiskColor } from "@/pages/data";
 
 const AI_URL = "https://functions.poehali.dev/3f769f53-b21b-473e-91b9-b7a755123928";
@@ -37,7 +38,7 @@ function aiRiskColor(riskPct: number): string {
   return "#10b981";
 }
 
-function makeIcon(L: typeof import("leaflet"), color: string, isSelected: boolean) {
+function makeIcon(color: string, isSelected: boolean) {
   return L.divIcon({
     html: `
       <div style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;position:relative;">
@@ -106,8 +107,8 @@ function makePopup(
 
 export default function VolgaMap({ selectedRegion, onSelect }: VolgaMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
-  const leafletMapRef = useRef<import("leaflet").Map | null>(null);
-  const markersRef = useRef<Record<string, import("leaflet").Marker>>({});
+  const leafletMapRef = useRef<L.Map | null>(null);
+  const markersRef = useRef<Record<string, L.Marker>>({});
   const [aiRisks, setAiRisks] = useState<Record<string, RegionRisk>>({});
   const [aiLoaded, setAiLoaded] = useState(false);
 
@@ -130,48 +131,46 @@ export default function VolgaMap({ selectedRegion, onSelect }: VolgaMapProps) {
   useEffect(() => {
     if (!mapRef.current || leafletMapRef.current) return;
 
-    import("leaflet").then(L => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      delete (L.Icon.Default.prototype as any)._getIconUrl;
-      L.Icon.Default.mergeOptions({
-        iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-        iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-        shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-      });
-
-      const map = L.map(mapRef.current!, {
-        center: [52.5, 50.0],
-        zoom: 5,
-        zoomControl: true,
-        attributionControl: true,
-        scrollWheelZoom: true,
-      });
-
-      L.tileLayer(
-        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-        { attribution: "Esri, Maxar, Earthstar Geographics", maxZoom: 19 }
-      ).addTo(map);
-
-      L.tileLayer(
-        "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
-        { attribution: "", maxZoom: 19, opacity: 0.8 }
-      ).addTo(map);
-
-      MAP_REGIONS.forEach(region => {
-        const coords = REGION_COORDS[region.id];
-        if (!coords) return;
-        const color = getRiskColor(region.risk);
-        const marker = L.marker(coords, { icon: makeIcon(L, color, false) })
-          .addTo(map)
-          .bindPopup(makePopup(region.name, region.risk, color, region.ndvi, region.rain, region.temp), {
-            maxWidth: 240, className: "leaflet-popup-custom",
-          })
-          .on("click", () => onSelect(region.id));
-        markersRef.current[region.id] = marker;
-      });
-
-      leafletMapRef.current = map;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    delete (L.Icon.Default.prototype as any)._getIconUrl;
+    L.Icon.Default.mergeOptions({
+      iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+      iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+      shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
     });
+
+    const map = L.map(mapRef.current, {
+      center: [52.5, 50.0],
+      zoom: 5,
+      zoomControl: true,
+      attributionControl: true,
+      scrollWheelZoom: true,
+    });
+
+    L.tileLayer(
+      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      { attribution: "Esri, Maxar, Earthstar Geographics", maxZoom: 19 }
+    ).addTo(map);
+
+    L.tileLayer(
+      "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
+      { attribution: "", maxZoom: 19, opacity: 0.8 }
+    ).addTo(map);
+
+    MAP_REGIONS.forEach(region => {
+      const coords = REGION_COORDS[region.id];
+      if (!coords) return;
+      const color = getRiskColor(region.risk);
+      const marker = L.marker(coords, { icon: makeIcon(color, false) })
+        .addTo(map)
+        .bindPopup(makePopup(region.name, region.risk, color, region.ndvi, region.rain, region.temp), {
+          maxWidth: 240, className: "leaflet-popup-custom",
+        })
+        .on("click", () => onSelect(region.id));
+      markersRef.current[region.id] = marker;
+    });
+
+    leafletMapRef.current = map;
 
     return () => {
       if (leafletMapRef.current) {
@@ -185,17 +184,15 @@ export default function VolgaMap({ selectedRegion, onSelect }: VolgaMapProps) {
   // Update markers when AI data arrives
   useEffect(() => {
     if (!aiLoaded || !leafletMapRef.current) return;
-    import("leaflet").then(L => {
-      MAP_REGIONS.forEach(region => {
-        const m = markersRef.current[region.id];
-        if (!m) return;
-        const ai = aiRisks[region.id];
-        const riskPct = ai ? ai.total_risk_pct : region.risk;
-        const color = ai ? aiRiskColor(riskPct) : getRiskColor(region.risk);
-        const isSelected = region.id === selectedRegion;
-        m.setIcon(makeIcon(L, color, isSelected));
-        m.setPopupContent(makePopup(region.name, riskPct, color, region.ndvi, region.rain, region.temp, ai));
-      });
+    MAP_REGIONS.forEach(region => {
+      const m = markersRef.current[region.id];
+      if (!m) return;
+      const ai = aiRisks[region.id];
+      const riskPct = ai ? ai.total_risk_pct : region.risk;
+      const color = ai ? aiRiskColor(riskPct) : getRiskColor(region.risk);
+      const isSelected = region.id === selectedRegion;
+      m.setIcon(makeIcon(color, isSelected));
+      m.setPopupContent(makePopup(region.name, riskPct, color, region.ndvi, region.rain, region.temp, ai));
     });
   }, [aiLoaded, aiRisks, selectedRegion]);
 
@@ -205,24 +202,21 @@ export default function VolgaMap({ selectedRegion, onSelect }: VolgaMapProps) {
     const coords = REGION_COORDS[selectedRegion];
     if (!coords) return;
 
-    import("leaflet").then(L => {
-      if (!leafletMapRef.current) return;
-      leafletMapRef.current.flyTo(coords, 7, { duration: 1.2 });
+    leafletMapRef.current.flyTo(coords, 7, { duration: 1.2 });
 
-      const marker = markersRef.current[selectedRegion];
-      if (marker) {
-        setTimeout(() => { if (leafletMapRef.current) marker.openPopup(); }, 1300);
-      }
+    const marker = markersRef.current[selectedRegion];
+    if (marker) {
+      setTimeout(() => { if (leafletMapRef.current) marker.openPopup(); }, 1300);
+    }
 
-      MAP_REGIONS.forEach(region => {
-        const m = markersRef.current[region.id];
-        if (!m) return;
-        const ai = aiRisks[region.id];
-        const riskPct = ai ? ai.total_risk_pct : region.risk;
-        const color = ai ? aiRiskColor(riskPct) : getRiskColor(region.risk);
-        const isSelected = region.id === selectedRegion;
-        m.setIcon(makeIcon(L, color, isSelected));
-      });
+    MAP_REGIONS.forEach(region => {
+      const m = markersRef.current[region.id];
+      if (!m) return;
+      const ai = aiRisks[region.id];
+      const riskPct = ai ? ai.total_risk_pct : region.risk;
+      const color = ai ? aiRiskColor(riskPct) : getRiskColor(region.risk);
+      const isSelected = region.id === selectedRegion;
+      m.setIcon(makeIcon(color, isSelected));
     });
   }, [selectedRegion, aiRisks]);
 

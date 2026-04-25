@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import * as L from "leaflet";
 import { MAP_REGIONS, getRiskColor, getRiskLabel } from "@/pages/data";
 
 interface HomeMapProps {
@@ -24,7 +25,7 @@ function makeColor(risk: number) {
   return "#10b981";
 }
 
-function makeIcon(L: typeof import("leaflet"), color: string, isSelected: boolean, riskPct: number) {
+function makeIcon(color: string, isSelected: boolean, riskPct: number) {
   const size = isSelected ? 28 : 22;
   return L.divIcon({
     html: `
@@ -131,56 +132,52 @@ function makePopupHtml(
 
 export default function HomeMap({ selectedRegion, onSelect, aiRisks = {} }: HomeMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
-  const leafletMapRef = useRef<import("leaflet").Map | null>(null);
-  const markersRef = useRef<Record<string, import("leaflet").Marker>>({});
+  const leafletMapRef = useRef<L.Map | null>(null);
+  const markersRef = useRef<Record<string, L.Marker>>({});
 
   useEffect(() => {
     if (!mapRef.current || leafletMapRef.current) return;
 
-    import("leaflet").then(L => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      delete (L.Icon.Default.prototype as any)._getIconUrl;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    delete (L.Icon.Default.prototype as any)._getIconUrl;
 
-      const map = L.map(mapRef.current!, {
-        center: [52.5, 50.0],
-        zoom: 5,
-        zoomControl: true,
-        attributionControl: true,
-        scrollWheelZoom: true,
-      });
-
-      // Satellite tiles
-      L.tileLayer(
-        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-        { attribution: "Esri, Maxar, Earthstar Geographics", maxZoom: 19 }
-      ).addTo(map);
-
-      // Labels overlay
-      L.tileLayer(
-        "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
-        { attribution: "", maxZoom: 19, opacity: 0.75 }
-      ).addTo(map);
-
-      MAP_REGIONS.forEach(region => {
-        const coords = REGION_COORDS[region.id];
-        if (!coords) return;
-        const ai = aiRisks[region.id];
-        const riskPct = ai ? Math.round(ai.total_risk_pct) : region.risk;
-        const riskLevel = ai ? ai.total_risk_level : (riskPct >= 75 ? "critical" : riskPct >= 50 ? "medium" : "low");
-        const color = makeColor(riskPct);
-
-        const marker = L.marker(coords, { icon: makeIcon(L, color, false, riskPct) })
-          .addTo(map)
-          .bindPopup(makePopupHtml(region, color, riskPct, riskLevel, ai), {
-            maxWidth: 260, className: "leaflet-popup-custom",
-          })
-          .on("click", () => onSelect(region.id));
-
-        markersRef.current[region.id] = marker;
-      });
-
-      leafletMapRef.current = map;
+    const map = L.map(mapRef.current, {
+      center: [52.5, 50.0],
+      zoom: 5,
+      zoomControl: true,
+      attributionControl: true,
+      scrollWheelZoom: true,
     });
+
+    L.tileLayer(
+      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      { attribution: "Esri, Maxar, Earthstar Geographics", maxZoom: 19 }
+    ).addTo(map);
+
+    L.tileLayer(
+      "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
+      { attribution: "", maxZoom: 19, opacity: 0.75 }
+    ).addTo(map);
+
+    MAP_REGIONS.forEach(region => {
+      const coords = REGION_COORDS[region.id];
+      if (!coords) return;
+      const ai = aiRisks[region.id];
+      const riskPct = ai ? Math.round(ai.total_risk_pct) : region.risk;
+      const riskLevel = ai ? ai.total_risk_level : (riskPct >= 75 ? "critical" : riskPct >= 50 ? "medium" : "low");
+      const color = makeColor(riskPct);
+
+      const marker = L.marker(coords, { icon: makeIcon(color, false, riskPct) })
+        .addTo(map)
+        .bindPopup(makePopupHtml(region, color, riskPct, riskLevel, ai), {
+          maxWidth: 260, className: "leaflet-popup-custom",
+        })
+        .on("click", () => onSelect(region.id));
+
+      markersRef.current[region.id] = marker;
+    });
+
+    leafletMapRef.current = map;
 
     return () => {
       if (leafletMapRef.current) {
@@ -197,40 +194,35 @@ export default function HomeMap({ selectedRegion, onSelect, aiRisks = {} }: Home
     const coords = REGION_COORDS[selectedRegion];
     if (!coords) return;
 
-    import("leaflet").then(L => {
-      if (!leafletMapRef.current) return;
-      leafletMapRef.current.flyTo(coords, 7, { duration: 1.0 });
+    leafletMapRef.current.flyTo(coords, 7, { duration: 1.0 });
 
-      MAP_REGIONS.forEach(region => {
-        const m = markersRef.current[region.id];
-        if (!m) return;
-        const ai = aiRisks[region.id];
-        const riskPct = ai ? Math.round(ai.total_risk_pct) : region.risk;
-        const color = makeColor(riskPct);
-        const isSelected = region.id === selectedRegion;
-        m.setIcon(makeIcon(L, color, isSelected, riskPct));
-      });
-
-      const marker = markersRef.current[selectedRegion];
-      if (marker) setTimeout(() => { if (leafletMapRef.current) marker.openPopup(); }, 1100);
+    MAP_REGIONS.forEach(region => {
+      const m = markersRef.current[region.id];
+      if (!m) return;
+      const ai = aiRisks[region.id];
+      const riskPct = ai ? Math.round(ai.total_risk_pct) : region.risk;
+      const color = makeColor(riskPct);
+      const isSelected = region.id === selectedRegion;
+      m.setIcon(makeIcon(color, isSelected, riskPct));
     });
+
+    const marker = markersRef.current[selectedRegion];
+    if (marker) setTimeout(() => { if (leafletMapRef.current) marker.openPopup(); }, 1100);
   }, [selectedRegion, aiRisks]);
 
   // Update markers when AI risks arrive
   useEffect(() => {
     if (!leafletMapRef.current || Object.keys(aiRisks).length === 0) return;
-    import("leaflet").then(L => {
-      MAP_REGIONS.forEach(region => {
-        const m = markersRef.current[region.id];
-        if (!m) return;
-        const ai = aiRisks[region.id];
-        const riskPct = ai ? Math.round(ai.total_risk_pct) : region.risk;
-        const riskLevel = ai ? ai.total_risk_level : (riskPct >= 75 ? "critical" : riskPct >= 50 ? "medium" : "low");
-        const color = makeColor(riskPct);
-        const isSelected = region.id === selectedRegion;
-        m.setIcon(makeIcon(L, color, isSelected, riskPct));
-        m.setPopupContent(makePopupHtml(region, color, riskPct, riskLevel, ai));
-      });
+    MAP_REGIONS.forEach(region => {
+      const m = markersRef.current[region.id];
+      if (!m) return;
+      const ai = aiRisks[region.id];
+      const riskPct = ai ? Math.round(ai.total_risk_pct) : region.risk;
+      const riskLevel = ai ? ai.total_risk_level : (riskPct >= 75 ? "critical" : riskPct >= 50 ? "medium" : "low");
+      const color = makeColor(riskPct);
+      const isSelected = region.id === selectedRegion;
+      m.setIcon(makeIcon(color, isSelected, riskPct));
+      m.setPopupContent(makePopupHtml(region, color, riskPct, riskLevel, ai));
     });
   }, [aiRisks, selectedRegion]);
 
