@@ -89,4 +89,5 @@ export interface SingleForecast {
 export interface ChartPoint {
   month: string; date: string; price: number;
   price_low: number; price_high: number; forecast: boolean;
+  open?: number; close?: number;
 }
