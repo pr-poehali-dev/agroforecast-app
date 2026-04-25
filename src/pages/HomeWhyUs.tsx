@@ -108,65 +108,6 @@ export default function HomeWhyUs({ setActiveSection }: HomeWhyUsProps) {
       </div>
 
       {/* ══════════════════════════════════════════════
-          СРАВНЕНИЕ С ExactFarming
-      ══════════════════════════════════════════════ */}
-      <div className="glass-card rounded-2xl p-6">
-        <div className="text-center mb-6">
-          <h2 className="font-heading font-black text-xl text-foreground">
-            АгроПорт vs конкуренты
-          </h2>
-          <p className="text-muted-foreground text-sm mt-1 font-body">Почему профессионалы выбирают нас</p>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="text-left py-3 pr-4 text-muted-foreground font-medium text-xs uppercase tracking-wide">Функция</th>
-                <th className="py-3 px-4 text-center">
-                  <span className="font-heading font-black text-primary text-sm">АгроПорт</span>
-                </th>
-                <th className="py-3 px-4 text-center text-muted-foreground text-xs">ExactFarming</th>
-                <th className="py-3 pl-4 text-center text-muted-foreground text-xs">Другие</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[
-                { f: "Прогноз цен AI (ARIMA+LSTM)",     ap: true,  ef: false, ot: false },
-                { f: "NDVI-мониторинг Sentinel-2",      ap: true,  ef: true,  ot: true  },
-                { f: "Охват 23 региона России",         ap: true,  ef: true,  ot: false },
-                { f: "Реальные RSS-новости рынка",      ap: true,  ef: false, ot: false },
-                { f: "Японские свечи и графики",        ap: true,  ef: false, ot: false },
-                { f: "Калькулятор маржинальности",      ap: true,  ef: true,  ot: false },
-                { f: "Карта рисков засухи/заморозков",  ap: true,  ef: true,  ot: false },
-                { f: "Интеграция 1С / API",             ap: true,  ef: true,  ot: false },
-                { f: "Данные экспорта (Турция/Египет)", ap: true,  ef: false, ot: false },
-                { f: "Бесплатный базовый доступ",       ap: true,  ef: false, ot: false },
-              ].map((row, i) => (
-                <tr key={i} className={`border-b border-border/40 ${i % 2 === 0 ? "" : "bg-secondary/20"}`}>
-                  <td className="py-2.5 pr-4 text-foreground font-body text-xs">{row.f}</td>
-                  <td className="py-2.5 px-4 text-center">
-                    {row.ap
-                      ? <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary/15 text-primary"><Icon name="Check" size={12} /></span>
-                      : <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-secondary text-muted-foreground"><Icon name="Minus" size={12} /></span>}
-                  </td>
-                  <td className="py-2.5 px-4 text-center">
-                    {row.ef
-                      ? <span className="text-muted-foreground text-xs">✓</span>
-                      : <span className="text-muted-foreground text-xs opacity-40">—</span>}
-                  </td>
-                  <td className="py-2.5 pl-4 text-center">
-                    {row.ot
-                      ? <span className="text-muted-foreground text-xs">✓</span>
-                      : <span className="text-muted-foreground text-xs opacity-40">—</span>}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* ══════════════════════════════════════════════
           ФИНАЛЬНЫЙ CTA — как у ExactFarming
       ══════════════════════════════════════════════ */}
       <div className="hero-gradient rounded-3xl p-8 sm:p-10 relative overflow-hidden text-center">

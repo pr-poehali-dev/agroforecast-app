@@ -2,171 +2,238 @@ import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import { MAP_REGIONS, PRICE_CHART, SUPPLY_DATA, PROFITABILITY_DATA, getRiskColor } from "./data";
 
+const AI_URL = "https://functions.poehali.dev/3f769f53-b21b-473e-91b9-b7a755123928";
+
+const CROP_REGION: Record<string, string> = {
+  "Пшеница озимая": "samara",
+  "Подсолнечник": "samara",
+  "Кукуруза": "volgograd",
+  "Ячмень яровой": "tatarstan",
+  "Рожь": "penza",
+};
+
+const MONTHS_RU: Record<string, string> = {
+  Jan: "Янв", Feb: "Фев", Mar: "Мар", Apr: "Апр",
+  May: "Май", Jun: "Июн", Jul: "Июл", Aug: "Авг",
+  Sep: "Сен", Oct: "Окт", Nov: "Ноя", Dec: "Дек",
+  "01": "Янв", "02": "Фев", "03": "Мар", "04": "Апр",
+  "05": "Май", "06": "Июн", "07": "Июл", "08": "Авг",
+  "09": "Сен", "10": "Окт", "11": "Ноя", "12": "Дек",
+};
+
+function formatMonth(month: string, date?: string): string {
+  if (!month) return "";
+  if (/[а-яА-Я]/.test(month)) return month.slice(0, 3);
+  if (date) {
+    const m = date.match(/^\d{4}-(\d{2})/);
+    if (m && MONTHS_RU[m[1]]) return MONTHS_RU[m[1]];
+  }
+  for (const [en, ru] of Object.entries(MONTHS_RU)) {
+    if (month.startsWith(en)) return ru;
+  }
+  const isoM = month.match(/\d{4}-(\d{2})/);
+  if (isoM && MONTHS_RU[isoM[1]]) return MONTHS_RU[isoM[1]];
+  return month.slice(0, 4);
+}
+
+interface ChartPt {
+  month: string; date: string; price: number;
+  price_low: number; price_high: number; forecast: boolean;
+  open?: number; close?: number;
+}
+
+function buildCandle(d: ChartPt) {
+  const close = d.close ?? d.price;
+  const open  = d.open  ?? (d.price_low != null && d.price_high != null
+    ? d.price_low + (d.price_high - d.price_low) * 0.35
+    : d.price * 0.995);
+  const high = d.price_high ?? Math.max(open, close) * 1.005;
+  const low  = d.price_low  ?? Math.min(open, close) * 0.995;
+  const bull = close >= open;
+  return { open, close, high, low, bull };
+}
+
 const CALC_URL = "https://functions.poehali.dev/b54f9de1-da43-4c7f-b32f-63fbdcdbc6fd";
 
-// ─── SVG Chart: Price (интерактивный) ─────────────────────────────────────────
+// ─── SVG Chart: Price — японские свечи, данные с API ────────────────────────
 
-export function PriceChart() {
+export function PriceChart({ crop }: { crop?: string }) {
+  const [chartData, setChartData] = useState<ChartPt[]>([]);
+  const [loading, setLoading] = useState(false);
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
 
-  const max = Math.max(...PRICE_CHART.map(d => d.price));
-  const min = Math.min(...PRICE_CHART.map(d => d.price)) - 800;
-  const range = max - min;
-  const w = 620; const h = 200; const padL = 65; const padR = 10;
+  useEffect(() => {
+    if (!crop) return;
+    const abort = new AbortController();
+    setLoading(true);
+    setChartData([]);
+    const region = CROP_REGION[crop] || "samara";
+    fetch(`${AI_URL}?crop=${encodeURIComponent(crop)}&region=${region}&chart=1&horizon=12`, { signal: abort.signal })
+      .then(r => r.json())
+      .then(d => { setChartData(d.series || []); setLoading(false); })
+      .catch(() => setLoading(false));
+    return () => abort.abort();
+  }, [crop]);
+
+  // Fallback на статичные данные если API не вернул ничего
+  const data: ChartPt[] = chartData.length > 0 ? chartData : PRICE_CHART.map(d => ({
+    month: d.month, date: d.month, price: d.price,
+    price_low: d.price * 0.975, price_high: d.price * 1.025,
+    forecast: d.forecast ?? false,
+  }));
+
+  if (loading) {
+    return (
+      <div className="w-full h-48 bg-secondary/30 rounded-xl animate-pulse flex items-center justify-center text-xs text-muted-foreground">
+        <Icon name="Loader" size={14} className="text-primary animate-spin mr-2" />Загрузка данных...
+      </div>
+    );
+  }
+
+  const n = data.length;
+  const w = 680; const h = 200; const padL = 60; const padR = 12;
   const chartW = w - padL - padR;
-  const forecastStartIdx = PRICE_CHART.findIndex(d => d.forecast);
-  const realItems = PRICE_CHART.filter(d => !d.forecast);
 
-  const px = (i: number) => padL + (i / (PRICE_CHART.length - 1)) * chartW;
-  const py = (v: number) => h - ((v - min) / range) * h;
+  const allHighs = data.map(d => d.price_high ?? d.price);
+  const allLows  = data.map(d => d.price_low  ?? d.price);
+  const maxP = Math.max(...allHighs) * 1.02;
+  const minP = Math.min(...allLows)  * 0.98;
+  const rangeP = maxP - minP || 1;
 
-  const realPts = realItems.map((_, i) => `${px(i)},${py(PRICE_CHART[i].price)}`).join(" ");
-  const forecastPts = PRICE_CHART.slice(forecastStartIdx - 1)
-    .map((d, i) => `${px(forecastStartIdx - 1 + i)},${py(d.price)}`).join(" ");
+  const px = (i: number) => padL + (n > 1 ? (i / (n - 1)) * chartW : chartW / 2);
+  const py = (v: number) => h - ((v - minP) / rangeP) * h;
 
-  const areaPathReal = realItems.length > 0
-    ? `M ${padL},${h} L ${realPts} L ${px(realItems.length - 1)},${h} Z`
-    : "";
+  const forecastI = data.findIndex(d => d.forecast);
+  const yTicks = Array.from({ length: 5 }, (_, i) => minP + (rangeP * i) / 4);
+  const candleW = Math.max(4, Math.min(16, chartW / n - 2));
 
-  const yTicks = [11500, 12500, 13500, 14500];
-  const hovered = hoveredIdx !== null ? PRICE_CHART[hoveredIdx] : null;
-  const hx = hoveredIdx !== null ? px(hoveredIdx) : 0;
-  const hy = hoveredIdx !== null ? py(PRICE_CHART[hoveredIdx].price) : 0;
+  const hd = hoveredIdx !== null ? data[hoveredIdx] : null;
+  const hdCandle = hd ? buildCandle(hd) : null;
 
   return (
-    <div className="relative w-full select-none">
-      <svg
-        viewBox={`0 0 ${w} ${h + 50}`}
-        className="w-full"
-        onMouseLeave={() => setHoveredIdx(null)}
-      >
+    <div className="relative w-full select-none" onMouseLeave={() => setHoveredIdx(null)}>
+      {/* Переключатель режима и метки */}
+      <div className="flex items-center gap-4 mb-2 text-[11px] text-muted-foreground">
+        <span className="flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded-sm bg-primary inline-block" />Факт (рост)
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded-sm bg-destructive inline-block" />Факт (снижение)
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded-sm bg-accent/60 inline-block" />Прогноз AI
+        </span>
+        <span className="ml-auto font-mono text-[10px]">{crop}</span>
+      </div>
+
+      <svg viewBox={`0 0 ${w} ${h + 30}`} className="w-full min-w-[320px]"
+        onMouseLeave={() => setHoveredIdx(null)}>
         <defs>
-          <linearGradient id="chartGrad2" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#2E7D32" stopOpacity="0.22" />
-            <stop offset="100%" stopColor="#2E7D32" stopOpacity="0" />
-          </linearGradient>
-          <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="#2E7D32" />
-            <stop offset="100%" stopColor="#43A047" />
-          </linearGradient>
-          <filter id="glow">
-            <feGaussianBlur stdDeviation="2.5" result="coloredBlur" />
+          <filter id="pcGlow">
+            <feGaussianBlur stdDeviation="2" result="coloredBlur" />
             <feMerge><feMergeNode in="coloredBlur" /><feMergeNode in="SourceGraphic" /></feMerge>
           </filter>
         </defs>
 
-        {/* Фон прогноза */}
-        {forecastStartIdx >= 0 && (
-          <rect
-            x={px(forecastStartIdx - 1)} y={0}
-            width={chartW - (px(forecastStartIdx - 1) - padL)} height={h}
-            fill="#FFC107" fillOpacity="0.05"
-          />
-        )}
-        {forecastStartIdx >= 0 && (
-          <line
-            x1={px(forecastStartIdx - 1)} y1={0}
-            x2={px(forecastStartIdx - 1)} y2={h}
-            stroke="#FFC107" strokeOpacity="0.35" strokeWidth="1" strokeDasharray="4,3"
-          />
+        {/* Фон зоны прогноза */}
+        {forecastI >= 0 && (
+          <>
+            <rect x={px(forecastI - 1)} y={0} width={w - px(forecastI - 1)} height={h} fill="#FFC107" fillOpacity="0.05" />
+            <line x1={px(forecastI - 1)} y1={0} x2={px(forecastI - 1)} y2={h}
+              stroke="#FFC107" strokeOpacity="0.4" strokeWidth="1" strokeDasharray="4,3" />
+          </>
         )}
 
-        {/* Горизонтальные сетки + оси Y */}
-        {yTicks.map(v => (
-          <g key={v}>
+        {/* Горизонтальная сетка + ось Y */}
+        {yTicks.map((v, i) => (
+          <g key={i}>
             <line x1={padL} y1={py(v)} x2={w - padR} y2={py(v)} stroke="rgba(0,0,0,0.06)" strokeWidth="1" />
-            <text x={padL - 6} y={py(v) + 4} textAnchor="end" fill="rgba(0,0,0,0.38)" fontSize="9" fontFamily="IBM Plex Mono">
-              {(v / 1000).toFixed(1)}к
+            <text x={padL - 5} y={py(v) + 4} textAnchor="end" fill="rgba(0,0,0,0.38)" fontSize="9" fontFamily="IBM Plex Mono">
+              {Math.round(v / 1000)}к
             </text>
           </g>
         ))}
 
-        {/* Заливка под линией (факт) */}
-        {areaPathReal && <path d={areaPathReal} fill="url(#chartGrad2)" />}
-
-        {/* Линия факта */}
-        {realPts && (
-          <polyline points={realPts} fill="none" stroke="url(#lineGrad)" strokeWidth="2.5"
-            strokeLinecap="round" strokeLinejoin="round" />
-        )}
-
-        {/* Линия прогноза */}
-        {forecastPts && (
-          <polyline points={forecastPts} fill="none" stroke="#FFC107" strokeWidth="2.2"
-            strokeDasharray="7,4" strokeLinecap="round" strokeLinejoin="round" />
-        )}
-
-        {/* Точки + hover-зоны */}
-        {PRICE_CHART.map((d, i) => {
-          const cx = px(i); const cy = py(d.price);
+        {/* Японские свечи */}
+        {data.map((d, i) => {
+          const { open, close, high, low, bull } = buildCandle(d);
+          const cx = px(i);
           const isHov = hoveredIdx === i;
+          const color = d.forecast
+            ? (bull ? "#FFC107" : "#fb923c")
+            : (bull ? "#2E7D32" : "#ef4444");
+          const halfW = (candleW / 2) * (isHov ? 1.15 : 1);
+
           return (
-            <g key={i}>
-              <circle cx={cx} cy={cy} r={14} fill="transparent"
-                onMouseEnter={() => setHoveredIdx(i)} style={{ cursor: "crosshair" }} />
-              {isHov && <circle cx={cx} cy={cy} r={10} fill={d.forecast ? "#FFC107" : "#2E7D32"} fillOpacity="0.15" />}
-              <circle cx={cx} cy={cy}
-                r={isHov ? 6 : (d.forecast ? 3.5 : 4.5)}
-                fill={d.forecast ? "#FFC107" : "#2E7D32"}
-                stroke="white" strokeWidth="2"
-                filter={isHov ? "url(#glow)" : undefined}
-                style={{ transition: "r 0.15s" }}
+            <g key={i} onMouseEnter={() => setHoveredIdx(i)} style={{ cursor: "crosshair" }}>
+              {/* Фитиль */}
+              <line x1={cx} y1={py(high)} x2={cx} y2={py(low)}
+                stroke={color} strokeWidth={isHov ? 1.5 : 1} strokeOpacity={d.forecast ? 0.7 : 1} />
+              {/* Тело свечи */}
+              <rect
+                x={cx - halfW}
+                y={py(Math.max(open, close))}
+                width={halfW * 2}
+                height={Math.max(1.5, Math.abs(py(open) - py(close)))}
+                fill={bull ? color : "white"}
+                stroke={color}
+                strokeWidth={bull ? 0 : 1.5}
+                fillOpacity={d.forecast ? 0.65 : 1}
+                rx={1.5}
+                filter={isHov ? "url(#pcGlow)" : undefined}
               />
+              {/* Прозрачная hover-зона */}
+              <rect x={cx - candleW} y={0} width={candleW * 2} height={h} fill="transparent" />
             </g>
           );
         })}
 
         {/* Вертикальная линия hover */}
         {hoveredIdx !== null && (
-          <line x1={hx} y1={0} x2={hx} y2={h}
-            stroke={hovered?.forecast ? "#FFC107" : "#2E7D32"}
-            strokeOpacity="0.3" strokeWidth="1.5" strokeDasharray="3,2" />
+          <line x1={px(hoveredIdx)} y1={0} x2={px(hoveredIdx)} y2={h}
+            stroke={hd?.forecast ? "#FFC107" : "#2E7D32"}
+            strokeOpacity="0.25" strokeWidth="1.5" strokeDasharray="3,2" />
         )}
 
-        {/* Tooltip */}
-        {hoveredIdx !== null && hovered && (() => {
-          const tipW = 120; const tipH = 48;
-          const tipX = Math.min(Math.max(hx - tipW / 2, padL), w - padR - tipW);
-          const tipY = hy > h / 2 ? hy - tipH - 12 : hy + 14;
+        {/* Подписи месяцев (прореживаем) */}
+        {data.map((d, i) => {
+          const show = n <= 14 || i % Math.ceil(n / 14) === 0 || i === n - 1;
+          if (!show) return null;
           return (
-            <g>
-              <rect x={tipX} y={tipY} width={tipW} height={tipH} rx="7"
-                fill="white" stroke={hovered.forecast ? "#FFC107" : "#2E7D32"}
-                strokeWidth="1.5" strokeOpacity="0.6"
-                style={{ filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.12))" }} />
-              <text x={tipX + tipW / 2} y={tipY + 16} textAnchor="middle"
-                fill="rgba(0,0,0,0.5)" fontSize="10" fontFamily="Golos Text, sans-serif">
-                {hovered.month} {hovered.forecast ? "· прогноз" : "· факт"}
-              </text>
-              <text x={tipX + tipW / 2} y={tipY + 35} textAnchor="middle"
-                fill={hovered.forecast ? "#b45309" : "#1B5E20"} fontSize="13"
-                fontFamily="IBM Plex Mono, monospace" fontWeight="700">
-                {hovered.price.toLocaleString("ru")} ₽/т
-              </text>
-            </g>
+            <text key={i} x={px(i)} y={h + 16} textAnchor="middle"
+              fill={hoveredIdx === i ? "#2E7D32" : "rgba(0,0,0,0.35)"}
+              fontSize="9" fontFamily="IBM Plex Mono" fontWeight={hoveredIdx === i ? "700" : "400"}>
+              {formatMonth(d.month, d.date)}
+            </text>
           );
-        })()}
+        })}
 
-        {/* Подписи месяцев */}
-        {PRICE_CHART.map((d, i) => (
-          <text key={i} x={px(i)} y={h + 18} textAnchor="middle"
-            fill={hoveredIdx === i ? "#2E7D32" : "rgba(0,0,0,0.35)"}
-            fontSize="10" fontFamily="IBM Plex Mono" fontWeight={hoveredIdx === i ? "700" : "400"}>
-            {d.month}
-          </text>
-        ))}
-
-        {/* Метки факт/прогноз */}
-        {forecastStartIdx >= 0 && (
+        {/* Метки зон */}
+        {forecastI > 0 && (
           <>
-            <text x={padL + 6} y={14} fill="#2E7D32" fontSize="9" fontFamily="Golos Text" fillOpacity="0.7">▶ Факт 2025</text>
-            <text x={px(forecastStartIdx) + 4} y={14} fill="#b45309" fontSize="9" fontFamily="Golos Text" fillOpacity="0.75">▷ Прогноз AI</text>
+            <text x={padL + 4} y={13} fill="#2E7D32" fontSize="8.5" fontFamily="Golos Text" fillOpacity="0.65">▶ Факт</text>
+            <text x={px(forecastI) + 4} y={13} fill="#b45309" fontSize="8.5" fontFamily="Golos Text" fillOpacity="0.75">▷ Прогноз AI</text>
           </>
         )}
       </svg>
 
+      {/* Tooltip-панель под графиком */}
+      {hd && hdCandle && (
+        <div className="mt-2 px-1 py-2 bg-secondary/50 rounded-xl border border-border text-[11px] font-mono flex flex-wrap gap-4">
+          <span className="text-muted-foreground">{formatMonth(hd.month, hd.date)}</span>
+          <span>Откр: <strong className="text-foreground">{Math.round(hdCandle.open).toLocaleString("ru")} ₽</strong></span>
+          <span>Закр: <strong className={hdCandle.bull ? "text-primary" : "text-destructive"}>{Math.round(hdCandle.close).toLocaleString("ru")} ₽</strong></span>
+          <span>Макс: <strong className="text-foreground">{Math.round(hdCandle.high).toLocaleString("ru")} ₽</strong></span>
+          <span>Мин: <strong className="text-foreground">{Math.round(hdCandle.low).toLocaleString("ru")} ₽</strong></span>
+          <span className={`font-bold ${hdCandle.bull ? "text-primary" : "text-destructive"}`}>
+            {hdCandle.bull ? "▲" : "▼"} {Math.abs(Math.round(hdCandle.close - hdCandle.open)).toLocaleString("ru")} ₽
+          </span>
+          {hd.forecast && <span className="px-1.5 py-0.5 bg-accent/20 text-accent rounded font-sans text-[10px]">Прогноз AI</span>}
+        </div>
+      )}
+
       {/* Нижняя легенда */}
-      <div className="flex items-center gap-5 mt-1 px-1">
+      <div className="flex items-center gap-5 mt-2 px-1">
         <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
           <svg width="24" height="4"><line x1="0" y1="2" x2="24" y2="2" stroke="#2E7D32" strokeWidth="2.5" strokeLinecap="round" /></svg>
           Факт (НТБ, ₽/т)

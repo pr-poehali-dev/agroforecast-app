@@ -134,17 +134,9 @@ export default function ForecastsSection({
             <div className="flex justify-between text-[10px] text-muted-foreground mt-1.5"><span>Низкая</span><span>Средняя</span><span>Высокая</span></div>
           </div>
 
-          {/* График */}
+          {/* График — японские свечи, данные по выбранной культуре */}
           <div>
-            <div className="flex items-center gap-4 mb-3">
-              <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <span className="w-6 h-0.5 bg-primary inline-block rounded" />Факт (2025)
-              </span>
-              <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <span className="w-6 border-t-2 border-dashed border-accent inline-block" />Прогноз AI
-              </span>
-            </div>
-            <PriceChart />
+            <PriceChart crop={cropFull} />
           </div>
         </div>
       </div>
