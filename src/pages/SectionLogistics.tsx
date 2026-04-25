@@ -1,6 +1,31 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import Icon from "@/components/ui/icon";
 import { apiLogistics } from "@/lib/auth";
+import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+
+// ─── Leaflet default icon fix ─────────────────────────────────────────────────
+delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  iconUrl:       "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+  shadowUrl:     "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+});
+
+const fromIcon = L.divIcon({
+  className: "",
+  html: `<div style="width:28px;height:28px;border-radius:50% 50% 50% 0;background:#2E7D32;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,.35);transform:rotate(-45deg)"></div>`,
+  iconSize: [28, 28],
+  iconAnchor: [14, 28],
+});
+
+const toIcon = L.divIcon({
+  className: "",
+  html: `<div style="width:28px;height:28px;border-radius:50% 50% 50% 0;background:#1565C0;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,.35);transform:rotate(-45deg)"></div>`,
+  iconSize: [28, 28],
+  iconAnchor: [14, 28],
+});
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -73,13 +98,133 @@ const Sk: React.FC<{ className?: string }> = ({ className = "" }) => (
 
 const fmt = (n: number) => n.toLocaleString("ru-RU");
 
-// ─── Компонент ────────────────────────────────────────────────────────────────
+// ─── MapFitter: подгоняет вид под маркеры ─────────────────────────────────────
+
+const MapFitter: React.FC<{ positions: [number, number][] }> = ({ positions }) => {
+  const map = useMap();
+  useEffect(() => {
+    if (positions.length === 2) {
+      const bounds = L.latLngBounds(positions);
+      map.fitBounds(bounds, { padding: [60, 60], animate: true });
+    }
+  }, [map, positions]);
+  return null;
+};
+
+// ─── RouteMap ─────────────────────────────────────────────────────────────────
+
+interface RouteMapProps {
+  fromCity: string;
+  toCity: string;
+  result: CalcResult;
+  cityMap: Record<string, City>;
+}
+
+const RouteMap: React.FC<RouteMapProps> = ({ fromCity, toCity, result, cityMap }) => {
+  const from = cityMap[fromCity];
+  const to   = cityMap[toCity];
+  if (!from || !to) return null;
+
+  const fromPos: [number, number] = [from.lat, from.lon];
+  const toPos:   [number, number] = [to.lat,   to.lon];
+
+  // Строим «дугу» через промежуточные точки для красивой кривой
+  const midLat = (from.lat + to.lat) / 2 + (Math.abs(to.lon - from.lon) * 0.08);
+  const midLon = (from.lon + to.lon) / 2;
+  const arcPoints: [number, number][] = [];
+  const steps = 32;
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    // квадратичная кривая Безье
+    const lat = (1 - t) ** 2 * from.lat + 2 * (1 - t) * t * midLat + t ** 2 * to.lat;
+    const lon = (1 - t) ** 2 * from.lon + 2 * (1 - t) * t * midLon + t ** 2 * to.lon;
+    arcPoints.push([lat, lon]);
+  }
+
+  return (
+    <div className="glass-card rounded-2xl overflow-hidden">
+      <div className="px-5 pt-4 pb-3 flex items-center justify-between border-b border-gray-100">
+        <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+          <Icon name="Map" size={16} className="text-primary" />
+          Карта маршрута
+        </h3>
+        <span className="text-xs text-gray-500 flex items-center gap-1">
+          <Icon name="Milestone" size={12} />
+          {result.distance_km} км по дорогам
+        </span>
+      </div>
+
+      <div style={{ height: 420 }}>
+        <MapContainer
+          center={[55.0, 50.0]}
+          zoom={4}
+          style={{ height: "100%", width: "100%" }}
+          zoomControl={true}
+          scrollWheelZoom={true}
+        >
+          <TileLayer
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='&copy; <a href="https://openstreetmap.org">OpenStreetMap</a>'
+          />
+          <MapFitter positions={[fromPos, toPos]} />
+
+          {/* Дуга маршрута — тень */}
+          <Polyline
+            positions={arcPoints}
+            pathOptions={{ color: "#000", opacity: 0.08, weight: 8, dashArray: undefined }}
+          />
+          {/* Дуга маршрута — основная */}
+          <Polyline
+            positions={arcPoints}
+            pathOptions={{ color: "#2E7D32", opacity: 0.85, weight: 4, dashArray: "10 6" }}
+          />
+
+          {/* Маркер ОТКУДА */}
+          <Marker position={fromPos} icon={fromIcon}>
+            <Popup>
+              <div className="text-sm font-semibold text-gray-800">{fromCity}</div>
+              <div className="text-xs text-gray-500">{from.region} · Отправление</div>
+            </Popup>
+          </Marker>
+
+          {/* Маркер КУДА */}
+          <Marker position={toPos} icon={toIcon}>
+            <Popup>
+              <div className="text-sm font-semibold text-gray-800">{toCity}</div>
+              <div className="text-xs text-gray-500">{to.region} · Назначение</div>
+              <div className="text-xs text-primary font-medium mt-1">{fmt(result.total_cost)} ₽</div>
+            </Popup>
+          </Marker>
+        </MapContainer>
+      </div>
+
+      {/* Легенда под картой */}
+      <div className="px-5 py-3 bg-gray-50 border-t border-gray-100 flex flex-wrap gap-4 text-xs text-gray-600">
+        <span className="flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded-full bg-green-700 flex-shrink-0" />
+          {fromCity} (отправление)
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded-full bg-blue-800 flex-shrink-0" />
+          {toCity} (назначение)
+        </span>
+        <span className="flex items-center gap-1.5 ml-auto text-gray-400">
+          <Icon name="Info" size={11} />
+          Маршрут приблизительный
+        </span>
+      </div>
+    </div>
+  );
+};
+
+// ─── Основной компонент ────────────────────────────────────────────────────────
 
 const SectionLogistics: React.FC = () => {
   const [tab, setTab] = useState<"calculator" | "routes">("calculator");
 
   // Справочники
   const [cities, setCities] = useState<City[]>([]);
+  const [cityMap, setCityMap] = useState<Record<string, City>>({});
   const [vehicleTypes, setVehicleTypes] = useState<Record<string, VehicleType>>({});
   const [cargoTypes, setCargoTypes] = useState<Record<string, CargoType>>({});
   const [loadingRef, setLoadingRef] = useState(true);
@@ -110,7 +255,11 @@ const SectionLogistics: React.FC = () => {
   useEffect(() => {
     apiLogistics("cities_list")
       .then((res) => {
-        setCities(res.cities || []);
+        const citiesList: City[] = res.cities || [];
+        setCities(citiesList);
+        const map: Record<string, City> = {};
+        citiesList.forEach((c) => { map[c.name] = c; });
+        setCityMap(map);
         setVehicleTypes(res.vehicle_types || {});
         setCargoTypes(res.cargo_types || {});
       })
@@ -288,7 +437,7 @@ const SectionLogistics: React.FC = () => {
                     Город назначения
                   </label>
                   <div className="relative">
-                    <Icon name="Navigation" size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-green-600" />
+                    <Icon name="Navigation" size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-600" />
                     <input
                       type="text"
                       value={toSearch || toCity}
@@ -407,6 +556,14 @@ const SectionLogistics: React.FC = () => {
             {result && (
               <div className="space-y-4">
 
+                {/* ── Карта маршрута ── */}
+                <RouteMap
+                  fromCity={result.from_city}
+                  toCity={result.to_city}
+                  result={result}
+                  cityMap={cityMap}
+                />
+
                 {/* Маршрут + основные цифры */}
                 <div className="glass-card rounded-2xl p-6">
                   <div className="flex items-center gap-3 mb-5">
@@ -415,7 +572,7 @@ const SectionLogistics: React.FC = () => {
                         {result.from_city}
                       </span>
                       <Icon name="ArrowRight" size={16} className="text-gray-400" />
-                      <span className="px-3 py-1.5 bg-green-100 text-green-700 rounded-lg">
+                      <span className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg">
                         {result.to_city}
                       </span>
                     </div>
@@ -427,10 +584,10 @@ const SectionLogistics: React.FC = () => {
 
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                     {[
-                      { label: "Расстояние", value: `${result.distance_km} км`, icon: "Milestone", color: "text-blue-600", bg: "bg-blue-50" },
-                      { label: "Стоимость всего", value: `${fmt(result.total_cost)} ₽`, icon: "Wallet", color: "text-primary", bg: "bg-green-50" },
-                      { label: "Стоимость за тонну", value: `${fmt(result.cost_per_ton)} ₽/т`, icon: "TrendingDown", color: "text-amber-600", bg: "bg-amber-50" },
-                      { label: "Рейсов", value: `${result.trips_needed} шт`, icon: "Repeat", color: "text-purple-600", bg: "bg-purple-50" },
+                      { label: "Расстояние",       value: `${result.distance_km} км`,        icon: "Milestone",    color: "text-blue-600",   bg: "bg-blue-50" },
+                      { label: "Стоимость всего",   value: `${fmt(result.total_cost)} ₽`,     icon: "Wallet",       color: "text-primary",    bg: "bg-green-50" },
+                      { label: "Стоимость за тонну",value: `${fmt(result.cost_per_ton)} ₽/т`, icon: "TrendingDown", color: "text-amber-600",  bg: "bg-amber-50" },
+                      { label: "Рейсов",            value: `${result.trips_needed} шт`,       icon: "Repeat",       color: "text-purple-600", bg: "bg-purple-50" },
                     ].map((k) => (
                       <div key={k.label} className={`${k.bg} rounded-xl p-4`}>
                         <div className={`flex items-center gap-2 mb-1 ${k.color}`}>
@@ -479,7 +636,6 @@ const SectionLogistics: React.FC = () => {
                           </tr>
                         </thead>
                         <tbody>
-                          {/* Текущий выбор */}
                           <tr className="bg-primary/5 border-b border-primary/10">
                             <td className="px-3 py-2.5 font-medium text-primary text-xs">
                               ✓ {result.vehicle_label}
@@ -542,7 +698,7 @@ const SectionLogistics: React.FC = () => {
               </div>
             )}
 
-            {/* Подсказка */}
+            {/* Подсказка (пустое состояние) */}
             {!result && !calculating && (
               <div className="glass-card rounded-2xl p-8 text-center">
                 <div className="w-16 h-16 rounded-2xl hero-gradient flex items-center justify-center mx-auto mb-4">
@@ -552,7 +708,7 @@ const SectionLogistics: React.FC = () => {
                   Рассчитайте стоимость доставки
                 </h3>
                 <p className="text-sm text-gray-500 max-w-md mx-auto">
-                  Выберите города, тип груза и транспорта. Система рассчитает расстояние по дорогам, стоимость доставки и сравнит альтернативные варианты.
+                  Выберите города, тип груза и транспорта. Система рассчитает расстояние по дорогам, стоимость доставки и покажет маршрут на карте.
                 </p>
                 <div className="mt-5 flex flex-wrap gap-3 justify-center text-xs text-gray-500">
                   {["Зерновые", "Подсолнечник", "Кукуруза", "Удобрения", "Сельхозтехника"].map((c) => (
