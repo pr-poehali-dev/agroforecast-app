@@ -274,7 +274,7 @@ export default function SectionHome({
               <div className="w-7 h-7 rounded-lg bg-primary/15 flex items-center justify-center">
                 <Icon name="Satellite" size={13} className="text-primary" />
               </div>
-              <span className="font-heading font-bold text-sm">Карта Поволжья</span>
+              <span className="font-heading font-bold text-sm">Карта России</span>
               {Object.keys(aiRisks).length > 0 ? (
                 <span className="flex items-center gap-1 text-[10px] text-primary bg-primary/10 border border-primary/20 px-1.5 py-0.5 rounded-full font-mono">
                   <Icon name="Brain" size={9} />AI
