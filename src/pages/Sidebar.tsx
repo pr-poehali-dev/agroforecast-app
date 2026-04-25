@@ -128,13 +128,11 @@ export default function Sidebar({ activeSection, sidebarOpen, onNavigate, onClos
         <div className="p-4 border-t border-border bg-secondary/30">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-9 h-9 rounded-full hero-gradient flex items-center justify-center text-xs font-bold text-white shrink-0 shadow">
-              АВ
+              <Icon name="User" size={16} className="text-white" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-[13px] font-semibold text-foreground truncate font-heading">Алексей Воронов</div>
-              <div className="flex items-center gap-1 mt-0.5">
+              <div className="flex items-center gap-1">
                 <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-accent/20 text-accent border border-accent/25">PRO</span>
-                <span className="text-[10px] text-muted-foreground">· до 1 мая</span>
               </div>
             </div>
             <button className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors">

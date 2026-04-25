@@ -98,11 +98,9 @@ export default function Index() {
 
             {/* Профиль */}
             <button className="flex items-center gap-2 pl-2 border-l border-border ml-1">
-              <div className="w-7 h-7 rounded-full hero-gradient flex items-center justify-center text-[10px] font-bold text-white shadow-sm">
-                АВ
+              <div className="w-7 h-7 rounded-full hero-gradient flex items-center justify-center text-white shadow-sm">
+                <Icon name="User" size={14} className="text-white" />
               </div>
-              <span className="hidden sm:block text-xs font-medium text-foreground">Воронов</span>
-              <Icon name="ChevronDown" size={12} className="text-muted-foreground hidden sm:block" />
             </button>
           </div>
         </header>
