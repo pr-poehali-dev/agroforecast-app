@@ -1,0 +1,36 @@
+{
+  "tests": [
+    {
+      "name": "GET — список культур и метаданные модели",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200,
+      "expectedBody": {"model_info": {"yield_model": "LSTM + Random Forest ensemble"}},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET — прогноз пшеница/самара/3 мес",
+      "method": "GET",
+      "path": "/?crop=Пшеница озимая&region=samara&horizon=3",
+      "expectedStatus": 200,
+      "expectedBody": {"crop": "Пшеница озимая", "region_id": "samara"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET — прогноз по всем регионам подсолнечник",
+      "method": "GET",
+      "path": "/?crop=Подсолнечник&horizon=6&all=1",
+      "expectedStatus": 200,
+      "expectedBody": {"crop": "Подсолнечник"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET — временной ряд для графика",
+      "method": "GET",
+      "path": "/?crop=Пшеница озимая&region=volgograd&chart=1",
+      "expectedStatus": 200,
+      "expectedBody": {"crop": "Пшеница озимая"},
+      "bodyMatcher": "partial"
+    }
+  ]
+}

@@ -4,6 +4,7 @@ export const NAV_ITEMS = [
   { id: "map", label: "Карта урожайности", icon: "Map" },
   { id: "supply", label: "Спрос и предложение", icon: "ArrowLeftRight" },
   { id: "risks", label: "Риски", icon: "ShieldAlert" },
+  { id: "ai-model", label: "AI‑модель", icon: "Brain" },
   { id: "analytics", label: "Аналитика", icon: "BarChart3" },
   { id: "business", label: "Бизнес-инструменты", icon: "Calculator" },
   { id: "alerts", label: "Уведомления", icon: "Bell" },

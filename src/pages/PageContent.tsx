@@ -1,6 +1,7 @@
 import SectionHome from "./SectionHome";
 import SectionForecasts from "./SectionForecasts";
 import SectionBusiness from "./SectionBusiness";
+import SectionAiModel from "./SectionAiModel";
 
 interface PageContentProps {
   activeSection: string;
@@ -36,6 +37,8 @@ export default function PageContent({
           setSelectedCrop={setSelectedCrop}
         />
       )}
+
+      {activeSection === "ai-model" && <SectionAiModel />}
 
       {(activeSection === "analytics" || activeSection === "business" || activeSection === "alerts" || activeSection === "integrations" || activeSection === "pricing") && (
         <SectionBusiness activeSection={activeSection} />

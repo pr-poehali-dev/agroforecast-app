@@ -15,7 +15,7 @@ const NAV_GROUPS = [
   },
   {
     label: "Управление",
-    items: ["risks", "analytics", "business", "alerts"],
+    items: ["risks", "ai-model", "analytics", "business", "alerts"],
   },
   {
     label: "Платформа",
