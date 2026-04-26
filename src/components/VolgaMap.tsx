@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import * as L from "leaflet";
 import { MAP_REGIONS, getRiskColor } from "@/pages/data";
 
-const YMAPS_KEY = "c8e3d371-2819-4864-b4ec-f15da324cfa8";
 const AI_URL = "https://functions.poehali.dev/3f769f53-b21b-473e-91b9-b7a755123928";
 const WHEAT = "Пшеница озимая";
 
@@ -21,6 +21,7 @@ interface VolgaMapProps {
   onSelect: (id: string) => void;
 }
 
+// Реальные координаты регионов [lat, lon]
 const REGION_COORDS: Record<string, [number, number]> = {
   samara:        [53.19, 50.15],
   saratov:       [51.53, 46.03],
@@ -53,17 +54,32 @@ function riskColor(riskPct: number): string {
   return "#2E7D32";
 }
 
-function markerHtml(color: string, isSelected: boolean, riskPct: number) {
+function makeIcon(color: string, isSelected: boolean, riskPct: number) {
   const size = isSelected ? 30 : 22;
-  return `<div style="width:52px;height:52px;display:flex;align-items:center;justify-content:center;position:relative;">
-    <div style="position:absolute;width:${isSelected ? 52 : 38}px;height:${isSelected ? 52 : 38}px;border-radius:50%;background:${color}22;border:1.5px solid ${color}55;"></div>
-    <div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:${isSelected ? 3 : 2}px solid white;box-shadow:0 2px ${isSelected ? 14 : 7}px rgba(0,0,0,${isSelected ? 0.45 : 0.25});position:relative;z-index:1;cursor:pointer;${isSelected ? `filter:drop-shadow(0 0 6px ${color});` : ""}display:flex;align-items:center;justify-content:center;">
-      <span style="color:white;font-size:${isSelected ? 9 : 7}px;font-weight:800;font-family:'IBM Plex Mono',monospace;">${Math.round(riskPct)}%</span>
-    </div>
-  </div>`;
+  return L.divIcon({
+    html: `
+      <div style="width:52px;height:52px;display:flex;align-items:center;justify-content:center;position:relative;">
+        <div style="position:absolute;width:${isSelected ? 52 : 38}px;height:${isSelected ? 52 : 38}px;border-radius:50%;background:${color}22;border:1.5px solid ${color}55;"></div>
+        <div style="
+          width:${size}px;height:${size}px;border-radius:50%;
+          background:${color};
+          border:${isSelected ? 3 : 2}px solid white;
+          box-shadow:0 2px ${isSelected ? 14 : 7}px rgba(0,0,0,${isSelected ? 0.45 : 0.25});
+          position:relative;z-index:1;cursor:pointer;
+          ${isSelected ? `filter:drop-shadow(0 0 6px ${color});` : ""}
+          display:flex;align-items:center;justify-content:center;
+        ">
+          <span style="color:white;font-size:${isSelected ? 9 : 7}px;font-weight:800;font-family:'IBM Plex Mono',monospace;">${Math.round(riskPct)}%</span>
+        </div>
+      </div>`,
+    className: "",
+    iconSize: [52, 52],
+    iconAnchor: [26, 26],
+    popupAnchor: [0, -28],
+  });
 }
 
-function popupHtml(
+function makePopup(
   region: typeof MAP_REGIONS[0],
   color: string,
   riskPct: number,
@@ -90,64 +106,47 @@ function popupHtml(
         <span>❄️ мороз ${ai.frost_risk_pct != null ? ai.frost_risk_pct.toFixed(0) : "—"}%</span>
         <span>🐛 вред. ${ai.pest_risk_pct != null ? ai.pest_risk_pct.toFixed(0) : "—"}%</span>
       </div>
-    </div>` : "";
+    </div>
+  ` : "";
 
-  return `<div style="font-family:'Golos Text',sans-serif;min-width:210px;padding:4px 0;font-size:12px;">
-    <div style="font-weight:800;font-size:14px;margin-bottom:10px;color:#111827;display:flex;align-items:center;gap:6px;">
-      <span style="width:10px;height:10px;border-radius:50%;background:${color};display:inline-block;flex-shrink:0;"></span>
-      ${region.name}
-    </div>
-    <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
-      <span style="color:#6b7280;">Индекс риска${ai ? " (ИИ)" : ""}</span>
-      <span style="font-weight:700;color:${color};">${Math.round(riskPct)}% · ${riskLabelText}</span>
-    </div>
-    <div style="height:5px;background:#e5e7eb;border-radius:3px;margin-bottom:8px;overflow:hidden;">
-      <div style="height:100%;width:${riskPct}%;background:${color};border-radius:3px;"></div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:6px;">
-      <div style="background:#f9fafb;border-radius:6px;padding:5px 4px;text-align:center;">
-        <div style="font-size:9px;color:#9ca3af;">NDVI</div>
-        <div style="font-weight:700;color:#111827;font-size:12px;">${region.ndvi.toFixed(2)}</div>
+  return `
+    <div style="font-family:'Golos Text',sans-serif;min-width:210px;padding:4px 0;font-size:12px;">
+      <div style="font-weight:800;font-size:14px;margin-bottom:10px;color:#111827;display:flex;align-items:center;gap:6px;">
+        <span style="width:10px;height:10px;border-radius:50%;background:${color};display:inline-block;flex-shrink:0;"></span>
+        ${region.name} ${region.id === "tatarstan" || region.id === "bashkortostan" || region.id.endsWith("krai") || region.id === "krasnodar" || region.id === "stavropol" || region.id === "altai" ? "" : "обл."}
       </div>
-      <div style="background:#f9fafb;border-radius:6px;padding:5px 4px;text-align:center;">
-        <div style="font-size:9px;color:#9ca3af;">Осадки</div>
-        <div style="font-weight:700;color:#111827;font-size:12px;">${region.rain} мм</div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+        <span style="color:#6b7280;">Индекс риска${ai ? " (ИИ)" : ""}</span>
+        <span style="font-weight:700;color:${color};">${Math.round(riskPct)}% · ${riskLabelText}</span>
       </div>
-      <div style="background:#f9fafb;border-radius:6px;padding:5px 4px;text-align:center;">
-        <div style="font-size:9px;color:#9ca3af;">Темп.</div>
-        <div style="font-weight:700;color:#111827;font-size:12px;">+${region.temp}°C</div>
+      <div style="height:5px;background:#e5e7eb;border-radius:3px;margin-bottom:8px;overflow:hidden;">
+        <div style="height:100%;width:${riskPct}%;background:${color};border-radius:3px;"></div>
       </div>
-    </div>
-    <div style="font-size:10px;color:#6b7280;">Пашня: ${region.area} тыс. га · Пшеница: ${region.wheat_pct}%</div>
-    ${aiBlock}
-  </div>`;
-}
-
-// Глобальный промис загрузки Яндекс Maps
-let ymapsPromise: Promise<void> | null = null;
-function loadYmaps(): Promise<void> {
-  if (ymapsPromise) return ymapsPromise;
-  ymapsPromise = new Promise((resolve, reject) => {
-    if ((window as Window & { ymaps?: unknown }).ymaps) { resolve(); return; }
-    const script = document.createElement("script");
-    script.src = `https://api-maps.yandex.ru/2.1/?apikey=${YMAPS_KEY}&lang=ru_RU`;
-    script.async = true;
-    script.onload = () => {
-      (window as Window & { ymaps?: { ready: (fn: () => void) => void } }).ymaps!.ready(resolve);
-    };
-    script.onerror = reject;
-    document.head.appendChild(script);
-  });
-  return ymapsPromise;
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:6px;">
+        <div style="background:#f9fafb;border-radius:6px;padding:5px 4px;text-align:center;">
+          <div style="font-size:9px;color:#9ca3af;">NDVI</div>
+          <div style="font-weight:700;color:#111827;font-size:12px;">${region.ndvi.toFixed(2)}</div>
+        </div>
+        <div style="background:#f9fafb;border-radius:6px;padding:5px 4px;text-align:center;">
+          <div style="font-size:9px;color:#9ca3af;">Осадки</div>
+          <div style="font-weight:700;color:#111827;font-size:12px;">${region.rain} мм</div>
+        </div>
+        <div style="background:#f9fafb;border-radius:6px;padding:5px 4px;text-align:center;">
+          <div style="font-size:9px;color:#9ca3af;">Темп.</div>
+          <div style="font-weight:700;color:#111827;font-size:12px;">+${region.temp}°C</div>
+        </div>
+      </div>
+      <div style="font-size:10px;color:#6b7280;">Пашня: ${region.area} тыс. га · Пшеница: ${region.wheat_pct}%</div>
+      ${aiBlock}
+    </div>`;
 }
 
 export default function VolgaMap({ selectedRegion, onSelect }: VolgaMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const ymapRef = useRef<any>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const placemarkRefs = useRef<Record<string, any>>({});
+  const leafletMapRef = useRef<L.Map | null>(null);
+  const markersRef = useRef<Record<string, L.Marker>>({});
   const [aiRisks, setAiRisks] = useState<Record<string, RegionRisk>>({});
+  const [aiLoaded, setAiLoaded] = useState(false);
 
   // Загрузка ИИ-рисков
   useEffect(() => {
@@ -159,86 +158,81 @@ export default function VolgaMap({ selectedRegion, onSelect }: VolgaMapProps) {
           map[r.region_id] = r;
         });
         setAiRisks(map);
+        setAiLoaded(true);
       })
       .catch(() => {});
   }, []);
 
   // Инициализация карты
   useEffect(() => {
-    if (!mapRef.current) return;
-    let destroyed = false;
+    if (!mapRef.current || leafletMapRef.current) return;
 
-    loadYmaps().then(() => {
-      if (destroyed || !mapRef.current || ymapRef.current) return;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const ymaps = (window as any).ymaps;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    delete (L.Icon.Default.prototype as any)._getIconUrl;
 
-      const map = new ymaps.Map(mapRef.current, {
-        center: [55.0, 55.0],
-        zoom: 4,
-        controls: ["zoomControl"],
-      }, {
-        suppressMapOpenBlock: true,
-      });
-      ymapRef.current = map;
-
-      MAP_REGIONS.forEach(region => {
-        const coords = REGION_COORDS[region.id];
-        if (!coords) return;
-        const riskPct = region.risk;
-        const color = riskColor(riskPct);
-        const isSelected = region.id === selectedRegion;
-
-        const placemark = new ymaps.Placemark(
-          coords,
-          {
-            balloonContent: popupHtml(region, color, riskPct),
-          },
-          {
-            iconLayout: "default#html",
-            iconHtml: markerHtml(color, isSelected, riskPct),
-            iconShape: { type: "Circle", coordinates: [26, 26], radius: 26 },
-          }
-        );
-
-        placemark.events.add("click", () => onSelect(region.id));
-        map.geoObjects.add(placemark);
-        placemarkRefs.current[region.id] = placemark;
-      });
+    const map = L.map(mapRef.current, {
+      center: [55.0, 55.0],
+      zoom: 4,
+      zoomControl: false,
+      attributionControl: false,
+      scrollWheelZoom: true,
     });
 
+    // OpenStreetMap — русские названия для России
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 18,
+      attribution: "© OpenStreetMap",
+    }).addTo(map);
+
+    // Кнопки зума с русскими подписями
+    L.control.zoom({ zoomInTitle: "Увеличить", zoomOutTitle: "Уменьшить" }).addTo(map);
+
+    // Маркеры регионов
+    MAP_REGIONS.forEach(region => {
+      const coords = REGION_COORDS[region.id];
+      if (!coords) return;
+      const color = getRiskColor(region.risk);
+      const marker = L.marker(coords, { icon: makeIcon(color, false, region.risk) })
+        .addTo(map)
+        .bindPopup(makePopup(region, color, region.risk), { maxWidth: 260 })
+        .on("click", () => onSelect(region.id));
+
+      markersRef.current[region.id] = marker;
+    });
+
+    leafletMapRef.current = map;
+
     return () => {
-      destroyed = true;
-      if (ymapRef.current) {
-        ymapRef.current.destroy();
-        ymapRef.current = null;
-        placemarkRefs.current = {};
+      if (leafletMapRef.current) {
+        leafletMapRef.current.remove();
+        leafletMapRef.current = null;
+        markersRef.current = {};
       }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Обновление иконок при изменении aiRisks или selectedRegion
+  // Обновление маркеров и попапов при изменении aiRisks или selectedRegion
   useEffect(() => {
-    if (!ymapRef.current) return;
+    if (!leafletMapRef.current) return;
     MAP_REGIONS.forEach(region => {
-      const pm = placemarkRefs.current[region.id];
-      if (!pm) return;
+      const m = markersRef.current[region.id];
+      if (!m) return;
       const ai = aiRisks[region.id];
       const riskPct = ai ? ai.total_risk_pct : region.risk;
       const color = riskColor(riskPct);
       const isSelected = region.id === selectedRegion;
-      pm.options.set("iconHtml", markerHtml(color, isSelected, riskPct));
-      pm.properties.set("balloonContent", popupHtml(region, color, riskPct, ai));
+      m.setIcon(makeIcon(color, isSelected, riskPct));
+      m.setPopupContent(makePopup(region, color, riskPct, ai));
     });
-  }, [aiRisks, selectedRegion]);
+  }, [aiRisks, aiLoaded, selectedRegion]);
 
   // Перелёт к выбранному региону
   useEffect(() => {
-    if (!ymapRef.current || !selectedRegion) return;
+    if (!leafletMapRef.current || !selectedRegion) return;
     const coords = REGION_COORDS[selectedRegion];
     if (coords) {
-      ymapRef.current.panTo(coords, { flying: true, duration: 800 });
+      leafletMapRef.current.flyTo(coords, 5, { duration: 0.8 });
     }
   }, [selectedRegion]);
 
