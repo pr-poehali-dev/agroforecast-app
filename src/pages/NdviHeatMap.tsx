@@ -80,8 +80,9 @@ export default function NdviHeatMap({ summary, selectedRegion, onSelectRegion }:
     setMapReady(false);
 
     const map = L.map(containerRef.current, {
-      center:          [57.0, 65.0],
-      zoom:            3,
+      center:          [58.0, 68.0],
+      zoom:            4,
+      minZoom:         4,
       zoomControl:     true,
       scrollWheelZoom: true,
       attributionControl: true,
