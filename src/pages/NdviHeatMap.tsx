@@ -75,7 +75,7 @@ export default function NdviHeatMap({ summary, selectedRegion, onSelectRegion }:
     });
     mapRef.current = map;
 
-    L.tileLayer("https://tile.osmand.net/hd/{z}/{x}/{y}.png", {
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: "&copy; OpenStreetMap",
       maxZoom: 19,
     }).addTo(map);

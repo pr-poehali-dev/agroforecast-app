@@ -86,7 +86,7 @@ export default function HomeMap({ selectedRegion, onSelect, aiRisks = {} }: Home
       dragging: true,
     });
 
-    L.tileLayer("https://tile.osmand.net/hd/{z}/{x}/{y}.png", {
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 19,
       attribution: "© OpenStreetMap",
     }).addTo(map);
