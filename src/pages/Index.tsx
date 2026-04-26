@@ -164,6 +164,15 @@ export default function Index() {
               <span className="absolute top-1 right-1 w-3 h-3 rounded-full bg-destructive text-[8px] text-white flex items-center justify-center font-bold leading-none badge-pulse">7</span>
             </button>
 
+            {/* АгроБаллы */}
+            <button
+              onClick={() => setActiveSection("loyalty")}
+              className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 hover:bg-amber-100 transition-colors group">
+              <Icon name="Crown" size={12} className="text-amber-500" />
+              <span className="text-xs font-mono font-bold text-amber-700">210</span>
+              <span className="text-[10px] text-amber-500 hidden md:inline">баллов</span>
+            </button>
+
             {/* Профиль */}
             <button
               className="flex items-center gap-2 pl-2 border-l border-border ml-1"

@@ -178,8 +178,14 @@ export default function Sidebar({ activeSection, sidebarOpen, collapsed, onNavig
             {!collapsed && (
               <>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5">
                     <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-accent/20 text-accent border border-accent/25">PRO</span>
+                    <button
+                      onClick={() => { onNavigate("loyalty"); onClose(); }}
+                      className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-100 border border-amber-200 hover:bg-amber-200 transition-colors">
+                      <Icon name="Crown" size={9} className="text-amber-600" />
+                      <span className="text-[9px] font-bold font-mono text-amber-700">210 баллов</span>
+                    </button>
                   </div>
                 </div>
                 <button className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors">
@@ -188,6 +194,14 @@ export default function Sidebar({ activeSection, sidebarOpen, collapsed, onNavig
               </>
             )}
           </div>
+          {collapsed && (
+            <button
+              onClick={() => { onNavigate("loyalty"); onClose(); }}
+              className="mt-2 w-full flex items-center justify-center p-1.5 rounded-lg bg-amber-50 border border-amber-200 hover:bg-amber-100 transition-colors"
+              title="Программа лояльности — 210 баллов">
+              <Icon name="Crown" size={13} className="text-amber-500" />
+            </button>
+          )}
         </div>
       </aside>
 
