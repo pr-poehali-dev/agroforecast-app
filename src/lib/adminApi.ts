@@ -111,30 +111,30 @@ export const adminApi = {
     req(`${URLS.listings}?id=${id}`, { method: "DELETE" }),
 
   // ── Documents ──
-  getDocuments: () => req(`${URLS.documents}?resource=documents`),
-  getDocument: (id: number) => req(`${URLS.documents}?resource=documents&id=${id}`),
+  getDocuments: () => req(`${URLS.documents}?resource=documents&token=${adminToken.get()}`),
+  getDocument: (id: number) => req(`${URLS.documents}?resource=documents&id=${id}&token=${adminToken.get()}`),
   createDocument: (data: Record<string, unknown>) =>
-    req(`${URLS.documents}?resource=documents`, { method: "POST", body: JSON.stringify(data) }),
+    req(`${URLS.documents}?resource=documents&token=${adminToken.get()}`, { method: "POST", body: JSON.stringify(data) }),
   updateDocument: (id: number, data: Record<string, unknown>) =>
-    req(`${URLS.documents}?resource=documents&id=${id}`, { method: "PUT", body: JSON.stringify(data) }),
+    req(`${URLS.documents}?resource=documents&id=${id}&token=${adminToken.get()}`, { method: "PUT", body: JSON.stringify(data) }),
   deleteDocument: (id: number) =>
-    req(`${URLS.documents}?resource=documents&id=${id}`, { method: "DELETE" }),
+    req(`${URLS.documents}?resource=documents&id=${id}&token=${adminToken.get()}`, { method: "DELETE" }),
 
   // ── Project Tasks ──
   getTasks: (stage?: number) => {
     const q = stage ? `&stage=${stage}` : "";
-    return req(`${URLS.documents}?resource=tasks${q}`);
+    return req(`${URLS.documents}?resource=tasks${q}&token=${adminToken.get()}`);
   },
   createTask: (data: Record<string, unknown>) =>
-    req(`${URLS.documents}?resource=tasks`, { method: "POST", body: JSON.stringify(data) }),
+    req(`${URLS.documents}?resource=tasks&token=${adminToken.get()}`, { method: "POST", body: JSON.stringify(data) }),
   updateTask: (id: number, data: Record<string, unknown>) =>
-    req(`${URLS.documents}?resource=tasks&id=${id}`, { method: "PUT", body: JSON.stringify(data) }),
+    req(`${URLS.documents}?resource=tasks&id=${id}&token=${adminToken.get()}`, { method: "PUT", body: JSON.stringify(data) }),
   deleteTask: (id: number) =>
-    req(`${URLS.documents}?resource=tasks&id=${id}`, { method: "DELETE" }),
+    req(`${URLS.documents}?resource=tasks&id=${id}&token=${adminToken.get()}`, { method: "DELETE" }),
 
   // ── AI Agent ──
-  getAgentMessages: (limit = 50) => req(`${URLS.agent}?limit=${limit}`),
+  getAgentMessages: (limit = 50) => req(`${URLS.agent}?limit=${limit}&token=${adminToken.get()}`),
   sendAgentMessage: (message: string) =>
-    req(URLS.agent, { method: "POST", body: JSON.stringify({ message }) }),
-  clearAgentHistory: () => req(URLS.agent, { method: "DELETE" }),
+    req(`${URLS.agent}?token=${adminToken.get()}`, { method: "POST", body: JSON.stringify({ message }) }),
+  clearAgentHistory: () => req(`${URLS.agent}?token=${adminToken.get()}`, { method: "DELETE" }),
 };

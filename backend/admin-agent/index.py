@@ -89,8 +89,8 @@ def handler(event: dict, context) -> dict:
 
     method = event.get("httpMethod", "GET")
     headers = event.get("headers", {})
-    token = headers.get("x-admin-token", "")
     params = event.get("queryStringParameters") or {}
+    token = headers.get("x-admin-token", "") or params.get("token", "")
 
     db = get_db()
     cur = db.cursor()

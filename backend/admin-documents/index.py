@@ -35,7 +35,7 @@ def handler(event: dict, context) -> dict:
     params = event.get("queryStringParameters") or {}
     resource = params.get("resource", "documents")
     headers = event.get("headers", {})
-    token = headers.get("x-admin-token", "")
+    token = headers.get("x-admin-token", "") or params.get("token", "")
 
     body = {}
     if event.get("body"):
