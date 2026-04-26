@@ -470,6 +470,14 @@ export default function SectionBoard() {
                     {timeAgo(l.created_at)}
                   </span>
 
+                  {l.source_url && l.source !== "user" && (
+                    <a href={l.source_url} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-[11px] font-medium text-primary hover:text-primary/70 transition-colors border border-primary/20 rounded-lg px-2 py-0.5">
+                      <Icon name="ExternalLink" size={11} />
+                      Оригинал объявления
+                    </a>
+                  )}
+
                   {l.contact && (
                     <button
                       onClick={() => setExpandedId(isExpanded ? null : l.id)}
@@ -478,14 +486,6 @@ export default function SectionBoard() {
                       <Icon name={isExpanded ? "EyeOff" : "Phone"} size={12} />
                       {isExpanded ? "Скрыть" : "Показать контакт"}
                     </button>
-                  )}
-
-                  {l.source_url && l.source !== "user" && (
-                    <a href={l.source_url} target="_blank" rel="noopener noreferrer"
-                      className="ml-auto flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary transition-colors">
-                      <Icon name="ExternalLink" size={11} />
-                      Источник
-                    </a>
                   )}
                 </div>
 

@@ -118,7 +118,7 @@ def seed_demo(conn):
         if count > 0:
             return
 
-        expires = datetime.now() + timedelta(days=30)
+        expires = datetime.now() + timedelta(hours=24)
         for d in DEMO_LISTINGS:
             cur.execute("""
                 INSERT INTO board_listings
@@ -238,7 +238,7 @@ def handler(event: dict, context) -> dict:
                 return {"statusCode": 400, "headers": CORS,
                         "body": json.dumps({"error": "type должен быть 'sell' или 'buy'"}, ensure_ascii=False)}
 
-            expires = datetime.now() + timedelta(days=30)
+            expires = datetime.now() + timedelta(hours=24)
             with conn.cursor() as cur:
                 cur.execute("""
                     INSERT INTO board_listings
