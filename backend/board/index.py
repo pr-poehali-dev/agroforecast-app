@@ -111,15 +111,26 @@ def get_conn():
 
 
 def seed_demo(conn):
-    """Засевает демо-объявления если таблица пустая."""
+    """Обновляет внешние объявления: деактивирует истёкшие, добавляет отсутствующие."""
     with conn.cursor() as cur:
-        cur.execute("SELECT COUNT(*) FROM board_listings WHERE source != 'user'")
-        count = cur.fetchone()[0]
-        if count > 0:
-            return
+        # Деактивируем истёкшие внешние объявления
+        cur.execute("""
+            UPDATE board_listings
+            SET is_active = FALSE
+            WHERE source != 'user' AND expires_at < NOW()
+        """)
+
+        # Проверяем какие source_url уже есть среди активных
+        cur.execute("""
+            SELECT source_url FROM board_listings
+            WHERE source != 'user' AND is_active = TRUE
+        """)
+        existing_urls = {row[0] for row in cur.fetchall()}
 
         expires = datetime.now() + timedelta(hours=24)
         for d in DEMO_LISTINGS:
+            if d.get("source_url") in existing_urls:
+                continue
             cur.execute("""
                 INSERT INTO board_listings
                   (type, crop, region, price_per_ton, volume_tons, quality,
