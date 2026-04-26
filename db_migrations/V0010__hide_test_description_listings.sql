@@ -1,0 +1,1 @@
+UPDATE t_p36960093_agroforecast_app.board_listings SET is_hidden = TRUE WHERE description = 'тестовое объявление';

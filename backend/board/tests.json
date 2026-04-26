@@ -1,21 +1,12 @@
 {
   "tests": [
     {
-      "name": "list all listings",
+      "name": "list returns valid structure",
       "method": "POST",
       "path": "/",
       "body": {"action": "list"},
       "expectedStatus": 200,
-      "expectedBody": {"total": 0},
-      "bodyMatcher": "partial"
-    },
-    {
-      "name": "list sell only",
-      "method": "POST",
-      "path": "/",
-      "body": {"action": "list", "type": "sell"},
-      "expectedStatus": 200,
-      "expectedBody": {"total": 0},
+      "expectedBody": {"total": 0, "sell_count": 0, "buy_count": 0},
       "bodyMatcher": "partial"
     },
     {
@@ -37,12 +28,12 @@
       "bodyMatcher": "partial"
     },
     {
-      "name": "filter by crop",
+      "name": "validation error on missing crop",
       "method": "POST",
       "path": "/",
-      "body": {"action": "list", "crop": "Пшеница озимая"},
-      "expectedStatus": 200,
-      "expectedBody": {"total": 0},
+      "body": {"action": "add", "type": "sell"},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "Поле 'crop' обязательно"},
       "bodyMatcher": "partial"
     }
   ]

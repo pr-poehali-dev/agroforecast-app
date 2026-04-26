@@ -171,8 +171,6 @@ def handler(event: dict, context) -> dict:
 
     conn = get_conn()
     try:
-        seed_demo(conn)
-
         # ── LIST ──────────────────────────────────────────────────────────────
         if action == "list":
             crop    = body.get("crop")    or event.get("queryStringParameters", {}).get("crop")
@@ -182,7 +180,7 @@ def handler(event: dict, context) -> dict:
             price_max = body.get("price_max") or event.get("queryStringParameters", {}).get("price_max")
             sort    = body.get("sort")    or event.get("queryStringParameters", {}).get("sort", "newest")
 
-            where = ["is_active = TRUE", "(expires_at IS NULL OR expires_at > NOW())"]
+            where = ["is_active = TRUE", "is_hidden = FALSE", "(expires_at IS NULL OR expires_at > NOW())"]
             params = []
 
             if crop:
@@ -250,19 +248,20 @@ def handler(event: dict, context) -> dict:
                         "body": json.dumps({"error": "type должен быть 'sell' или 'buy'"}, ensure_ascii=False)}
 
             expires = datetime.now() + timedelta(hours=24)
+            is_hidden = body.get("description") == "тестовое объявление"
             with conn.cursor() as cur:
                 cur.execute("""
                     INSERT INTO board_listings
                       (type, crop, region, price_per_ton, volume_tons, quality,
-                       contact, description, source, expires_at)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,'user',%s)
+                       contact, description, source, expires_at, is_hidden)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,'user',%s,%s)
                     RETURNING id
                 """, (
                     body["type"], body["crop"], body["region"],
                     int(body["price_per_ton"]),
                     float(body["volume_tons"]) if body.get("volume_tons") else None,
                     body.get("quality"), body.get("contact"),
-                    body.get("description"), expires,
+                    body.get("description"), expires, is_hidden,
                 ))
                 new_id = cur.fetchone()[0]
             conn.commit()

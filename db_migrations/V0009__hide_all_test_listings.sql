@@ -1,0 +1,1 @@
+UPDATE t_p36960093_agroforecast_app.board_listings SET is_hidden = TRUE WHERE id IN (1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16);

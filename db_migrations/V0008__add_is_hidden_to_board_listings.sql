@@ -1,0 +1,1 @@
+ALTER TABLE t_p36960093_agroforecast_app.board_listings ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN NOT NULL DEFAULT FALSE;
