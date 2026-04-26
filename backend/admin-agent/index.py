@@ -54,20 +54,20 @@ def verify_token(cur, token):
     cur.execute(f"SELECT id FROM {SCHEMA}.admin_sessions WHERE token=%s AND expires_at > now()", (token,))
     return cur.fetchone() is not None
 
-def call_openai(messages):
-    api_key = os.environ.get("OPENAI_API_KEY", "")
+def call_ai(messages):
+    api_key = os.environ.get("DEEPSEEK_API_KEY", "")
     if not api_key:
-        return "ИИ-агент временно недоступен: не настроен API-ключ OpenAI."
-    
+        return "ИИ-агент временно недоступен: не настроен API-ключ DeepSeek."
+
     payload = json.dumps({
-        "model": "gpt-4o-mini",
+        "model": "deepseek-chat",
         "messages": messages,
         "max_tokens": 1500,
         "temperature": 0.7
     }).encode("utf-8")
-    
+
     req = urllib.request.Request(
-        "https://api.openai.com/v1/chat/completions",
+        "https://api.deepseek.com/chat/completions",
         data=payload,
         headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
         method="POST"
@@ -78,7 +78,7 @@ def call_openai(messages):
             return data["choices"][0]["message"]["content"]
     except urllib.error.HTTPError as e:
         body = e.read().decode()
-        return f"Ошибка OpenAI: {e.code}. {body[:200]}"
+        return f"Ошибка DeepSeek: {e.code}. {body[:200]}"
     except Exception as ex:
         return f"Ошибка соединения: {str(ex)}"
 
@@ -134,7 +134,7 @@ def handler(event: dict, context) -> dict:
         # Формируем запрос к OpenAI
         messages = [{"role": "system", "content": SYSTEM_PROMPT}] + history
 
-        reply = call_openai(messages)
+        reply = call_ai(messages)
 
         # Сохраняем ответ агента
         cur.execute(f"INSERT INTO {SCHEMA}.agent_messages (role, content) VALUES (%s, %s)", ("assistant", reply))
