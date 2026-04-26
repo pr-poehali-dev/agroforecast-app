@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Icon from "@/components/ui/icon";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 
 const DOCS = [
   { id: "terms", label: "Правила пользования", icon: "FileText" },
@@ -414,7 +416,43 @@ const DOC_COMPONENTS: Record<string, React.FC> = {
 
 export default function SectionDocs() {
   const [activeDoc, setActiveDoc] = useState("terms");
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const docRef = useRef<HTMLDivElement>(null);
   const DocComponent = DOC_COMPONENTS[activeDoc];
+
+  const downloadPdf = async () => {
+    if (!docRef.current) return;
+    setPdfLoading(true);
+    try {
+      const canvas = await html2canvas(docRef.current, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+        logging: false,
+      });
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const margin = 10;
+      const imgW = pageW - margin * 2;
+      const imgH = (canvas.height * imgW) / canvas.width;
+      let y = margin;
+      let remainH = imgH;
+      while (remainH > 0) {
+        pdf.addImage(imgData, "PNG", margin, y, imgW, imgH);
+        remainH -= pageH - margin * 2;
+        if (remainH > 0) {
+          pdf.addPage();
+          y = margin - (imgH - remainH);
+        }
+      }
+      const docLabel = DOCS.find(d => d.id === activeDoc)?.label ?? activeDoc;
+      pdf.save(`АгроПорт — ${docLabel}.pdf`);
+    } finally {
+      setPdfLoading(false);
+    }
+  };
 
   return (
     <div className="space-y-5 animate-fade-in max-w-4xl mx-auto">
@@ -455,7 +493,17 @@ export default function SectionDocs() {
             </button>
           ))}
 
-          <div className="pt-3 border-t border-border mt-3">
+          <div className="pt-3 border-t border-border mt-3 space-y-1.5">
+            <button
+              onClick={downloadPdf}
+              disabled={pdfLoading}
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium border transition-colors bg-primary/5 border-primary/20 text-primary hover:bg-primary/10 disabled:opacity-60 disabled:cursor-wait"
+            >
+              {pdfLoading
+                ? <><Icon name="Loader" size={12} className="animate-spin" />Генерирую PDF…</>
+                : <><Icon name="Download" size={12} />Скачать PDF</>
+              }
+            </button>
             <button
               onClick={() => window.print()}
               className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-muted-foreground border border-border hover:border-primary/30 hover:text-foreground transition-colors bg-secondary/30"
@@ -467,7 +515,7 @@ export default function SectionDocs() {
         </div>
 
         {/* Документ */}
-        <div className="flex-1 glass-card rounded-2xl p-5 sm:p-6 overflow-hidden">
+        <div ref={docRef} className="flex-1 glass-card rounded-2xl p-5 sm:p-6 overflow-hidden">
           <div className="flex items-center justify-between mb-5 pb-3 border-b border-border">
             <h2 className="font-heading font-bold text-base text-foreground">
               {DOCS.find(d => d.id === activeDoc)?.label}
