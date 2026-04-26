@@ -3,27 +3,32 @@ import Icon from "@/components/ui/icon";
 import Sidebar from "./Sidebar";
 import PageContent from "./PageContent";
 
-const SECTION_TITLES: Record<string, { label: string; desc: string }> = {
-  home:         { label: "Главная",            desc: "Дашборд и сводка по рынку" },
-  forecasts:    { label: "Прогнозы",           desc: "Цены и урожайность культур" },
-  map:          { label: "Карта регионов",     desc: "Россия · 23 региона" },
-  supply:       { label: "Спрос и предложение",desc: "Баланс рынка" },
-  ndvi:         { label: "NDVI-мониторинг",    desc: "Спутниковые данные Sentinel-2" },
-  news:         { label: "Новости АПК",        desc: "Актуальные события" },
-  risks:        { label: "Риски",              desc: "Засуха, заморозки, вредители" },
-  "ai-model":   { label: "AI-модель",          desc: "ARIMA + LSTM прогнозирование" },
-  analytics:    { label: "Аналитика",          desc: "Рентабельность и рекомендации" },
-  business:     { label: "Бизнес-инструменты",desc: "Калькулятор, экспорт, интеграции" },
-  planner:      { label: "Планировщик",        desc: "Посевные площади и севооборот" },
-  alerts:       { label: "Алерты",             desc: "Уведомления и события" },
-  integrations: { label: "Интеграции",         desc: "1С, ERP, API" },
-  pricing:      { label: "Тарифы",             desc: "Планы и возможности" },
-  logistics:    { label: "Логистика",          desc: "Расчёт маршрутов и стоимости доставки" },
-  crm:          { label: "Личный кабинет",     desc: "CRM, профиль и сделки" },
+const SECTION_TITLES: Record<string, { label: string; desc: string; seoTitle: string; seoDesc: string }> = {
+  home:         { label: "Главная",             desc: "Дашборд и сводка по рынку",              seoTitle: "АгроПорт — AI-мониторинг агрорынка России",                                                     seoDesc: "Дашборд агрорынка России: цены на зерно, NDVI-мониторинг посевов, прогнозы урожайности и карта рисков в реальном времени." },
+  forecasts:    { label: "Прогнозы цен",        desc: "Цены и урожайность культур",             seoTitle: "Прогнозы цен на зерно 2026 — АгроПорт",                                                        seoDesc: "AI-прогнозы цен на пшеницу, подсолнечник, кукурузу и ячмень. Точность моделей ARIMA+LSTM — 87%. Актуальные котировки НТБ." },
+  map:          { label: "Карта урожайности",   desc: "Россия · 23 региона",                   seoTitle: "Карта урожайности регионов России — АгроПорт",                                                  seoDesc: "Интерактивная карта урожайности 23 регионов России. NDVI-индексы, площади посевов, риски засухи и заморозков." },
+  supply:       { label: "Спрос и предложение", desc: "Баланс рынка",                          seoTitle: "Спрос и предложение на зерновом рынке России — АгроПорт",                                      seoDesc: "Баланс агрорынка России: объёмы производства, экспорт, внутреннее потребление зерновых и масличных культур." },
+  ndvi:         { label: "NDVI-мониторинг",     desc: "Спутниковые данные Sentinel-2",         seoTitle: "NDVI-мониторинг посевов — спутниковые данные Sentinel-2 | АгроПорт",                          seoDesc: "Спутниковый мониторинг посевов России по данным Sentinel-2. NDVI-индексы вегетации, динамика по регионам и культурам." },
+  news:         { label: "Новости АПК",         desc: "Актуальные события",                    seoTitle: "Новости агрорынка и АПК России 2026 — АгроПорт",                                               seoDesc: "Актуальные новости агропромышленного комплекса России. Котировки, экспортные пошлины, погода и прогнозы урожая." },
+  risks:        { label: "Карта рисков",        desc: "Засуха, заморозки, вредители",          seoTitle: "Карта агрорисков России — засуха, заморозки, вредители | АгроПорт",                          seoDesc: "Карта агрорисков по регионам России: засуха, заморозки, суховей, переувлажнение. Уровни риска и рекомендации." },
+  "ai-model":   { label: "AI-модель",           desc: "ARIMA + LSTM прогнозирование",          seoTitle: "AI-модель прогнозирования цен на зерно — ARIMA+LSTM | АгроПорт",                             seoDesc: "Машинное обучение для прогноза цен на агрорынке. Модели ARIMA и LSTM с точностью 87%. Настраиваемые параметры и горизонт прогноза." },
+  analytics:    { label: "Аналитика",           desc: "Рентабельность и рекомендации",         seoTitle: "Аналитика рентабельности агробизнеса — АгроПорт",                                              seoDesc: "Расчёт рентабельности сельхозпроизводства. Сравнение культур, анализ затрат и маржинальности, рекомендации по портфелю." },
+  business:     { label: "Бизнес-инструменты", desc: "Калькулятор, экспорт, интеграции",      seoTitle: "Бизнес-инструменты для агропредприятий — АгроПорт",                                            seoDesc: "Калькулятор прибыльности, экспорт отчётов, инструменты планирования и интеграции для фермеров и агротрейдеров." },
+  planner:      { label: "Планировщик посевов", desc: "Посевные площади и севооборот",         seoTitle: "Планировщик посевных площадей и севооборота — АгроПорт",                                       seoDesc: "Планирование посевных площадей, севооборота и агрокалендаря. Оптимизация структуры посевов под текущие цены и риски." },
+  alerts:       { label: "Уведомления",         desc: "Уведомления и события",                 seoTitle: "Агро-уведомления и алерты рынка — АгроПорт",                                                   seoDesc: "Система уведомлений об изменениях цен, погодных рисках и рыночных событиях агрорынка России в реальном времени." },
+  integrations: { label: "Интеграции",          desc: "1С, ERP, API",                          seoTitle: "Интеграции АгроПорт с 1С, ERP и внешними системами",                                           seoDesc: "API-интеграции платформы АгроПорт с 1С, ERP-системами и внешними источниками данных агрорынка." },
+  pricing:      { label: "Тарифы",              desc: "Планы и возможности",                   seoTitle: "Тарифы и цены АгроПорт — выберите подходящий план",                                            seoDesc: "Тарифные планы платформы АгроПорт для фермеров, трейдеров и агрохолдингов. Бесплатный пробный период." },
+  logistics:    { label: "Логистика",           desc: "Расчёт маршрутов и стоимости доставки", seoTitle: "Логистика зерна — расчёт маршрутов и стоимости доставки | АгроПорт",                         seoDesc: "Расчёт логистики и стоимости доставки зерна по России. Оптимизация маршрутов, тарифы перевозчиков, карта элеваторов." },
+  crm:          { label: "Личный кабинет",      desc: "CRM, профиль и сделки",                 seoTitle: "Личный кабинет — CRM и управление сделками | АгроПорт",                                        seoDesc: "Личный кабинет агропредприятия: CRM-система, управление контактами, сделками и задачами на платформе АгроПорт." },
 };
 
 export default function Index() {
-  const [activeSection, setActiveSection] = useState("home");
+  const getInitialSection = () => {
+    const hash = window.location.hash.replace("#", "");
+    return hash && SECTION_TITLES[hash] ? hash : "home";
+  };
+
+  const [activeSection, setActiveSection] = useState(getInitialSection);
   const [selectedRegion, setSelectedRegion] = useState<string | null>("volgograd");
   const [selectedCrop, setSelectedCrop] = useState("Пшеница озимая");
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -33,6 +38,34 @@ export default function Index() {
 
   useEffect(() => {
     setAnimKey(k => k + 1);
+    const s = SECTION_TITLES[activeSection];
+    if (!s) return;
+    document.title = s.seoTitle;
+    const metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc) metaDesc.setAttribute("content", s.seoDesc);
+    const ogTitle = document.querySelector('meta[property="og:title"]');
+    if (ogTitle) ogTitle.setAttribute("content", s.seoTitle);
+    const ogDesc = document.querySelector('meta[property="og:description"]');
+    if (ogDesc) ogDesc.setAttribute("content", s.seoDesc);
+    const canonical = document.querySelector('link[rel="canonical"]');
+    if (canonical) {
+      const url = activeSection === "home" ? "https://agroport-ai.ru" : `https://agroport-ai.ru/#${activeSection}`;
+      canonical.setAttribute("href", url);
+    }
+    window.history.replaceState(null, "", activeSection === "home" ? "/" : `/#${activeSection}`);
+    const breadcrumb = {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": activeSection === "home"
+        ? [{ "@type": "ListItem", "position": 1, "name": "АгроПорт", "item": "https://agroport-ai.ru" }]
+        : [
+            { "@type": "ListItem", "position": 1, "name": "АгроПорт", "item": "https://agroport-ai.ru" },
+            { "@type": "ListItem", "position": 2, "name": s.label,    "item": `https://agroport-ai.ru/#${activeSection}` },
+          ],
+    };
+    let ld = document.getElementById("ld-breadcrumb");
+    if (!ld) { ld = document.createElement("script"); ld.id = "ld-breadcrumb"; ld.setAttribute("type", "application/ld+json"); document.head.appendChild(ld); }
+    ld.textContent = JSON.stringify(breadcrumb);
   }, [activeSection]);
 
   useEffect(() => {
@@ -40,7 +73,7 @@ export default function Index() {
     return () => clearInterval(t);
   }, []);
 
-  const section = SECTION_TITLES[activeSection] || { label: activeSection, desc: "" };
+  const section = SECTION_TITLES[activeSection] || { label: activeSection, desc: "", seoTitle: "", seoDesc: "" };
 
   return (
     <div className="min-h-screen bg-background font-body flex overflow-hidden">
@@ -74,29 +107,37 @@ export default function Index() {
           </button>
 
           {/* Breadcrumb */}
-          <div className="flex-1 flex items-center gap-2 min-w-0">
-            <div className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Icon name="Wheat" size={11} className="text-primary shrink-0" />
-              <button
-                onClick={() => setActiveSection("home")}
-                className="text-primary font-medium hover:text-primary/80 hover:underline transition-colors cursor-pointer">
-                АгроПорт
-              </button>
-              <Icon name="ChevronRight" size={12} />
-              <button
-                onClick={() => setActiveSection(activeSection)}
-                className="text-foreground font-medium hover:text-primary transition-colors cursor-pointer truncate">
-                {section.label}
-              </button>
-            </div>
-            {section.desc && (
-              <button
-                onClick={() => setActiveSection("home")}
-                className="hidden md:block text-[11px] text-muted-foreground border-l border-border pl-2 ml-1 truncate hover:text-primary transition-colors cursor-pointer">
+          <nav aria-label="Breadcrumb" className="flex-1 flex items-center gap-2 min-w-0">
+            <ol className="hidden sm:flex items-center gap-1 text-xs min-w-0">
+              <li className="flex items-center gap-1 shrink-0">
+                <Icon name="Wheat" size={11} className="text-primary" />
+                {activeSection === "home" ? (
+                  <span className="text-foreground font-semibold">АгроПорт</span>
+                ) : (
+                  <button
+                    onClick={() => setActiveSection("home")}
+                    className="text-primary font-medium hover:underline transition-colors">
+                    АгроПорт
+                  </button>
+                )}
+              </li>
+              {activeSection !== "home" && (
+                <>
+                  <li className="text-muted-foreground/50 shrink-0" aria-hidden>
+                    <Icon name="ChevronRight" size={12} />
+                  </li>
+                  <li className="flex items-center gap-1 min-w-0">
+                    <span className="text-foreground font-semibold truncate">{section.label}</span>
+                  </li>
+                </>
+              )}
+            </ol>
+            {activeSection !== "home" && section.desc && (
+              <span className="hidden md:block text-[11px] text-muted-foreground border-l border-border pl-2 ml-0.5 truncate">
                 {section.desc}
-              </button>
+              </span>
             )}
-          </div>
+          </nav>
 
           {/* Правая часть */}
           <div className="flex items-center gap-2 shrink-0">
@@ -122,7 +163,7 @@ export default function Index() {
             {/* Профиль */}
             <button
               className="flex items-center gap-2 pl-2 border-l border-border ml-1"
-              onClick={() => setActiveSection("profile")}>
+              onClick={() => setActiveSection("crm")}>
               <div className="w-7 h-7 rounded-full hero-gradient flex items-center justify-center text-white shadow-sm">
                 <Icon name="User" size={14} className="text-white" />
               </div>
