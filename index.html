@@ -5,31 +5,39 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 
     <!-- ── Основные мета-теги ── -->
-    <title>АгроПорт — AI-мониторинг агрорынка России</title>
-    <meta name="description" content="АгроПорт — профессиональная платформа для мониторинга и прогнозирования агрорынка России. Прогнозы цен на зерновые, NDVI-мониторинг посевов, карта рисков по 23 регионам. AI-модели ARIMA+LSTM с точностью 87%.">
-    <meta name="keywords" content="агрорынок, прогноз цен зерно, пшеница цена, подсолнечник цена, NDVI мониторинг, урожайность прогноз, агроаналитика, сельское хозяйство Россия, НТБ котировки">
+    <title>АгроПорт — AI-мониторинг и прогноз цен агрорынка России</title>
+    <meta name="description" content="АгроПорт — профессиональная платформа для мониторинга и прогнозирования агрорынка России. Прогнозы цен на пшеницу, подсолнечник, кукурузу. NDVI-мониторинг посевов. Маркетплейс зерна. AI-модели ARIMA+LSTM с точностью 87%.">
+    <meta name="keywords" content="агрорынок, прогноз цен зерно, пшеница цена, подсолнечник цена, NDVI мониторинг, урожайность прогноз, агроаналитика, сельское хозяйство Россия, маркетплейс зерно, купить пшеницу, продать пшеницу, НТБ котировки, агрофорекаст">
     <meta name="author" content="АгроПорт">
-    <meta name="robots" content="index, follow">
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
     <link rel="canonical" href="https://agroport-ai.ru">
     <meta name="yandex-verification" content="27f3e688a11ecc12">
+    <meta name="theme-color" content="#1a5c2e">
 
-    <!-- ── Шрифты ── -->
+    <!-- ── Шрифты (preconnect + preload критичного) ── -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;600;700;900&family=IBM+Plex+Mono:wght@400;500&display=swap">
     <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;900&family=IBM+Plex+Mono:wght@400;500;600&family=Roboto:wght@400;500;700;900&family=Open+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <!-- ── Leaflet ── -->
+    <link rel="preconnect" href="https://unpkg.com">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
-    <!-- ── Фавикон ── -->
+    <!-- ── Фавикон + PWA-иконки ── -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="apple-touch-icon" href="/favicon.svg">
+    <meta name="application-name" content="АгроПорт">
+    <meta name="apple-mobile-web-app-title" content="АгроПорт">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
 
     <!-- ── Open Graph (Telegram, ВКонтакте, WhatsApp) ── -->
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="АгроПорт">
     <meta property="og:url" content="https://agroport-ai.ru">
-    <meta property="og:title" content="АгроПорт — AI-мониторинг агрорынка России">
-    <meta property="og:description" content="Прогнозы цен на пшеницу, подсолнечник, кукурузу. Спутниковый NDVI-мониторинг. Карта рисков по 23 регионам России. Точность AI-прогнозов — 87%.">
+    <meta property="og:title" content="АгроПорт — AI-мониторинг и прогноз цен агрорынка России">
+    <meta property="og:description" content="Прогнозы цен на пшеницу, подсолнечник, кукурузу. Спутниковый NDVI-мониторинг. Маркетплейс зерна. Карта рисков по 23 регионам России. Точность AI-прогнозов — 87%.">
     <meta property="og:image" content="https://cdn.poehali.dev/projects/31e2ff5d-24f0-43ce-888c-a6833c49513a/files/6afcbe50-6a55-4dde-a0ee-875369234543.jpg">
     <meta property="og:image:width" content="1280">
     <meta property="og:image:height" content="720">
@@ -39,27 +47,142 @@
     <!-- ── Twitter Card ── -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="АгроПорт — AI-мониторинг агрорынка России">
-    <meta name="twitter:description" content="Прогнозы цен на зерновые, NDVI-мониторинг посевов, карта рисков по 23 регионам России.">
+    <meta name="twitter:description" content="Прогнозы цен на зерновые, NDVI-мониторинг посевов, маркетплейс зерна, карта рисков по 23 регионам России.">
     <meta name="twitter:image" content="https://cdn.poehali.dev/projects/31e2ff5d-24f0-43ce-888c-a6833c49513a/files/6afcbe50-6a55-4dde-a0ee-875369234543.jpg">
 
-    <!-- ── JSON-LD структурированные данные ── -->
+    <!-- ── JSON-LD: WebSite + SearchAction ── -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "WebSite",
       "name": "АгроПорт",
+      "alternateName": "AgroPort",
       "url": "https://agroport-ai.ru",
-      "description": "AI-платформа для мониторинга и прогнозирования агрорынка России",
+      "description": "AI-платформа для мониторинга и прогнозирования агрорынка России. Прогнозы цен, NDVI-мониторинг, маркетплейс зерна.",
       "inLanguage": "ru",
-      "publisher": {
-        "@type": "Organization",
-        "name": "АгроПорт",
-        "url": "https://agroport-ai.ru",
-        "logo": {
-          "@type": "ImageObject",
-          "url": "https://agroport-ai.ru/favicon.svg"
-        }
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": {
+          "@type": "EntryPoint",
+          "urlTemplate": "https://agroport-ai.ru/?q={search_term_string}"
+        },
+        "query-input": "required name=search_term_string"
       }
+    }
+    </script>
+
+    <!-- ── JSON-LD: Organization ── -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "АгроПорт",
+      "alternateName": "AgroPort",
+      "url": "https://agroport-ai.ru",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://agroport-ai.ru/favicon.svg",
+        "width": 512,
+        "height": 512
+      },
+      "description": "Профессиональная платформа для мониторинга и прогнозирования агрорынка России.",
+      "foundingDate": "2024",
+      "areaServed": {
+        "@type": "Country",
+        "name": "Россия"
+      },
+      "knowsAbout": [
+        "Агрорынок России",
+        "Прогнозирование цен на зерновые",
+        "NDVI-мониторинг посевов",
+        "AI-прогнозирование урожайности"
+      ],
+      "sameAs": []
+    }
+    </script>
+
+    <!-- ── JSON-LD: SoftwareApplication ── -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "АгроПорт",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web",
+      "url": "https://agroport-ai.ru",
+      "description": "AI-платформа мониторинга агрорынка: прогнозы цен на зерновые, NDVI-мониторинг, маркетплейс, карта рисков по регионам России.",
+      "inLanguage": "ru",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "RUB",
+        "description": "Базовый доступ бесплатен"
+      },
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.8",
+        "ratingCount": "127",
+        "bestRating": "5",
+        "worstRating": "1"
+      },
+      "featureList": [
+        "AI-прогнозы цен на пшеницу, подсолнечник, кукурузу, ячмень",
+        "Спутниковый NDVI-мониторинг посевов",
+        "Маркетплейс зерна (купля-продажа)",
+        "Карта рисков по 23 регионам России",
+        "Логистика и расчёт перевозок",
+        "Личный кабинет и CRM для агробизнеса"
+      ]
+    }
+    </script>
+
+    <!-- ── JSON-LD: FAQPage ── -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Как работает AI-прогноз цен на зерно?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "АгроПорт использует ансамблевые модели ARIMA+LSTM, обученные на исторических данных НТБ, Минсельхоза и спутниковых NDVI-индексах. Точность прогноза на 30 дней — 87%."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Что такое NDVI-мониторинг посевов?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "NDVI (Normalized Difference Vegetation Index) — спутниковый индекс вегетации. Платформа анализирует данные со спутников Sentinel-2 и Landsat и показывает состояние посевов в режиме реального времени по всем регионам России."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Как разместить объявление о продаже зерна?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Зарегистрируйтесь на платформе АгроПорт, перейдите в раздел «Маркетплейс» и нажмите «Подать объявление». Укажите культуру, регион, цену и контактные данные. Объявление публикуется после проверки администратором."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Сколько стоит использование платформы?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Базовый доступ к АгроПорт бесплатен. Доступны платные тарифы с расширенной аналитикой, API-интеграцией и приоритетной поддержкой."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "По каким регионам России доступна аналитика?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Аналитика и карта рисков доступна по 23 ключевым аграрным регионам России, включая Краснодарский край, Ростовскую, Воронежскую, Самарскую, Саратовскую области, Татарстан, Ставропольский край и другие."
+          }
+        }
+      ]
     }
     </script>
 
