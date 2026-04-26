@@ -23,6 +23,7 @@ export default function AuthPage({ onLogin, onOpenDocs }: AuthPageProps) {
   const [verifyToken, setVerifyToken] = useState("");
   const [verifyCode, setVerifyCode] = useState("");
   const [form, setForm] = useState({ email: "", password: "", full_name: "", company: "", role: "farmer" });
+  const [docsAccepted, setDocsAccepted] = useState(false);
 
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
 
@@ -126,19 +127,30 @@ export default function AuthPage({ onLogin, onOpenDocs }: AuthPageProps) {
                   </>
                 )}
                 {mode === "register" && (
-                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2">
-                    <Icon name="FileText" size={13} className="text-amber-600 shrink-0 mt-0.5" />
-                    <p className="text-[11px] text-amber-800 leading-relaxed">
-                      Регистрируясь, вы принимаете{" "}
-                      <button onClick={onOpenDocs} className="underline font-semibold hover:no-underline">
-                        Правила пользования и условия программы АгроБаллы
+                  <label className="flex items-start gap-3 cursor-pointer group">
+                    <div className="relative mt-0.5 shrink-0">
+                      <input
+                        type="checkbox"
+                        checked={docsAccepted}
+                        onChange={e => setDocsAccepted(e.target.checked)}
+                        className="sr-only"
+                      />
+                      <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors
+                        ${docsAccepted ? "bg-primary border-primary" : "border-border bg-background group-hover:border-primary/50"}`}>
+                        {docsAccepted && <Icon name="Check" size={12} className="text-white" />}
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                      Я ознакомился с{" "}
+                      <button type="button" onClick={onOpenDocs} className="underline font-semibold text-foreground hover:no-underline">
+                        Правилами пользования и условиями программы АгроБаллы
                       </button>
-                      {" "}(1 балл = 1 ₽, оплата баллами до 50%), а также даёте согласие на обработку персональных данных согласно{" "}
-                      <button onClick={onOpenDocs} className="underline font-semibold hover:no-underline">
+                      {" "}(1 балл = 1 ₽, оплата баллами до 50%), а также даю согласие на обработку персональных данных согласно{" "}
+                      <button type="button" onClick={onOpenDocs} className="underline font-semibold text-foreground hover:no-underline">
                         152-ФЗ
                       </button>.
                     </p>
-                  </div>
+                  </label>
                 )}
               </div>
             </>
@@ -181,7 +193,7 @@ export default function AuthPage({ onLogin, onOpenDocs }: AuthPageProps) {
             </div>
           )}
 
-          <button onClick={submit} disabled={loading}
+          <button onClick={submit} disabled={loading || (mode === "register" && !docsAccepted)}
             className="w-full mt-6 flex items-center justify-center gap-2 py-3.5 hero-gradient text-white font-heading font-bold rounded-xl text-sm shadow-lg hover:opacity-95 transition-opacity disabled:opacity-60 active:scale-[0.99]">
             {loading ? <><Icon name="Loader" size={16} className="animate-spin" />Подождите...</>
               : mode === "login" ? <><Icon name="LogIn" size={16} />Войти в платформу</>
