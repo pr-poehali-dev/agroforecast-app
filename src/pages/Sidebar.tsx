@@ -19,7 +19,7 @@ const NAV_GROUPS = [
   {
     label: "Управление",
     icon: "Settings2",
-    items: ["risks", "ai-model", "analytics", "business", "logistics", "planner", "alerts"],
+    items: ["risks", "ai-model", "analytics", "business", "logistics", "crm", "planner", "alerts"],
   },
   {
     label: "Платформа",
@@ -44,6 +44,7 @@ const SECTION_ICONS: Record<string, string> = {
   integrations: "Plug",
   pricing: "CreditCard",
   logistics: "Truck",
+  crm: "Briefcase",
   profile: "UserCircle",
 };
 

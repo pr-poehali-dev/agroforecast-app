@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import SectionHome from "./SectionHome";
 import SectionForecasts from "./SectionForecasts";
 import SectionBusiness from "./SectionBusiness";
@@ -7,6 +8,8 @@ import SectionNews from "./SectionNews";
 import SectionPlanner from "./SectionPlanner";
 import SectionLogistics from "./SectionLogistics";
 import SectionProfile from "./SectionProfile";
+import AuthPage from "./AuthPage";
+import { getToken } from "@/lib/auth";
 
 interface PageContentProps {
   activeSection: string;
@@ -22,7 +25,23 @@ export default function PageContent({
   activeSection, animKey, selectedRegion, setSelectedRegion,
   selectedCrop, setSelectedCrop, setActiveSection,
 }: PageContentProps) {
-  const isFullscreen = activeSection === "profile";
+  const [isAuthed, setIsAuthed] = useState(() => !!getToken());
+
+  // Синхронизируем при смене секции (на случай если токен появился/исчез)
+  useEffect(() => {
+    setIsAuthed(!!getToken());
+  }, [activeSection]);
+
+  const isFullscreen = activeSection === "profile" || activeSection === "crm";
+
+  const handleLogin = () => {
+    setIsAuthed(true);
+  };
+
+  const handleLogout = () => {
+    setIsAuthed(false);
+    setActiveSection("home");
+  };
 
   return (
     <main
@@ -55,7 +74,14 @@ export default function PageContent({
       {activeSection === "logistics" && <SectionLogistics />}
 
       {activeSection === "profile" && (
-        <SectionProfile onLogout={() => setActiveSection("home")} />
+        <SectionProfile onLogout={handleLogout} />
+      )}
+
+      {/* ── Личный кабинет / CRM ── */}
+      {activeSection === "crm" && (
+        isAuthed
+          ? <SectionProfile onLogout={handleLogout} />
+          : <AuthPage onLogin={handleLogin} />
       )}
 
       {(activeSection === "analytics" || activeSection === "business" || activeSection === "alerts" || activeSection === "integrations" || activeSection === "pricing") && (
