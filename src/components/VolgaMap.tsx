@@ -178,10 +178,10 @@ export default function VolgaMap({ selectedRegion, onSelect }: VolgaMapProps) {
       scrollWheelZoom: true,
     });
 
-    // OpenStreetMap — русские названия для России
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 18,
-      attribution: "© OpenStreetMap",
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png", {
+      maxZoom: 19,
+      subdomains: "abcd",
+      attribution: "© CARTO",
     }).addTo(map);
 
     // Кнопки зума с русскими подписями

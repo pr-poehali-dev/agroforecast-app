@@ -86,9 +86,10 @@ export default function HomeMap({ selectedRegion, onSelect, aiRisks = {} }: Home
       dragging: true,
     });
 
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 18,
-      attribution: "© OpenStreetMap",
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png", {
+      maxZoom: 19,
+      subdomains: "abcd",
+      attribution: "© CARTO",
     }).addTo(map);
 
     MAP_REGIONS.forEach(region => {
