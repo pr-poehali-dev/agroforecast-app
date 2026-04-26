@@ -1,0 +1,49 @@
+{
+  "tests": [
+    {
+      "name": "list all listings",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "list"},
+      "expectedStatus": 200,
+      "expectedBody": {"total": 0},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "list sell only",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "list", "type": "sell"},
+      "expectedStatus": 200,
+      "expectedBody": {"total": 0},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "add listing",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "action": "add",
+        "type": "sell",
+        "crop": "Пшеница озимая",
+        "region": "Самарская",
+        "price_per_ton": 13500,
+        "volume_tons": 100,
+        "contact": "тест",
+        "description": "тестовое объявление"
+      },
+      "expectedStatus": 200,
+      "expectedBody": {"success": true},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "filter by crop",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "list", "crop": "Пшеница озимая"},
+      "expectedStatus": 200,
+      "expectedBody": {"total": 0},
+      "bodyMatcher": "partial"
+    }
+  ]
+}

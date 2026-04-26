@@ -11,6 +11,7 @@ export const NAV_ITEMS = [
   { id: "analytics", label: "Аналитика", icon: "BarChart3" },
   { id: "business", label: "Бизнес-инструменты", icon: "Calculator" },
   { id: "logistics", label: "Логистика", icon: "Truck" },
+  { id: "board", label: "Доска объявлений", icon: "ShoppingCart" },
   { id: "crm", label: "Личный кабинет", icon: "UserCircle" },
   { id: "portfolio", label: "Мой портфель", icon: "Sprout" },
   { id: "alerts", label: "Уведомления", icon: "Bell" },

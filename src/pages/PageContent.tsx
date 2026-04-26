@@ -9,6 +9,7 @@ import SectionPlanner from "./SectionPlanner";
 import SectionLogistics from "./SectionLogistics";
 import SectionProfile from "./SectionProfile";
 import SectionPortfolio from "./SectionPortfolio";
+import SectionBoard from "./SectionBoard";
 import AuthPage from "./AuthPage";
 import { getToken } from "@/lib/auth";
 
@@ -85,6 +86,7 @@ export default function PageContent({
       )}
 
       {activeSection === "portfolio" && <SectionPortfolio />}
+      {activeSection === "board" && <SectionBoard />}
     </main>
   );
 }
