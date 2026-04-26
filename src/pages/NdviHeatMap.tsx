@@ -76,7 +76,7 @@ export default function NdviHeatMap({ summary, selectedRegion, onSelectRegion }:
     mapRef.current = map;
 
     // CartoDB tiles (no country flags/labels)
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png", {
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
       attribution: '&copy; <a href="https://carto.com">CARTO</a>',
       subdomains: "abcd",
       maxZoom: 19,

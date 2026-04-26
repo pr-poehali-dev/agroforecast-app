@@ -178,7 +178,7 @@ export default function VolgaMap({ selectedRegion, onSelect }: VolgaMapProps) {
       scrollWheelZoom: true,
     });
 
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png", {
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
       maxZoom: 19,
       subdomains: "abcd",
       attribution: "© CARTO",
