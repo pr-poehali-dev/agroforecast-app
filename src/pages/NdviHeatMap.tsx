@@ -6,29 +6,42 @@ import { RegionSummary, ndviColor, ndviLabel } from "./NdviTypes";
 
 // ── Region lat/lon for Leaflet ─────────────────────────────────────────────
 const REGION_COORDS: Record<string, [number, number]> = {
-  samara:        [53.2, 50.2],
-  saratov:       [51.5, 46.0],
-  volgograd:     [48.7, 44.5],
-  ulyanovsk:     [54.3, 48.4],
-  penza:         [53.2, 45.0],
-  orenburg:      [51.8, 55.1],
-  tatarstan:     [55.8, 49.1],
-  bashkortostan: [54.7, 55.9],
-  krasnodar:     [45.0, 38.9],
-  rostov:        [47.2, 39.7],
-  stavropol:     [45.0, 41.9],
-  astrakhan:     [46.3, 48.0],
-  voronezh:      [51.7, 39.2],
-  belgorod:      [50.6, 36.6],
-  kursk:         [51.7, 36.2],
-  tambov:        [52.7, 41.4],
-  moscow_obl:    [55.7, 37.6],
-  leningrad:     [59.9, 30.3],
-  chelyabinsk:   [55.1, 61.4],
-  kurgan:        [55.4, 65.3],
-  novosibirsk:   [54.9, 82.9],
-  omsk:          [54.9, 73.4],
-  altai:         [52.5, 82.2],
+  // Поволжье
+  samara:        [53.2,  50.2],
+  saratov:       [51.5,  46.0],
+  volgograd:     [48.7,  44.5],
+  ulyanovsk:     [54.3,  48.4],
+  penza:         [53.2,  45.0],
+  orenburg:      [51.8,  55.1],
+  tatarstan:     [55.8,  49.1],
+  bashkortostan: [54.7,  55.9],
+  // Юг
+  krasnodar:     [45.0,  38.9],
+  rostov:        [47.2,  39.7],
+  stavropol:     [45.0,  41.9],
+  astrakhan:     [46.3,  48.0],
+  // Черноземье
+  voronezh:      [51.7,  39.2],
+  belgorod:      [50.6,  36.6],
+  kursk:         [51.7,  36.2],
+  tambov:        [52.7,  41.4],
+  lipetsk:       [52.6,  39.6],
+  oryol:         [52.9,  36.1],
+  // Центр
+  moscow_obl:    [55.7,  37.6],
+  tver:          [56.9,  35.9],
+  ryazan:        [54.6,  39.7],
+  // Урал
+  chelyabinsk:   [55.1,  61.4],
+  kurgan:        [55.4,  65.3],
+  sverdlovsk:    [56.8,  60.6],
+  // Сибирь
+  novosibirsk:   [54.9,  82.9],
+  omsk:          [54.9,  73.4],
+  altai:         [52.5,  82.2],
+  krasnoyarsk:   [56.0,  92.8],
+  // Северо-Запад
+  leningrad:     [59.9,  30.3],
 };
 
 // Month labels for the decorative date slider
@@ -67,8 +80,8 @@ export default function NdviHeatMap({ summary, selectedRegion, onSelectRegion }:
     setMapReady(false);
 
     const map = L.map(containerRef.current, {
-      center:          [54.0, 50.0],
-      zoom:            4,
+      center:          [57.0, 65.0],
+      zoom:            3,
       zoomControl:     true,
       scrollWheelZoom: true,
       attributionControl: true,
