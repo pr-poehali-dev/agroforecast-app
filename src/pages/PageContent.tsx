@@ -32,7 +32,7 @@ export default function PageContent({
     setIsAuthed(!!getToken());
   }, [activeSection]);
 
-  const isFullscreen = activeSection === "profile" || activeSection === "crm";
+  const isFullscreen = activeSection === "crm";
 
   const handleLogin = () => {
     setIsAuthed(true);
@@ -73,11 +73,6 @@ export default function PageContent({
       {activeSection === "ai-model" && <SectionAiModel />}
       {activeSection === "logistics" && <SectionLogistics />}
 
-      {activeSection === "profile" && (
-        <SectionProfile onLogout={handleLogout} />
-      )}
-
-      {/* ── Личный кабинет / CRM ── */}
       {activeSection === "crm" && (
         isAuthed
           ? <SectionProfile onLogout={handleLogout} />

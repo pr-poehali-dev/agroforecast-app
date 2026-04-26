@@ -20,7 +20,6 @@ const SECTION_TITLES: Record<string, { label: string; desc: string }> = {
   pricing:      { label: "Тарифы",             desc: "Планы и возможности" },
   logistics:    { label: "Логистика",          desc: "Расчёт маршрутов и стоимости доставки" },
   crm:          { label: "Личный кабинет",     desc: "CRM, профиль и сделки" },
-  profile:      { label: "Личный кабинет",     desc: "Профиль и CRM-система" },
 };
 
 export default function Index() {

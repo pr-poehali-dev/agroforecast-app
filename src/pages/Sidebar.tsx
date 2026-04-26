@@ -24,7 +24,7 @@ const NAV_GROUPS = [
   {
     label: "Платформа",
     icon: "Layers",
-    items: ["integrations", "pricing", "profile"],
+    items: ["integrations", "pricing"],
   },
 ];
 
