@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import { ALERTS } from "./data";
+import { usePushNotifications } from "@/lib/usePushNotifications";
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const SETTINGS_URL = "https://functions.poehali.dev/settings"; // existing settings backend
@@ -261,6 +262,16 @@ interface BusinessAlertsIntegrationsProps {
 
 export default function BusinessAlertsIntegrations({ activeSection }: BusinessAlertsIntegrationsProps) {
 
+  // ── Push notifications ────────────────────────────────────────────────────
+  const { status: pushStatus, requestPermission, showTestNotification } = usePushNotifications();
+  const [pushRequesting, setPushRequesting] = useState(false);
+
+  const handleEnablePush = async () => {
+    setPushRequesting(true);
+    await requestPermission();
+    setPushRequesting(false);
+  };
+
   // ── Alerts tab state ─────────────────────────────────────────────────────
   const [alertsTab, setAlertsTab] = useState<"events" | "triggers">("events");
   const [filter, setFilter] = useState<AlertFilter>("all");
@@ -430,6 +441,64 @@ export default function BusinessAlertsIntegrations({ activeSection }: BusinessAl
               </div>
             </div>
           </div>
+
+          {/* Push-уведомления */}
+          {pushStatus === "unsupported" ? null : (
+            <div className={`rounded-2xl p-4 flex items-center gap-4 border ${
+              pushStatus === "granted"
+                ? "bg-primary/8 border-primary/20"
+                : pushStatus === "denied"
+                ? "bg-destructive/8 border-destructive/20"
+                : "bg-amber-50 border-amber-200"
+            }`}>
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                pushStatus === "granted" ? "bg-primary/15 text-primary"
+                : pushStatus === "denied" ? "bg-destructive/15 text-destructive"
+                : "bg-amber-100 text-amber-600"
+              }`}>
+                <Icon name={pushStatus === "granted" ? "BellRing" : pushStatus === "denied" ? "BellOff" : "Bell"} size={18} />
+              </div>
+              <div className="flex-1 min-w-0">
+                {pushStatus === "granted" && (
+                  <>
+                    <p className="text-sm font-semibold text-primary">Push-уведомления включены</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Триггеры проверяются каждые 5 минут. Сигнал придёт даже с закрытым сайтом.</p>
+                  </>
+                )}
+                {pushStatus === "denied" && (
+                  <>
+                    <p className="text-sm font-semibold text-destructive">Push-уведомления заблокированы</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Разрешите уведомления в настройках браузера для этого сайта.</p>
+                  </>
+                )}
+                {pushStatus === "default" && (
+                  <>
+                    <p className="text-sm font-semibold text-amber-700">Включите push-уведомления</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Браузер сообщит о сработавшем триггере даже когда сайт закрыт.</p>
+                  </>
+                )}
+              </div>
+              <div className="flex gap-2 shrink-0">
+                {pushStatus === "granted" && (
+                  <button
+                    onClick={showTestNotification}
+                    className="px-3 py-1.5 text-xs rounded-lg border border-primary/30 text-primary bg-primary/8 hover:bg-primary/15 font-medium transition-colors"
+                  >
+                    Тест
+                  </button>
+                )}
+                {pushStatus === "default" && (
+                  <button
+                    onClick={handleEnablePush}
+                    disabled={pushRequesting}
+                    className="px-4 py-2 text-xs rounded-xl bg-primary text-white font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
+                  >
+                    {pushRequesting ? "..." : "Включить"}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Inner tabs */}
           <div className="flex items-center justify-between gap-3 flex-wrap">
