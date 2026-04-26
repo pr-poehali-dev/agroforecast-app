@@ -83,7 +83,7 @@ export default function PageContent({
       {activeSection === "crm" && (
         isAuthed
           ? <SectionProfile onLogout={handleLogout} />
-          : <AuthPage onLogin={handleLogin} />
+          : <AuthPage onLogin={handleLogin} onOpenDocs={() => setActiveSection("docs")} />
       )}
 
       {(activeSection === "analytics" || activeSection === "business" || activeSection === "alerts" || activeSection === "integrations" || activeSection === "pricing") && (

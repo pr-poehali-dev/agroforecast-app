@@ -4,6 +4,7 @@ import { apiAuth, setToken } from "@/lib/auth";
 
 interface AuthPageProps {
   onLogin: (isNew?: boolean) => void;
+  onOpenDocs?: () => void;
 }
 
 const ROLES = [
@@ -14,7 +15,7 @@ const ROLES = [
   { value: "investor",   label: "Инвестор" },
 ];
 
-export default function AuthPage({ onLogin }: AuthPageProps) {
+export default function AuthPage({ onLogin, onOpenDocs }: AuthPageProps) {
   const [mode, setMode] = useState<"login" | "register" | "verify">("login");
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -124,6 +125,21 @@ export default function AuthPage({ onLogin }: AuthPageProps) {
                     </div>
                   </>
                 )}
+                {mode === "register" && (
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2">
+                    <Icon name="FileText" size={13} className="text-amber-600 shrink-0 mt-0.5" />
+                    <p className="text-[11px] text-amber-800 leading-relaxed">
+                      Регистрируясь, вы принимаете{" "}
+                      <button onClick={onOpenDocs} className="underline font-semibold hover:no-underline">
+                        Правила пользования и условия программы АгроБаллы
+                      </button>
+                      {" "}(1 балл = 1 ₽, оплата баллами до 50%), а также даёте согласие на обработку персональных данных согласно{" "}
+                      <button onClick={onOpenDocs} className="underline font-semibold hover:no-underline">
+                        152-ФЗ
+                      </button>.
+                    </p>
+                  </div>
+                )}
               </div>
             </>
           )}
@@ -174,7 +190,14 @@ export default function AuthPage({ onLogin }: AuthPageProps) {
           </button>
 
           <p className="text-center text-[11px] text-muted-foreground mt-5 font-body">
-            Продолжая, вы соглашаетесь с условиями использования АгроПорт
+            {onOpenDocs ? (
+              <>
+                Продолжая, вы соглашаетесь с{" "}
+                <button onClick={onOpenDocs} className="underline hover:no-underline text-primary">
+                  условиями использования АгроПорт
+                </button>
+              </>
+            ) : "Продолжая, вы соглашаетесь с условиями использования АгроПорт"}
           </p>
         </div>
       </div>
