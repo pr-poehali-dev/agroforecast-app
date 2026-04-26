@@ -16,7 +16,9 @@ export const NAV_ITEMS = [
   { id: "portfolio", label: "Мой портфель", icon: "Sprout" },
   { id: "alerts", label: "Уведомления", icon: "Bell" },
   { id: "integrations", label: "Интеграции", icon: "Plug" },
-  { id: "pricing", label: "Тарифы", icon: "CreditCard" },
+  { id: "pricing", label: "Тарифы и услуги", icon: "CreditCard" },
+  { id: "loyalty", label: "Программа лояльности", icon: "Crown" },
+  { id: "partners", label: "Партнёры", icon: "Handshake" },
 ];
 
 export const CROPS = ["Пшеница", "Подсолнечник", "Кукуруза", "Ячмень", "Рожь"];
@@ -158,6 +160,42 @@ export const PROFITABILITY_DATA = [
   { crop: "Кукуруза",       revenue: 40_800, cost: 28_900, margin: 29.2, roi: 41.2 },
   { crop: "Ячмень яровой",  revenue: 34_200, cost: 23_400, margin: 31.6, roi: 46.2 },
   { crop: "Рожь",           revenue: 26_300, cost: 20_600, margin: 21.7, roi: 27.7 },
+];
+
+export const LOYALTY_ACTIONS = [
+  { action: "Публикация данных по полям", points: 10, icon: "MapPin" },
+  { action: "Сделка на маркетплейсе (за 1 000 ₽)", points: 1, icon: "ShoppingCart" },
+  { action: "Участие в опросе", points: 5, icon: "MessageSquare" },
+  { action: "Приглашение коллеги", points: 50, icon: "UserPlus" },
+  { action: "Оставить отзыв", points: 15, icon: "Star" },
+];
+
+export const LOYALTY_REWARDS = [
+  { title: "1 месяц PRO", points: 1000, icon: "Crown", color: "bg-amber-100 text-amber-700 border-amber-200" },
+  { title: "50 доп. уведомлений", points: 200, icon: "Bell", color: "bg-blue-100 text-blue-700 border-blue-200" },
+  { title: "Премиум-отчёт", points: 500, icon: "FileText", color: "bg-purple-100 text-purple-700 border-purple-200" },
+  { title: "Консультация агронома (30 мин)", points: 800, icon: "Sprout", color: "bg-emerald-100 text-emerald-700 border-emerald-200" },
+];
+
+export const PARTNER_CATEGORIES = [
+  { id: "seeds", label: "Семена и удобрения", icon: "Sprout", desc: "Производители и дистрибьюторы СЗР, семян, удобрений" },
+  { id: "banks", label: "Банки и лизинг", icon: "Building2", desc: "Кредиты, лизинг сельхозтехники, страхование урожая" },
+  { id: "logistics", label: "Логистика", icon: "Truck", desc: "Перевозчики, элеваторы, зернохранилища" },
+  { id: "tech", label: "Агротехника", icon: "Settings2", desc: "Дроны, IoT-датчики, метеостанции, точное земледелие" },
+  { id: "export", label: "Экспортёры", icon: "Globe", desc: "Трейдеры и экспортные компании зернового рынка" },
+];
+
+export const PREMIUM_REPORTS = [
+  { title: "Прогноз экспорта зерна на сезон", price: 10_000, icon: "TrendingUp", desc: "Экспортный потенциал России по культурам и регионам, прогноз на сезон 2026/27" },
+  { title: "Баланс спроса/предложения по культурам", price: 7_000, icon: "ArrowLeftRight", desc: "Детальный анализ внутреннего рынка: производство, потребление, переходящие остатки" },
+  { title: "Макроэкономические индикаторы АПК", price: 5_000, icon: "BarChart3", desc: "ВВП АПК, инвестиции, субсидии, курс рубля — влияние на агрорынок" },
+  { title: "Исторические данные по региону (5 лет)", price: 15_000, icon: "Database", desc: "Цены, урожайность, NDVI, погода по выбранному региону за 5 лет" },
+];
+
+export const CONSULTATIONS = [
+  { role: "Агроном", price: 3_000, icon: "Sprout", color: "bg-emerald-50 border-emerald-200", badge: "bg-emerald-100 text-emerald-700", desc: "Анализ полей, рекомендации по агротехнике, защита растений" },
+  { role: "Трейдер", price: 5_000, icon: "TrendingUp", color: "bg-blue-50 border-blue-200", badge: "bg-blue-100 text-blue-700", desc: "Стратегии продаж, анализ рынка, оптимальные сроки реализации" },
+  { role: "Юрист АПК", price: 4_000, icon: "Scale", color: "bg-purple-50 border-purple-200", badge: "bg-purple-100 text-purple-700", desc: "Договоры, экспортное законодательство, субсидии и гранты" },
 ];
 
 export const PRICING_PLANS = [
