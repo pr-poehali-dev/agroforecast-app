@@ -5,6 +5,8 @@ const URLS = {
   stats: "https://functions.poehali.dev/d7a80f90-f407-4351-8851-a4f203ae0658",
   appeals: "https://functions.poehali.dev/acd52a79-f0c2-4e34-8354-a1c4c038a504",
   listings: "https://functions.poehali.dev/c97f48dc-125b-44c6-95dd-7bba1ad9286a",
+  documents: "https://functions.poehali.dev/326d7164-dac3-407d-bad7-9d613c211c21",
+  agent: "https://functions.poehali.dev/da876f65-9bf1-47dd-a655-51724a287820",
 };
 
 const TOKEN_KEY = "admin_token";
@@ -107,4 +109,32 @@ export const adminApi = {
 
   deleteListing: (id: number) =>
     req(`${URLS.listings}?id=${id}`, { method: "DELETE" }),
+
+  // ── Documents ──
+  getDocuments: () => req(`${URLS.documents}?resource=documents`),
+  getDocument: (id: number) => req(`${URLS.documents}?resource=documents&id=${id}`),
+  createDocument: (data: Record<string, unknown>) =>
+    req(`${URLS.documents}?resource=documents`, { method: "POST", body: JSON.stringify(data) }),
+  updateDocument: (id: number, data: Record<string, unknown>) =>
+    req(`${URLS.documents}?resource=documents&id=${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  deleteDocument: (id: number) =>
+    req(`${URLS.documents}?resource=documents&id=${id}`, { method: "DELETE" }),
+
+  // ── Project Tasks ──
+  getTasks: (stage?: number) => {
+    const q = stage ? `&stage=${stage}` : "";
+    return req(`${URLS.documents}?resource=tasks${q}`);
+  },
+  createTask: (data: Record<string, unknown>) =>
+    req(`${URLS.documents}?resource=tasks`, { method: "POST", body: JSON.stringify(data) }),
+  updateTask: (id: number, data: Record<string, unknown>) =>
+    req(`${URLS.documents}?resource=tasks&id=${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  deleteTask: (id: number) =>
+    req(`${URLS.documents}?resource=tasks&id=${id}`, { method: "DELETE" }),
+
+  // ── AI Agent ──
+  getAgentMessages: (limit = 50) => req(`${URLS.agent}?limit=${limit}`),
+  sendAgentMessage: (message: string) =>
+    req(URLS.agent, { method: "POST", body: JSON.stringify({ message }) }),
+  clearAgentHistory: () => req(URLS.agent, { method: "DELETE" }),
 };

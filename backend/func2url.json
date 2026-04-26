@@ -1,4 +1,6 @@
 {
+  "admin-agent": "https://functions.poehali.dev/da876f65-9bf1-47dd-a655-51724a287820",
+  "admin-documents": "https://functions.poehali.dev/326d7164-dac3-407d-bad7-9d613c211c21",
   "admin-listings": "https://functions.poehali.dev/c97f48dc-125b-44c6-95dd-7bba1ad9286a",
   "admin-users": "https://functions.poehali.dev/c81166ae-eea4-4a13-8c2e-c1286747733b",
   "admin-news": "https://functions.poehali.dev/491a4baa-6295-4358-8582-78c5e508b2e1",

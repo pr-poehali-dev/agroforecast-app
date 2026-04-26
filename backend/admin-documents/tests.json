@@ -1,0 +1,6 @@
+{
+  "tests": [
+    {"name": "Get documents", "method": "GET", "path": "/?resource=documents", "expectedStatus": 200, "expectedBody": {"items": []}, "bodyMatcher": "partial"},
+    {"name": "Get tasks", "method": "GET", "path": "/?resource=tasks", "expectedStatus": 401, "bodyMatcher": "partial"}
+  ]
+}

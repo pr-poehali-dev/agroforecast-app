@@ -9,6 +9,9 @@ import AdminNews from "./sections/AdminNews";
 import AdminDocs from "./sections/AdminDocs";
 import AdminListings from "./sections/AdminListings";
 import AdminMarketplaceRules from "./sections/AdminMarketplaceRules";
+import AdminAgent from "./sections/AdminAgent";
+import AdminProjectManager from "./sections/AdminProjectManager";
+import AdminStrategy from "./sections/AdminStrategy";
 import Icon from "@/components/ui/icon";
 
 export default function AdminPanel() {
@@ -38,6 +41,9 @@ export default function AdminPanel() {
 
   const sections: Record<string, React.ReactNode> = {
     dashboard: <AdminDashboard onSection={setSection} />,
+    agent: <AdminAgent />,
+    project: <AdminProjectManager />,
+    strategy: <AdminStrategy />,
     users: <AdminUsers />,
     appeals: <AdminAppeals />,
     listings: <AdminListings />,

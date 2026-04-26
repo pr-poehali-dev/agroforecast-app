@@ -1,0 +1,6 @@
+{
+  "tests": [
+    {"name": "Unauthorized GET", "method": "GET", "path": "/", "expectedStatus": 401, "bodyMatcher": "partial"},
+    {"name": "OPTIONS preflight", "method": "OPTIONS", "path": "/", "expectedStatus": 200, "bodyMatcher": "partial"}
+  ]
+}

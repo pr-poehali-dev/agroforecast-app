@@ -4,12 +4,15 @@ import { adminApi, adminToken } from "@/lib/adminApi";
 
 const NAV = [
   { id: "dashboard", label: "Дашборд", icon: "LayoutDashboard" },
+  { id: "agent", label: "ИИ Менеджер", icon: "Bot" },
+  { id: "project", label: "План проекта", icon: "KanbanSquare" },
+  { id: "strategy", label: "Документы", icon: "BookOpen" },
   { id: "users", label: "Пользователи", icon: "Users" },
   { id: "appeals", label: "Заявки", icon: "MessageSquare" },
   { id: "listings", label: "Маркетплейс", icon: "ShoppingCart" },
   { id: "marketplace-rules", label: "Правила", icon: "ScrollText" },
   { id: "news", label: "Новости", icon: "Newspaper" },
-  { id: "docs", label: "Документы", icon: "FileText" },
+  { id: "docs", label: "Юр. документы", icon: "FileText" },
 ];
 
 interface Props {
