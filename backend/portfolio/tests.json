@@ -1,0 +1,21 @@
+{
+  "tests": [
+    {
+      "name": "GET / — healthcheck",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200,
+      "expectedBody": { "status": "ok", "service": "portfolio" },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST list — guest user portfolio",
+      "method": "POST",
+      "path": "/",
+      "body": { "action": "list", "user_id": "guest" },
+      "expectedStatus": 200,
+      "expectedBody": { "items": [], "summary": { "count": 0 } },
+      "bodyMatcher": "partial"
+    }
+  ]
+}

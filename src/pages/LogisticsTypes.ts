@@ -40,6 +40,8 @@ export interface CalcResult {
   total_cost: number;
   cost_per_ton: number;
   cost_per_tkm: number;
+  transit_days?: number;
+  recommendation?: string;
   alternatives: {
     vehicle_type: string;
     label: string;
@@ -47,6 +49,19 @@ export interface CalcResult {
     cost_per_ton: number;
     trips_needed: number;
   }[];
+}
+
+export interface TransportOption {
+  mode: string;
+  vehicle_key: string;
+  icon: string;
+  cost: number;
+  cost_per_ton: number;
+  days: number;
+  trips: number;
+  pros: string;
+  cons: string;
+  savings_badge: string | null;
 }
 
 export interface SavedRoute {

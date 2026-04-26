@@ -14,7 +14,7 @@
       "path": "/?action=calculate",
       "body": {"from_city": "Москва", "to_city": "Ростов-на-Дону", "weight_tons": 20, "vehicle_type": "truck_20t", "cargo_type": "grain"},
       "expectedStatus": 200,
-      "expectedBody": {"from_city": "Москва"},
+      "expectedBody": {"from_city": "Москва", "transit_days": 2},
       "bodyMatcher": "partial"
     },
     {
@@ -23,6 +23,15 @@
       "path": "/?action=routes_list",
       "expectedStatus": 200,
       "expectedBody": {"routes": []},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Сравнение транспорта Самара-Краснодар",
+      "method": "POST",
+      "path": "/?action=compare_transport",
+      "body": {"from_city": "Самара", "to_city": "Краснодар", "weight_tons": 60, "cargo_type": "grain"},
+      "expectedStatus": 200,
+      "expectedBody": {"weight_tons": 60, "cargo_type": "grain"},
       "bodyMatcher": "partial"
     }
   ]

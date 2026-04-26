@@ -8,6 +8,7 @@ import SectionNews from "./SectionNews";
 import SectionPlanner from "./SectionPlanner";
 import SectionLogistics from "./SectionLogistics";
 import SectionProfile from "./SectionProfile";
+import SectionPortfolio from "./SectionPortfolio";
 import AuthPage from "./AuthPage";
 import { getToken } from "@/lib/auth";
 
@@ -82,6 +83,8 @@ export default function PageContent({
       {(activeSection === "analytics" || activeSection === "business" || activeSection === "alerts" || activeSection === "integrations" || activeSection === "pricing") && (
         <SectionBusiness activeSection={activeSection} />
       )}
+
+      {activeSection === "portfolio" && <SectionPortfolio />}
     </main>
   );
 }

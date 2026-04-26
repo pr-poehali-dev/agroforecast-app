@@ -25,6 +25,31 @@
       "expectedStatus": 200,
       "expectedBody": {"ok": true},
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST triggers_list — список триггеров",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "triggers_list", "user_id": "default"},
+      "expectedStatus": 200,
+      "expectedBody": {"alert_email": ""},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST triggers_save — добавить ценовой триггер",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "action": "triggers_save",
+        "user_id": "default",
+        "type": "price",
+        "crop": "Пшеница озимая",
+        "condition": "above",
+        "threshold": 15000
+      },
+      "expectedStatus": 201,
+      "expectedBody": {"success": true},
+      "bodyMatcher": "partial"
     }
   ]
 }

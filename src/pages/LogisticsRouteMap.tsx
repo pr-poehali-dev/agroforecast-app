@@ -97,6 +97,57 @@ export const RouteMap: React.FC<RouteMapProps> = ({ result }) => {
       dashArray: "12 7",
     }).addTo(map);
 
+    // ── Маркер элеватора на середине маршрута (если > 500 км) ──────────────
+    if (result.distance_km > 500) {
+      // Точка t=0.5 на кривой Безье
+      const tMid = 0.5;
+      const elevLat =
+        (1 - tMid) ** 2 * result.from_lat +
+        2 * (1 - tMid) * tMid * midLat +
+        tMid ** 2 * result.to_lat;
+      const elevLon =
+        (1 - tMid) ** 2 * result.from_lon +
+        2 * (1 - tMid) * tMid * midLon +
+        tMid ** 2 * result.to_lon;
+
+      const elevIcon = L.divIcon({
+        className: "",
+        html: `
+          <div style="
+            width: 34px; height: 34px;
+            border-radius: 50%;
+            background: #FFF8E1;
+            border: 2.5px solid #F59E0B;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 17px;
+          ">🌾</div>`,
+        iconSize:   [34, 34],
+        iconAnchor: [17, 17],
+      });
+
+      const savingsText = result.distance_km > 800
+        ? "ЖД от этой точки может сэкономить до 40% стоимости"
+        : "Рассмотрите перевалку для снижения стоимости";
+
+      L.marker([elevLat, elevLon], { icon: elevIcon })
+        .addTo(map)
+        .bindPopup(
+          `<div style="font-family:sans-serif;min-width:180px">` +
+          `<div style="font-weight:700;font-size:13px;margin-bottom:4px;color:#92400e">🌾 Элеватор — точка перевалки</div>` +
+          `<div style="font-size:11px;color:#555;line-height:1.5">` +
+            `Рассмотрите перегрузку груза здесь для смены вида транспорта.` +
+          `</div>` +
+          `<div style="margin-top:6px;font-size:11px;color:#2E7D32;font-weight:600">` +
+            `💡 ${savingsText}` +
+          `</div>` +
+          `<div style="margin-top:6px;font-size:10px;color:#999">` +
+            `Расстояние маршрута: ${result.distance_km} км` +
+          `</div>` +
+          `</div>`
+        );
+    }
+
     // Подогнать карту под маркеры
     map.fitBounds(L.latLngBounds([fromPos, toPos]), {
       padding: [70, 70],
@@ -131,6 +182,12 @@ export const RouteMap: React.FC<RouteMapProps> = ({ result }) => {
           <span className="w-3 h-3 rounded-full bg-blue-800 flex-shrink-0" />
           {result.to_city} — назначение
         </span>
+        {result.distance_km > 500 && (
+          <span className="flex items-center gap-1.5">
+            <span className="w-3 h-3 rounded-full bg-amber-400 flex-shrink-0" />
+            Элеватор — точка перевалки
+          </span>
+        )}
         <span className="flex items-center gap-1.5 ml-auto text-gray-400">
           <Icon name="Info" size={11} />
           Маршрут приблизительный · OpenStreetMap
