@@ -4,6 +4,7 @@ const URLS = {
   news: "https://functions.poehali.dev/491a4baa-6295-4358-8582-78c5e508b2e1",
   stats: "https://functions.poehali.dev/d7a80f90-f407-4351-8851-a4f203ae0658",
   appeals: "https://functions.poehali.dev/acd52a79-f0c2-4e34-8354-a1c4c038a504",
+  listings: "https://functions.poehali.dev/c97f48dc-125b-44c6-95dd-7bba1ad9286a",
 };
 
 const TOKEN_KEY = "admin_token";
@@ -86,4 +87,24 @@ export const adminApi = {
 
   updateAppeal: (id: number, data: Record<string, unknown>) =>
     req(`${URLS.appeals}?id=${id}`, { method: "PUT", body: JSON.stringify(data) }),
+
+  // ── Listings ──
+  getListings: (params: Record<string, string | number> = {}) => {
+    const q = new URLSearchParams(params as Record<string, string>).toString();
+    return req(`${URLS.listings}?${q}`);
+  },
+
+  getListing: (id: number) => req(`${URLS.listings}?id=${id}`),
+
+  updateListing: (id: number, data: Record<string, unknown>) =>
+    req(`${URLS.listings}?id=${id}`, { method: "PUT", body: JSON.stringify(data) }),
+
+  moderateListing: (id: number, action: "approve" | "reject" | "hide" | "restore", comment?: string) =>
+    req(`${URLS.listings}?id=${id}&action=${action}`, {
+      method: "PUT",
+      body: JSON.stringify({ comment: comment || "" }),
+    }),
+
+  deleteListing: (id: number) =>
+    req(`${URLS.listings}?id=${id}`, { method: "DELETE" }),
 };

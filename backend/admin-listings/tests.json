@@ -1,0 +1,16 @@
+{
+  "tests": [
+    {
+      "name": "GET listings list (no auth)",
+      "method": "GET",
+      "path": "/?page=1&limit=5",
+      "expectedStatus": 401
+    },
+    {
+      "name": "GET listing by id (no auth)",
+      "method": "GET",
+      "path": "/?id=1",
+      "expectedStatus": 401
+    }
+  ]
+}

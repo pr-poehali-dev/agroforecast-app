@@ -7,6 +7,8 @@ import AdminUsers from "./sections/AdminUsers";
 import AdminAppeals from "./sections/AdminAppeals";
 import AdminNews from "./sections/AdminNews";
 import AdminDocs from "./sections/AdminDocs";
+import AdminListings from "./sections/AdminListings";
+import AdminMarketplaceRules from "./sections/AdminMarketplaceRules";
 import Icon from "@/components/ui/icon";
 
 export default function AdminPanel() {
@@ -38,6 +40,8 @@ export default function AdminPanel() {
     dashboard: <AdminDashboard onSection={setSection} />,
     users: <AdminUsers />,
     appeals: <AdminAppeals />,
+    listings: <AdminListings />,
+    "marketplace-rules": <AdminMarketplaceRules />,
     news: <AdminNews />,
     docs: <AdminDocs />,
   };

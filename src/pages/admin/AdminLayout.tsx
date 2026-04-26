@@ -6,6 +6,8 @@ const NAV = [
   { id: "dashboard", label: "Дашборд", icon: "LayoutDashboard" },
   { id: "users", label: "Пользователи", icon: "Users" },
   { id: "appeals", label: "Заявки", icon: "MessageSquare" },
+  { id: "listings", label: "Маркетплейс", icon: "ShoppingCart" },
+  { id: "marketplace-rules", label: "Правила", icon: "ScrollText" },
   { id: "news", label: "Новости", icon: "Newspaper" },
   { id: "docs", label: "Документы", icon: "FileText" },
 ];
