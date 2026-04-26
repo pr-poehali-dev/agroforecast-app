@@ -24,7 +24,7 @@ const NAV_GROUPS = [
   {
     label: "Платформа",
     icon: "Layers",
-    items: ["integrations", "pricing", "loyalty", "partners"],
+    items: ["integrations", "pricing", "loyalty", "partners", "docs"],
   },
 ];
 
@@ -45,6 +45,7 @@ const SECTION_ICONS: Record<string, string> = {
   pricing: "CreditCard",
   loyalty: "Crown",
   partners: "Handshake",
+  docs: "FileText",
   logistics: "Truck",
   board: "ShoppingCart",
   crm: "Briefcase",

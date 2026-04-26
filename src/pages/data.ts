@@ -19,6 +19,7 @@ export const NAV_ITEMS = [
   { id: "pricing", label: "Тарифы и услуги", icon: "CreditCard" },
   { id: "loyalty", label: "Программа лояльности", icon: "Crown" },
   { id: "partners", label: "Партнёры", icon: "Handshake" },
+  { id: "docs", label: "Документы", icon: "FileText" },
 ];
 
 export const CROPS = ["Пшеница", "Подсолнечник", "Кукуруза", "Ячмень", "Рожь"];

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import Sidebar from "./Sidebar";
 import PageContent from "./PageContent";
+import ConsentModal from "./ConsentModal";
 
 const SECTION_TITLES: Record<string, { label: string; desc: string; seoTitle: string; seoDesc: string }> = {
   home:         { label: "Главная",             desc: "Дашборд и сводка по рынку",              seoTitle: "АгроПорт — AI-мониторинг агрорынка России",                                                     seoDesc: "Дашборд агрорынка России: цены на зерно, NDVI-мониторинг посевов, прогнозы урожайности и карта рисков в реальном времени." },
@@ -20,6 +21,7 @@ const SECTION_TITLES: Record<string, { label: string; desc: string; seoTitle: st
   pricing:      { label: "Тарифы и услуги",     desc: "Подписки, API, консультации",           seoTitle: "Тарифы и услуги АгроПорт — подписки, API, консультации",                                       seoDesc: "Тарифные планы, API-доступ, экспертные консультации и премиум-отчёты платформы АгроПорт для фермеров, трейдеров и агрохолдингов." },
   loyalty:      { label: "Программа лояльности", desc: "АгроБаллы и привилегии",              seoTitle: "Программа лояльности АгроПорт — АгроБаллы",                                                    seoDesc: "Зарабатывайте АгроБаллы за активность и обменивайте на подписки, премиум-отчёты и консультации экспертов." },
   partners:     { label: "Партнёры",             desc: "Партнёрская программа и реклама",      seoTitle: "Партнёрская программа АгроПорт — реклама и интеграции",                                        seoDesc: "Партнёрство с АгроПортом: реклама для 50 000+ аграриев, совместные программы с банками, агрохолдингами и поставщиками техники." },
+  docs:         { label: "Документы",            desc: "Правила, ПДн, АгроБаллы",             seoTitle: "Правовые документы АгроПорт — правила, персональные данные",                                   seoDesc: "Правила пользования платформой АгроПорт, Политика обработки персональных данных (152-ФЗ), Правила программы АгроБаллы." },
   logistics:    { label: "Логистика",           desc: "Расчёт маршрутов и стоимости доставки", seoTitle: "Логистика зерна — расчёт маршрутов и стоимости доставки | АгроПорт",                         seoDesc: "Расчёт логистики и стоимости доставки зерна по России. Оптимизация маршрутов, тарифы перевозчиков, карта элеваторов." },
   board:        { label: "Доска объявлений",    desc: "Купля и продажа сельхозпродукции",      seoTitle: "Доска объявлений зерна и сельхозпродукции — АгроПорт",                                         seoDesc: "Купля и продажа пшеницы, подсолнечника, кукурузы и других культур. Объявления с zerno.ru, agroserver.ru и от пользователей." },
   crm:          { label: "Личный кабинет",      desc: "CRM, профиль и сделки",                 seoTitle: "Личный кабинет — CRM и управление сделками | АгроПорт",                                        seoDesc: "Личный кабинет агропредприятия: CRM-система, управление контактами, сделками и задачами на платформе АгроПорт." },
@@ -39,6 +41,7 @@ export default function Index() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [animKey, setAnimKey] = useState(0);
   const [time, setTime] = useState(new Date());
+  const [showConsent, setShowConsent] = useState(() => !localStorage.getItem("agroport_consent_v1"));
 
   useEffect(() => {
     setAnimKey(k => k + 1);
@@ -79,8 +82,14 @@ export default function Index() {
 
   const section = SECTION_TITLES[activeSection] || { label: activeSection, desc: "", seoTitle: "", seoDesc: "" };
 
+  const handleConsentAccept = () => {
+    localStorage.setItem("agroport_consent_v1", new Date().toISOString());
+    setShowConsent(false);
+  };
+
   return (
     <div className="min-h-screen bg-background font-body flex overflow-hidden">
+      {showConsent && <ConsentModal onAccept={handleConsentAccept} />}
       <Sidebar
         activeSection={activeSection}
         sidebarOpen={sidebarOpen}
