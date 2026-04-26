@@ -224,11 +224,60 @@ export default function SectionBoard() {
         </div>
       )}
 
+      {/* External platforms */}
+      <div className="glass-card rounded-2xl p-4 sm:p-5">
+        <h2 className="font-heading font-semibold text-sm text-foreground flex items-center gap-2 mb-3">
+          <Icon name="ExternalLink" size={14} className="text-primary" />
+          Внешние торговые площадки
+        </h2>
+        <p className="text-xs text-muted-foreground mb-4">
+          Живые объявления от реальных участников рынка — напрямую на площадках:
+        </p>
+        <div className="grid sm:grid-cols-3 gap-3">
+          {[
+            {
+              name: "Зерно.ру",
+              desc: "Торговля зерном, мукой и масличными. Тысячи объявлений от аграриев.",
+              url: "https://zerno.ru/trade",
+              color: "bg-emerald-50 border-emerald-200",
+              badge: "bg-emerald-100 text-emerald-700",
+            },
+            {
+              name: "АгроСервер",
+              desc: "Крупнейшая доска объявлений агропромышленного рынка России.",
+              url: "https://agroserver.ru",
+              color: "bg-blue-50 border-blue-200",
+              badge: "bg-blue-100 text-blue-700",
+            },
+            {
+              name: "Фермер.ру",
+              desc: "Форум и база объявлений по купле-продаже зерна от фермеров.",
+              url: "https://fermer.ru/forum/torgovlya-zernom-i-zernobobulovymi",
+              color: "bg-amber-50 border-amber-200",
+              badge: "bg-amber-100 text-amber-700",
+            },
+          ].map(p => (
+            <a
+              key={p.name}
+              href={p.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`flex flex-col gap-2 p-4 rounded-xl border ${p.color} hover:shadow-md transition-all group`}
+            >
+              <div className="flex items-center justify-between">
+                <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${p.badge}`}>{p.name}</span>
+                <Icon name="ArrowUpRight" size={14} className="text-muted-foreground group-hover:text-foreground transition-colors" />
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">{p.desc}</p>
+            </a>
+          ))}
+        </div>
+      </div>
+
       {/* Info footer */}
       <div className="rounded-xl bg-secondary/60 border border-border p-3 flex items-start gap-2.5">
         <Icon name="Info" size={13} className="text-muted-foreground shrink-0 mt-0.5" />
         <p className="text-[11px] text-muted-foreground leading-relaxed">
-          Объявления агрегированы с площадок zerno.ru, agroserver.ru и agroinvestor.ru и обновляются ежедневно.
           Ваши объявления публикуются сразу и действуют 30 дней.
           АгроПорт не является стороной сделки — проверяйте контрагентов самостоятельно.
         </p>
