@@ -1,0 +1,10 @@
+{
+  "tests": [
+    {
+      "name": "Verify without token returns 401",
+      "method": "GET",
+      "path": "/?action=verify",
+      "expectedStatus": 401
+    }
+  ]
+}
