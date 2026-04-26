@@ -24,11 +24,12 @@ interface PageContentProps {
   selectedCrop: string;
   setSelectedCrop: (crop: string) => void;
   setActiveSection: (section: string) => void;
+  onRegister?: () => void;
 }
 
 export default function PageContent({
   activeSection, animKey, selectedRegion, setSelectedRegion,
-  selectedCrop, setSelectedCrop, setActiveSection,
+  selectedCrop, setSelectedCrop, setActiveSection, onRegister,
 }: PageContentProps) {
   const [isAuthed, setIsAuthed] = useState(() => !!getToken());
 
@@ -39,8 +40,9 @@ export default function PageContent({
 
   const isFullscreen = activeSection === "crm";
 
-  const handleLogin = () => {
+  const handleLogin = (isNew?: boolean) => {
     setIsAuthed(true);
+    if (isNew) onRegister?.();
   };
 
   const handleLogout = () => {

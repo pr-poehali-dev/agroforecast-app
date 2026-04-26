@@ -3,7 +3,7 @@ import Icon from "@/components/ui/icon";
 import { apiAuth, setToken } from "@/lib/auth";
 
 interface AuthPageProps {
-  onLogin: () => void;
+  onLogin: (isNew?: boolean) => void;
 }
 
 const ROLES = [
@@ -42,7 +42,7 @@ export default function AuthPage({ onLogin }: AuthPageProps) {
         const d = await apiAuth("verify", { token: verifyCode || verifyToken });
         if (d.error) { setError(d.error); return; }
         if (d.token) setToken(d.token);
-        onLogin();
+        onLogin(true);
       }
     } catch { setError("Ошибка соединения. Попробуйте ещё раз."); }
     finally { setLoading(false); }

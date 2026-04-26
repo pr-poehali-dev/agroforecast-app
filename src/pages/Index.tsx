@@ -41,7 +41,7 @@ export default function Index() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [animKey, setAnimKey] = useState(0);
   const [time, setTime] = useState(new Date());
-  const [showConsent, setShowConsent] = useState(() => !localStorage.getItem("agroport_consent_v1"));
+  const [showConsent, setShowConsent] = useState(false);
 
   useEffect(() => {
     setAnimKey(k => k + 1);
@@ -201,6 +201,9 @@ export default function Index() {
           selectedCrop={selectedCrop}
           setSelectedCrop={setSelectedCrop}
           setActiveSection={setActiveSection}
+          onRegister={() => {
+            if (!localStorage.getItem("agroport_consent_v1")) setShowConsent(true);
+          }}
         />
       </div>
     </div>
