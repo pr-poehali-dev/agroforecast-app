@@ -86,6 +86,12 @@ export default function MapSection({ selectedRegion, setSelectedRegion }: MapSec
         </div>
       </div>
       <YieldStatsPanel selectedRegionId={selectedRegion} />
+      <div className="flex items-center justify-center gap-2 py-3 px-4 rounded-lg bg-secondary/30 border border-border/50">
+        <Icon name="Shield" size={14} className="text-primary shrink-0" />
+        <span className="text-xs text-muted-foreground text-center">
+          Интеллектуальный продукт <span className="font-semibold text-foreground">ООО «МАТ-Лабс»</span> · все права защищены © {new Date().getFullYear()}
+        </span>
+      </div>
     </div>
   );
 }
