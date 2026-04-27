@@ -100,6 +100,50 @@ export default function YieldStatsPanel({ selectedRegionId }: Props) {
   const [loadingAll, setLoadingAll] = useState(false);
   const [sortBy, setSortBy] = useState<"region" | "avg" | "last" | "trend" | "forecast">("forecast");
   const [sortDesc, setSortDesc] = useState(true);
+  const [expandedRegions, setExpandedRegions] = useState<Set<string>>(new Set());
+  const [districtsCache, setDistrictsCache] = useState<Record<string, AllRegionRow[]>>({});
+  const [loadingDistricts, setLoadingDistricts] = useState<Set<string>>(new Set());
+
+  const toggleRegion = async (region: string) => {
+    const next = new Set(expandedRegions);
+    if (next.has(region)) {
+      next.delete(region);
+      setExpandedRegions(next);
+      return;
+    }
+    next.add(region);
+    setExpandedRegions(next);
+    const cacheKey = `${region}|${crop}`;
+    if (districtsCache[cacheKey]) return;
+    setLoadingDistricts((s) => new Set(s).add(region));
+    try {
+      const r = await fetch(`${YIELD_URL}?action=districts&region=${encodeURIComponent(region)}&crop=${encodeURIComponent(crop)}`);
+      const d = await r.json();
+      const rows: AllRegionRow[] = (d.districts || []).map((x: { district: string; history: HistoryPoint[]; avg: number; last: number; min: number; max: number; trend_pct: number; forecasts: ForecastItem[] }) => ({
+        region: x.district,
+        history: x.history,
+        avg: x.avg,
+        last: x.last,
+        min: x.min,
+        max: x.max,
+        trend_pct: x.trend_pct,
+        forecasts: x.forecasts,
+        reasoning: "",
+      }));
+      setDistrictsCache((c) => ({ ...c, [cacheKey]: rows }));
+    } finally {
+      setLoadingDistricts((s) => {
+        const ns = new Set(s);
+        ns.delete(region);
+        return ns;
+      });
+    }
+  };
+
+  // Сбрасываем кэш районов при смене культуры
+  useEffect(() => {
+    setExpandedRegions(new Set());
+  }, [crop]);
 
   useEffect(() => {
     fetch(`${YIELD_URL}?action=meta`)
@@ -440,13 +484,20 @@ export default function YieldStatsPanel({ selectedRegionId }: Props) {
                     }
                     return sortDesc ? -cmp : cmp;
                   })
-                  .map((row) => {
+                  .flatMap((row) => {
                     const histMap = new Map(row.history.map((h) => [h.year, h.yield]));
                     const fcstMap = new Map(row.forecasts.map((f) => [f.year, f.predicted_yield]));
                     const trendUp = row.trend_pct >= 0;
-                    return (
-                      <tr key={row.region} className="border-t border-border hover:bg-secondary/40 transition">
-                        <td className="px-3 py-2 font-medium">{row.region}</td>
+                    const isExpanded = expandedRegions.has(row.region);
+                    const cacheKey = `${row.region}|${crop}`;
+                    const districts = districtsCache[cacheKey] || [];
+                    const isLoadingD = loadingDistricts.has(row.region);
+                    const rows = [
+                      <tr key={row.region} onClick={() => toggleRegion(row.region)} className="border-t border-border hover:bg-secondary/60 transition cursor-pointer bg-secondary/20">
+                        <td className="px-3 py-2 font-semibold flex items-center gap-1.5">
+                          <Icon name={isExpanded ? "ChevronDown" : "ChevronRight"} size={12} className="text-primary" />
+                          {row.region}
+                        </td>
                         {allYears.map((y) => {
                           const isForecast = y > 2024;
                           const v = isForecast ? fcstMap.get(y) : histMap.get(y);
@@ -460,8 +511,53 @@ export default function YieldStatsPanel({ selectedRegionId }: Props) {
                         <td className={`px-2 py-2 font-mono text-center font-bold ${trendUp ? "text-primary" : "text-destructive"}`}>
                           {trendUp ? "+" : ""}{row.trend_pct}%
                         </td>
-                      </tr>
-                    );
+                      </tr>,
+                    ];
+                    if (isExpanded) {
+                      if (isLoadingD) {
+                        rows.push(
+                          <tr key={`${row.region}-loading`} className="border-t border-border bg-card">
+                            <td colSpan={allYears.length + 3} className="px-3 py-3 text-center text-xs text-muted-foreground">
+                              <Icon name="Loader2" size={12} className="animate-spin inline mr-2" />
+                              Загрузка районов...
+                            </td>
+                          </tr>,
+                        );
+                      } else if (districts.length === 0) {
+                        rows.push(
+                          <tr key={`${row.region}-empty`} className="border-t border-border bg-card">
+                            <td colSpan={allYears.length + 3} className="px-3 py-3 text-center text-xs text-muted-foreground">
+                              Нет детализации по районам для этой культуры
+                            </td>
+                          </tr>,
+                        );
+                      } else {
+                        districts.forEach((d) => {
+                          const dHist = new Map(d.history.map((h) => [h.year, h.yield]));
+                          const dFcst = new Map(d.forecasts.map((f) => [f.year, f.predicted_yield]));
+                          const dTrendUp = d.trend_pct >= 0;
+                          rows.push(
+                            <tr key={`${row.region}-${d.region}`} className="border-t border-border/50 hover:bg-secondary/30 transition bg-card/40">
+                              <td className="px-3 py-1.5 pl-8 text-[11px] text-muted-foreground">└ {d.region}</td>
+                              {allYears.map((y) => {
+                                const isForecast = y > 2024;
+                                const v = isForecast ? dFcst.get(y) : dHist.get(y);
+                                return (
+                                  <td key={y} className={`px-2 py-1.5 font-mono text-center text-[11px] ${isForecast ? "text-accent/80 bg-accent/5" : "text-muted-foreground"}`}>
+                                    {v != null ? v : "—"}
+                                  </td>
+                                );
+                              })}
+                              <td className="px-2 py-1.5 font-mono text-center text-[11px] font-semibold border-l border-border">{d.avg}</td>
+                              <td className={`px-2 py-1.5 font-mono text-center text-[11px] font-semibold ${dTrendUp ? "text-primary/80" : "text-destructive/80"}`}>
+                                {dTrendUp ? "+" : ""}{d.trend_pct}%
+                              </td>
+                            </tr>,
+                          );
+                        });
+                      }
+                    }
+                    return rows;
                   })}
               </tbody>
             </table>
@@ -471,7 +567,7 @@ export default function YieldStatsPanel({ selectedRegionId }: Props) {
         <div className="mt-3 flex items-center gap-3 flex-wrap text-[10px] text-muted-foreground">
           <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-secondary border border-border" />Факт (Росстат)</span>
           <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-accent/30 border border-accent" />ИИ-прогноз</span>
-          <span>· все значения в ц/га · клик по заголовку — сортировка</span>
+          <span>· все значения в ц/га · клик по заголовку — сортировка · <strong className="text-foreground">клик по региону — раскрыть районы</strong></span>
         </div>
       </div>
     </div>

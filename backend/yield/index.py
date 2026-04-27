@@ -275,6 +275,50 @@ def handler(event, context):
         if not region or not crop:
             return _err(400, "region and crop required")
         return _ok(forecast(region, crop, refresh, years_ahead))
+    if action == "districts":
+        region = qs.get("region")
+        crop = qs.get("crop") or "Пшеница озимая"
+        if not region:
+            return _err(400, "region required")
+        with _conn() as c, c.cursor() as cur:
+            cur.execute(
+                "SELECT district, year, yield_centner_per_ha, gross_harvest_tons, sown_area_ha "
+                "FROM district_yields WHERE region=%s AND crop=%s ORDER BY district, year",
+                (region, crop),
+            )
+            rows = cur.fetchall()
+        by_district = {}
+        for r in rows:
+            d = r[0]
+            if d not in by_district:
+                by_district[d] = {"district": d, "history": []}
+            by_district[d]["history"].append({
+                "year": r[1],
+                "yield": float(r[2]) if r[2] is not None else None,
+                "harvest": float(r[3]) if r[3] is not None else None,
+                "area": float(r[4]) if r[4] is not None else None,
+            })
+        result = []
+        for d in by_district.values():
+            hist = d["history"]
+            ys = [h["yield"] for h in hist if h["yield"] is not None]
+            if not ys:
+                continue
+            avg = sum(ys) / len(ys)
+            slope_pct = ((hist[-1]["yield"] - hist[0]["yield"]) / hist[0]["yield"] * 100) if hist[0]["yield"] else 0
+            target_years = list(range(hist[-1]["year"] + 1, hist[-1]["year"] + 1 + 5))
+            tf = _trend_forecast_multi(hist, target_years)
+            result.append({
+                "district": d["district"],
+                "history": hist,
+                "avg": round(avg, 1),
+                "last": hist[-1]["yield"],
+                "min": round(min(ys), 1),
+                "max": round(max(ys), 1),
+                "trend_pct": round(slope_pct, 1),
+                "forecasts": tf["forecasts"],
+            })
+        return _ok({"region": region, "crop": crop, "districts": result})
     if action == "forecast_all":
         crop = qs.get("crop") or "Пшеница озимая"
         try:
