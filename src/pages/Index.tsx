@@ -205,6 +205,15 @@ export default function Index() {
             if (!localStorage.getItem("agroport_consent_v1")) setShowConsent(true);
           }}
         />
+
+        {activeSection !== "crm" && (
+          <footer className="border-t border-border bg-secondary/40 px-4 lg:px-6 py-3 flex items-center justify-center gap-2 shrink-0">
+            <Icon name="Shield" size={13} className="text-primary shrink-0" />
+            <span className="text-[11px] text-muted-foreground text-center">
+              Интеллектуальный продукт <span className="font-semibold text-foreground">ООО «МАТ-Лабс»</span> · все права защищены © {new Date().getFullYear()}
+            </span>
+          </footer>
+        )}
       </div>
     </div>
   );

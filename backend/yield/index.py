@@ -275,4 +275,36 @@ def handler(event, context):
         if not region or not crop:
             return _err(400, "region and crop required")
         return _ok(forecast(region, crop, refresh, years_ahead))
+    if action == "forecast_all":
+        crop = qs.get("crop") or "Пшеница озимая"
+        try:
+            years_ahead = int(qs.get("years") or 5)
+        except ValueError:
+            years_ahead = 5
+        years_ahead = max(1, min(10, years_ahead))
+        with _conn() as c, c.cursor() as cur:
+            cur.execute("SELECT DISTINCT region FROM crop_yields WHERE crop=%s ORDER BY region", (crop,))
+            regions = [r[0] for r in cur.fetchall()]
+        result = []
+        for reg in regions:
+            hist = history(reg, crop)
+            if not hist:
+                continue
+            target_years = list(range(hist[-1]["year"] + 1, hist[-1]["year"] + 1 + years_ahead))
+            tf = _trend_forecast_multi(hist, target_years)
+            ys = [h["yield"] for h in hist]
+            avg = sum(ys) / len(ys)
+            slope_pct = ((hist[-1]["yield"] - hist[0]["yield"]) / hist[0]["yield"] * 100) if hist[0]["yield"] else 0
+            result.append({
+                "region": reg,
+                "history": hist,
+                "avg": round(avg, 1),
+                "last": hist[-1]["yield"],
+                "min": round(min(ys), 1),
+                "max": round(max(ys), 1),
+                "trend_pct": round(slope_pct, 1),
+                "forecasts": tf["forecasts"],
+                "reasoning": tf["reasoning"],
+            })
+        return _ok({"crop": crop, "years_ahead": years_ahead, "regions": result})
     return _err(400, f"unknown action: {action}")
