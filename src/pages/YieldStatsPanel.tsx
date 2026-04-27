@@ -21,12 +21,17 @@ interface HistoryPoint {
   harvest: number | null;
 }
 
+interface ForecastItem {
+  year: number;
+  predicted_yield: number;
+  confidence: number;
+}
+
 interface ForecastResp {
   region: string;
   crop: string;
-  forecast_year: number;
-  predicted_yield: number;
-  confidence: number;
+  forecast_years: number[];
+  forecasts: ForecastItem[];
   reasoning: string;
   history: HistoryPoint[];
   cached?: boolean;
@@ -113,7 +118,7 @@ export default function YieldStatsPanel({ selectedRegionId }: Props) {
     if (!dbRegionName) return;
     setLoadingForecast(true);
     try {
-      const url = `${YIELD_URL}?action=forecast&region=${encodeURIComponent(dbRegionName)}&crop=${encodeURIComponent(crop)}${refresh ? "&refresh=1" : ""}`;
+      const url = `${YIELD_URL}?action=forecast&region=${encodeURIComponent(dbRegionName)}&crop=${encodeURIComponent(crop)}&years=5${refresh ? "&refresh=1" : ""}`;
       const r = await fetch(url);
       const d = await r.json();
       if (!d.error) setForecast(d);
@@ -138,10 +143,21 @@ export default function YieldStatsPanel({ selectedRegionId }: Props) {
     };
   }, [mapRows]);
 
-  const chartData = history.map((h) => ({ year: h.year, yield: h.yield, harvest: (h.harvest || 0) / 1000 }));
-  if (forecast) {
-    chartData.push({ year: forecast.forecast_year, yield: forecast.predicted_yield, harvest: 0 });
+  const chartData: Array<{ year: number; yield: number | null; forecast?: number | null }> = history.map((h) => ({
+    year: h.year,
+    yield: h.yield,
+  }));
+  if (forecast?.forecasts?.length) {
+    const lastHist = history[history.length - 1];
+    if (lastHist) {
+      const idx = chartData.findIndex((d) => d.year === lastHist.year);
+      if (idx >= 0) chartData[idx] = { ...chartData[idx], forecast: lastHist.yield };
+    }
+    forecast.forecasts.forEach((f) => {
+      chartData.push({ year: f.year, yield: null, forecast: f.predicted_yield });
+    });
   }
+  const firstForecastYear = forecast?.forecasts?.[0]?.year;
 
   const selectedRegionLabel = selectedRegionId
     ? MAP_REGIONS.find((r) => r.id === selectedRegionId)?.name
@@ -241,42 +257,67 @@ export default function YieldStatsPanel({ selectedRegionId }: Props) {
           </div>
           {dbRegionName && (
             <button
-              onClick={() => handleForecast(!forecast)}
+              onClick={() => handleForecast(!!forecast)}
               disabled={loadingForecast}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary/10 border border-primary/30 text-primary text-xs font-medium hover:bg-primary/20 transition disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 rounded-md bg-gradient-to-r from-primary to-accent text-primary-foreground text-xs font-semibold hover:opacity-90 transition disabled:opacity-50 shadow"
             >
-              <Icon name={loadingForecast ? "Loader2" : "Sparkles"} size={12} className={loadingForecast ? "animate-spin" : ""} />
-              {forecast ? "Обновить ИИ-прогноз" : "Прогноз ИИ на следующий год"}
+              <Icon name={loadingForecast ? "Loader2" : "Sparkles"} size={14} className={loadingForecast ? "animate-spin" : ""} />
+              {loadingForecast ? "ИИ анализирует..." : forecast ? "Обновить прогноз ИИ" : "ИИ-прогноз до 2030 года"}
             </button>
           )}
         </div>
 
         {dbRegionName && history.length > 0 ? (
           <>
-            <ResponsiveContainer width="100%" height={220}>
+            <ResponsiveContainer width="100%" height={240}>
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
                 <XAxis dataKey="year" stroke="hsl(var(--muted-foreground))" fontSize={11} />
                 <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} label={{ value: "ц/га", angle: -90, position: "insideLeft", fill: "hsl(var(--muted-foreground))", fontSize: 10 }} />
                 <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
-                {forecast && <ReferenceLine x={forecast.forecast_year} stroke="hsl(var(--accent))" strokeDasharray="4 4" label={{ value: "Прогноз", fontSize: 10, fill: "hsl(var(--accent))" }} />}
-                <Line type="monotone" dataKey="yield" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 4 }} name="Урожайность ц/га" />
+                {firstForecastYear && <ReferenceLine x={firstForecastYear} stroke="hsl(var(--accent))" strokeDasharray="4 4" label={{ value: "Прогноз →", fontSize: 10, fill: "hsl(var(--accent))" }} />}
+                <Line type="monotone" dataKey="yield" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 4 }} name="Факт (ц/га)" connectNulls={false} />
+                {forecast && <Line type="monotone" dataKey="forecast" stroke="hsl(var(--accent))" strokeWidth={2.5} strokeDasharray="6 4" dot={{ r: 4 }} name="ИИ-прогноз (ц/га)" connectNulls />}
               </LineChart>
             </ResponsiveContainer>
 
-            {forecast && (
-              <div className="mt-3 p-3 rounded-lg bg-accent/10 border border-accent/30">
-                <div className="flex items-center gap-2 mb-2">
-                  <Icon name="Sparkles" size={14} className="text-accent" />
-                  <span className="text-xs font-semibold">ИИ-прогноз на {forecast.forecast_year} год</span>
-                  <span className="text-[10px] text-muted-foreground font-mono">уверенность {forecast.confidence.toFixed(0)}%</span>
+            {forecast && forecast.forecasts?.length > 0 && (
+              <div className="mt-3 space-y-3">
+                <div className="p-3 rounded-lg bg-gradient-to-r from-accent/15 to-primary/10 border border-accent/40">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Icon name="Sparkles" size={14} className="text-accent" />
+                    <span className="text-xs font-bold uppercase tracking-wider">ИИ-прогноз урожайности · {forecast.forecasts[0].year}–{forecast.forecasts[forecast.forecasts.length - 1].year}</span>
+                    {forecast.cached && <span className="text-[9px] text-muted-foreground font-mono">(кэш)</span>}
+                  </div>
+                  <p className="text-xs text-foreground/80 leading-relaxed">{forecast.reasoning}</p>
                 </div>
-                <div className="flex items-baseline gap-2 mb-2">
-                  <span className="font-mono font-black text-2xl text-accent">{forecast.predicted_yield}</span>
-                  <span className="text-xs text-muted-foreground">ц/га</span>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+                  {forecast.forecasts.map((f) => {
+                    const lastFact = history[history.length - 1]?.yield || 0;
+                    const delta = lastFact ? ((f.predicted_yield - lastFact) / lastFact) * 100 : 0;
+                    const positive = delta >= 0;
+                    return (
+                      <div key={f.year} className="rounded-lg border border-accent/30 bg-card/60 p-2.5">
+                        <div className="text-[10px] text-muted-foreground font-mono mb-1">{f.year} год</div>
+                        <div className="flex items-baseline gap-1">
+                          <span className="font-mono font-black text-lg text-accent">{f.predicted_yield}</span>
+                          <span className="text-[10px] text-muted-foreground">ц/га</span>
+                        </div>
+                        <div className="flex items-center justify-between mt-1.5">
+                          <span className={`text-[10px] font-mono font-semibold ${positive ? "text-primary" : "text-destructive"}`}>
+                            {positive ? "+" : ""}{delta.toFixed(1)}%
+                          </span>
+                          <span className="text-[9px] text-muted-foreground font-mono">±{(100 - f.confidence).toFixed(0)}%</span>
+                        </div>
+                        <div className="h-1 bg-border rounded-full mt-1.5 overflow-hidden">
+                          <div className="h-full bg-accent rounded-full" style={{ width: `${f.confidence}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-                <p className="text-xs text-muted-foreground leading-relaxed">{forecast.reasoning}</p>
               </div>
             )}
           </>

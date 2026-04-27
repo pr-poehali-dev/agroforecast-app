@@ -109,24 +109,29 @@ def _save_forecast(region, crop, fyear, pred, conf, reason):
         c.commit()
 
 
-def _ask_deepseek(region, crop, hist):
+def _ask_deepseek_multi(region, crop, hist, target_years):
     api_key = os.environ.get("DEEPSEEK_API_KEY")
     if not api_key:
         return None
     series = ", ".join([f"{h['year']}: {h['yield']} ц/га" for h in hist])
+    years_str = ", ".join(str(y) for y in target_years)
     prompt = (
-        f"Ты агроном-аналитик. Регион: {region}. Культура: {crop}. "
-        f"История урожайности: {series}. "
-        f"Спрогнозируй урожайность на {hist[-1]['year']+1} год в ц/га. "
-        "Учитывай тренд, климатические риски, цикличность. "
-        "Верни СТРОГО JSON: {\"yield\": число, \"confidence\": число 0-100, \"reasoning\": \"короткое объяснение на русском, 2-3 предложения\"}. "
-        "Без markdown, без обёрток, только JSON."
+        f"Ты опытный агроном-аналитик и климатолог. Регион РФ: {region}. Культура: {crop}. "
+        f"Исторические данные урожайности: {series}. "
+        f"Сейчас апрель 2026 года. Спрогнозируй урожайность по каждому году: {years_str} (в ц/га). "
+        "Учитывай: долгосрочный тренд, климатические изменения (потепление, засушливость юга РФ), "
+        "цикличность урожайных и неурожайных лет, развитие агротехнологий и селекции, "
+        "риски засух, заморозков, вредителей. Уверенность падает с дальностью прогноза. "
+        "Верни СТРОГО JSON: "
+        "{\"forecasts\":[{\"year\":2026,\"yield\":число,\"confidence\":0-100},...],"
+        "\"reasoning\":\"3-5 предложений на русском: тренд, риски, динамика по годам\"}. "
+        "Без markdown, без ```, только JSON."
     )
     body = json.dumps(
         {
             "model": "deepseek-chat",
             "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.3,
+            "temperature": 0.4,
             "response_format": {"type": "json_object"},
         }
     ).encode("utf-8")
@@ -136,25 +141,32 @@ def _ask_deepseek(region, crop, hist):
         headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
     )
     try:
-        with urllib.request.urlopen(req, timeout=25) as resp:
+        with urllib.request.urlopen(req, timeout=28) as resp:
             data = json.loads(resp.read().decode("utf-8"))
         text = data["choices"][0]["message"]["content"].strip()
         if text.startswith("```"):
             text = text.strip("`").split("\n", 1)[1] if "\n" in text else text.strip("`")
         parsed = json.loads(text)
-        return {
-            "predicted_yield": float(parsed.get("yield", 0)),
-            "confidence": float(parsed.get("confidence", 70)),
-            "reasoning": str(parsed.get("reasoning", "")),
-        }
-    except (urllib.error.URLError, KeyError, ValueError, json.JSONDecodeError):
+        items = parsed.get("forecasts", [])
+        out = []
+        for it in items:
+            out.append({
+                "year": int(it.get("year")),
+                "predicted_yield": float(it.get("yield", 0)),
+                "confidence": float(it.get("confidence", 70)),
+            })
+        return {"forecasts": out, "reasoning": str(parsed.get("reasoning", ""))}
+    except (urllib.error.URLError, KeyError, ValueError, json.JSONDecodeError, TypeError):
         return None
 
 
-def _trend_forecast(hist):
+def _trend_forecast_multi(hist, target_years):
     if len(hist) < 2:
         last = hist[-1]["yield"] if hist else 25.0
-        return {"predicted_yield": round(last, 1), "confidence": 50.0, "reasoning": "Мало данных, использовано последнее значение."}
+        return {
+            "forecasts": [{"year": y, "predicted_yield": round(last, 1), "confidence": 50.0} for y in target_years],
+            "reasoning": "Мало данных, использовано последнее значение.",
+        }
     n = len(hist)
     xs = list(range(n))
     ys = [h["yield"] for h in hist]
@@ -164,32 +176,70 @@ def _trend_forecast(hist):
     den = sum((xs[i] - mx) ** 2 for i in range(n)) or 1
     slope = num / den
     intercept = my - slope * mx
-    pred = intercept + slope * n
-    pred = max(5.0, min(120.0, pred))
     var = sum((ys[i] - (intercept + slope * xs[i])) ** 2 for i in range(n)) / n
-    conf = max(45.0, 90.0 - var * 1.5)
+    last_hist_year = hist[-1]["year"]
+    forecasts = []
+    for y in target_years:
+        offset = n + (y - last_hist_year - 1)
+        pred = intercept + slope * offset
+        pred = max(5.0, min(120.0, pred))
+        horizon = y - last_hist_year
+        conf = max(40.0, 88.0 - var * 1.5 - horizon * 4.0)
+        forecasts.append({"year": y, "predicted_yield": round(pred, 1), "confidence": round(conf, 1)})
     direction = "роста" if slope > 0 else "снижения"
     return {
-        "predicted_yield": round(pred, 1),
-        "confidence": round(conf, 1),
-        "reasoning": f"Линейный тренд {direction} ({slope:+.2f} ц/га в год). Прогноз построен по {n} годам наблюдений.",
+        "forecasts": forecasts,
+        "reasoning": f"Линейный тренд {direction} ({slope:+.2f} ц/га в год) по {n} годам наблюдений. Уверенность снижается с горизонтом прогноза.",
     }
 
 
-def forecast(region: str, crop: str, refresh: bool = False):
+def forecast(region: str, crop: str, refresh: bool = False, years_ahead: int = 5):
     hist = history(region, crop)
     if not hist:
         return {"error": "Нет исторических данных для прогноза"}
-    fyear = hist[-1]["year"] + 1
+    last_hist_year = hist[-1]["year"]
+    target_years = list(range(last_hist_year + 1, last_hist_year + 1 + max(1, years_ahead)))
+
     if not refresh:
-        cached = _cached_forecast(region, crop, fyear)
-        if cached:
-            return {"region": region, "crop": crop, "forecast_year": fyear, "history": hist, **cached}
-    ai = _ask_deepseek(region, crop, hist)
-    if ai is None:
-        ai = _trend_forecast(hist)
-    _save_forecast(region, crop, fyear, ai["predicted_yield"], ai["confidence"], ai["reasoning"])
-    return {"region": region, "crop": crop, "forecast_year": fyear, "history": hist, **ai, "cached": False}
+        cached_items = []
+        all_cached = True
+        with _conn() as c, c.cursor() as cur:
+            for y in target_years:
+                cur.execute(
+                    "SELECT predicted_yield, confidence, reasoning FROM yield_forecasts WHERE region=%s AND crop=%s AND forecast_year=%s",
+                    (region, crop, y),
+                )
+                row = cur.fetchone()
+                if row:
+                    cached_items.append({"year": y, "predicted_yield": float(row[0]), "confidence": float(row[1]), "reasoning": row[2]})
+                else:
+                    all_cached = False
+                    break
+        if all_cached and cached_items:
+            return {
+                "region": region, "crop": crop,
+                "forecast_years": target_years,
+                "forecasts": cached_items,
+                "reasoning": cached_items[0].get("reasoning", ""),
+                "history": hist, "cached": True,
+            }
+
+    ai = _ask_deepseek_multi(region, crop, hist, target_years)
+    if ai is None or not ai.get("forecasts"):
+        ai = _trend_forecast_multi(hist, target_years)
+
+    reasoning = ai.get("reasoning", "")
+    for f in ai["forecasts"]:
+        _save_forecast(region, crop, f["year"], f["predicted_yield"], f["confidence"], reasoning)
+
+    return {
+        "region": region, "crop": crop,
+        "forecast_years": target_years,
+        "forecasts": ai["forecasts"],
+        "reasoning": reasoning,
+        "history": hist,
+        "cached": False,
+    }
 
 
 def handler(event, context):
@@ -217,7 +267,12 @@ def handler(event, context):
         region = qs.get("region")
         crop = qs.get("crop")
         refresh = qs.get("refresh") == "1"
+        try:
+            years_ahead = int(qs.get("years") or 5)
+        except ValueError:
+            years_ahead = 5
+        years_ahead = max(1, min(10, years_ahead))
         if not region or not crop:
             return _err(400, "region and crop required")
-        return _ok(forecast(region, crop, refresh))
+        return _ok(forecast(region, crop, refresh, years_ahead))
     return _err(400, f"unknown action: {action}")
