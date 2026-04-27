@@ -85,6 +85,21 @@ export default function MapSection({ selectedRegion, setSelectedRegion }: MapSec
           </div>
         </div>
       </div>
+      <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-primary/20 via-accent/15 to-primary/20 border-2 border-primary/40 px-5 py-4 mt-2">
+        <div className="absolute inset-0 bg-grid opacity-20" />
+        <div className="relative flex items-center gap-3 flex-wrap">
+          <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/20 border border-primary/40">
+            <Icon name="BarChart3" size={20} className="text-primary" />
+          </div>
+          <div className="flex-1">
+            <h2 className="font-heading font-black text-xl text-foreground">Статистика по годам</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">Урожайность 2019–2024 · ТОП регионов · ИИ-прогноз на следующий год</p>
+          </div>
+          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-accent/20 border border-accent/40 text-accent text-[10px] font-mono font-bold">
+            <Icon name="Sparkles" size={11} />NEW
+          </span>
+        </div>
+      </div>
       <YieldStatsPanel selectedRegionId={selectedRegion} />
       <div className="flex items-center justify-center gap-2 py-3 px-4 rounded-lg bg-secondary/30 border border-border/50">
         <Icon name="Shield" size={14} className="text-primary shrink-0" />
