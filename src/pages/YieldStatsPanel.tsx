@@ -147,6 +147,14 @@ export default function YieldStatsPanel({ selectedRegionId }: Props) {
     ? MAP_REGIONS.find((r) => r.id === selectedRegionId)?.name
     : null;
 
+  const CROP_ICONS: Record<string, string> = {
+    "Пшеница озимая": "Wheat",
+    "Подсолнечник": "Flower",
+    "Кукуруза": "Sprout",
+    "Ячмень яровой": "Wheat",
+    "Рожь": "Wheat",
+  };
+
   return (
     <div className="glass-card rounded-xl p-5 space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -154,25 +162,37 @@ export default function YieldStatsPanel({ selectedRegionId }: Props) {
           <Icon name="BarChart3" size={16} className="text-primary" />
           <span className="font-semibold text-sm">Статистика урожайности по годам</span>
         </div>
+        <select
+          value={year}
+          onChange={(e) => setYear(Number(e.target.value))}
+          className="bg-secondary border border-border rounded-md px-3 py-1.5 text-xs font-mono"
+        >
+          {(meta?.years || [2024]).map((y) => (
+            <option key={y} value={y}>{y} год</option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <div className="text-[10px] font-medium text-muted-foreground mb-2 uppercase tracking-wider">Выберите культуру</div>
         <div className="flex gap-2 flex-wrap">
-          <select
-            value={crop}
-            onChange={(e) => setCrop(e.target.value)}
-            className="bg-secondary border border-border rounded-md px-3 py-1.5 text-xs font-mono"
-          >
-            {(meta?.crops || ["Пшеница озимая"]).map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
-          <select
-            value={year}
-            onChange={(e) => setYear(Number(e.target.value))}
-            className="bg-secondary border border-border rounded-md px-3 py-1.5 text-xs font-mono"
-          >
-            {(meta?.years || [2024]).map((y) => (
-              <option key={y} value={y}>{y}</option>
-            ))}
-          </select>
+          {(meta?.crops || ["Пшеница озимая"]).map((c) => {
+            const active = c === crop;
+            return (
+              <button
+                key={c}
+                onClick={() => setCrop(c)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 text-xs font-semibold transition-all ${
+                  active
+                    ? "bg-primary text-primary-foreground border-primary shadow-md"
+                    : "bg-secondary/50 border-border text-foreground hover:border-primary/50 hover:bg-secondary"
+                }`}
+              >
+                <Icon name={CROP_ICONS[c] || "Wheat"} size={14} />
+                {c}
+              </button>
+            );
+          })}
         </div>
       </div>
 
