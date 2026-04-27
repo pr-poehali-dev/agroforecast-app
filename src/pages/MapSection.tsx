@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
 import Icon from "@/components/ui/icon";
 import { MAP_REGIONS, getRiskColor, getRiskLabel } from "./data";
+import YieldStatsPanel from "./YieldStatsPanel";
 
 const VolgaMap = lazy(() => import("@/components/VolgaMap"));
 
@@ -84,6 +85,7 @@ export default function MapSection({ selectedRegion, setSelectedRegion }: MapSec
           </div>
         </div>
       </div>
+      <YieldStatsPanel selectedRegionId={selectedRegion} />
     </div>
   );
 }
