@@ -55,19 +55,19 @@ def verify_token(cur, token):
     return cur.fetchone() is not None
 
 def call_ai(messages):
-    api_key = os.environ.get("DEEPSEEK_API_KEY", "")
+    api_key = os.environ.get("POLZA_API_KEY", "")
     if not api_key:
-        return "ИИ-агент временно недоступен: не настроен API-ключ DeepSeek."
+        return "ИИ-агент временно недоступен: не настроен API-ключ Polza.ai."
 
     payload = json.dumps({
-        "model": "deepseek-chat",
+        "model": "openai/gpt-4o-mini",
         "messages": messages,
         "max_tokens": 1500,
         "temperature": 0.7
     }).encode("utf-8")
 
     req = urllib.request.Request(
-        "https://api.deepseek.com/chat/completions",
+        "https://api.polza.ai/api/v1/chat/completions",
         data=payload,
         headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
         method="POST"
@@ -78,7 +78,7 @@ def call_ai(messages):
             return data["choices"][0]["message"]["content"]
     except urllib.error.HTTPError as e:
         body = e.read().decode()
-        return f"Ошибка DeepSeek: {e.code}. {body[:200]}"
+        return f"Ошибка Polza.ai: {e.code}. {body[:200]}"
     except Exception as ex:
         return f"Ошибка соединения: {str(ex)}"
 

@@ -110,7 +110,7 @@ def _save_forecast(region, crop, fyear, pred, conf, reason):
 
 
 def _ask_deepseek_multi(region, crop, hist, target_years):
-    api_key = os.environ.get("DEEPSEEK_API_KEY")
+    api_key = os.environ.get("POLZA_API_KEY")
     if not api_key:
         return None
     series = ", ".join([f"{h['year']}: {h['yield']} ц/га" for h in hist])
@@ -118,7 +118,7 @@ def _ask_deepseek_multi(region, crop, hist, target_years):
     prompt = (
         f"Ты опытный агроном-аналитик и климатолог. Регион РФ: {region}. Культура: {crop}. "
         f"Исторические данные урожайности: {series}. "
-        f"Сейчас апрель 2026 года. Спрогнозируй урожайность по каждому году: {years_str} (в ц/га). "
+        f"Сейчас июль 2026 года. Спрогнозируй урожайность по каждому году: {years_str} (в ц/га). "
         "Учитывай: долгосрочный тренд, климатические изменения (потепление, засушливость юга РФ), "
         "цикличность урожайных и неурожайных лет, развитие агротехнологий и селекции, "
         "риски засух, заморозков, вредителей. Уверенность падает с дальностью прогноза. "
@@ -129,14 +129,14 @@ def _ask_deepseek_multi(region, crop, hist, target_years):
     )
     body = json.dumps(
         {
-            "model": "deepseek-chat",
+            "model": "openai/gpt-4o-mini",
             "messages": [{"role": "user", "content": prompt}],
             "temperature": 0.4,
             "response_format": {"type": "json_object"},
         }
     ).encode("utf-8")
     req = urllib.request.Request(
-        "https://api.deepseek.com/chat/completions",
+        "https://api.polza.ai/api/v1/chat/completions",
         data=body,
         headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
     )
