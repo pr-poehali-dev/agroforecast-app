@@ -7,6 +7,8 @@ const URLS = {
   listings: "https://functions.poehali.dev/c97f48dc-125b-44c6-95dd-7bba1ad9286a",
   documents: "https://functions.poehali.dev/326d7164-dac3-407d-bad7-9d613c211c21",
   agent: "https://functions.poehali.dev/da876f65-9bf1-47dd-a655-51724a287820",
+  suppliers: "https://functions.poehali.dev/f855736f-6aea-46bc-b19f-5da2b53735cd",
+  regionPlan: "https://functions.poehali.dev/12ca1111-c9f0-4f38-bffe-b5bd19cb4cff",
 };
 
 const TOKEN_KEY = "admin_token";
@@ -137,4 +139,29 @@ export const adminApi = {
   sendAgentMessage: (message: string) =>
     req(`${URLS.agent}?token=${adminToken.get()}`, { method: "POST", body: JSON.stringify({ message }) }),
   clearAgentHistory: () => req(`${URLS.agent}?token=${adminToken.get()}`, { method: "DELETE" }),
+
+  // ── Suppliers (база поставщиков) ──
+  getSuppliers: (params: Record<string, string | number> = {}) => {
+    const q = new URLSearchParams(params as Record<string, string>).toString();
+    return req(`${URLS.suppliers}?${q}`);
+  },
+  createSupplier: (data: Record<string, unknown>) =>
+    req(URLS.suppliers, { method: "POST", body: JSON.stringify(data) }),
+  updateSupplier: (id: number, data: Record<string, unknown>) =>
+    req(`${URLS.suppliers}?id=${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  deleteSupplier: (id: number) =>
+    req(`${URLS.suppliers}?id=${id}`, { method: "DELETE" }),
+  importSuppliers: (rows: Record<string, unknown>[], region: string) =>
+    req(`${URLS.suppliers}?action=import`, { method: "POST", body: JSON.stringify({ rows, region }) }),
+
+  // ── Region plan (план по региону) ──
+  getRegionPlan: (region: string) =>
+    req(`${URLS.regionPlan}?region=${encodeURIComponent(region)}`),
+  saveRegionPlan: (data: Record<string, unknown>) =>
+    req(URLS.regionPlan, { method: "POST", body: JSON.stringify(data) }),
+  generateRegionPlan: (region: string, partner: string, extra: string) =>
+    req(`${URLS.regionPlan}?action=generate`, {
+      method: "POST",
+      body: JSON.stringify({ region, partner, extra }),
+    }),
 };

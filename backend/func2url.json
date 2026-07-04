@@ -1,4 +1,6 @@
 {
+  "admin-suppliers": "https://functions.poehali.dev/f855736f-6aea-46bc-b19f-5da2b53735cd",
+  "admin-region-plan": "https://functions.poehali.dev/12ca1111-c9f0-4f38-bffe-b5bd19cb4cff",
   "yield": "https://functions.poehali.dev/936e2fb4-a510-4741-b86a-0bbaf003c898",
   "admin-agent": "https://functions.poehali.dev/da876f65-9bf1-47dd-a655-51724a287820",
   "admin-documents": "https://functions.poehali.dev/326d7164-dac3-407d-bad7-9d613c211c21",

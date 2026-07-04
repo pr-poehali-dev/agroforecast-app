@@ -7,6 +7,7 @@ const NAV = [
   { id: "agent", label: "ИИ Менеджер", icon: "Bot" },
   { id: "project", label: "План проекта", icon: "KanbanSquare" },
   { id: "strategy", label: "Документы", icon: "BookOpen" },
+  { id: "saratov", label: "Саратовская обл.", icon: "MapPin" },
   { id: "users", label: "Пользователи", icon: "Users" },
   { id: "appeals", label: "Заявки", icon: "MessageSquare" },
   { id: "listings", label: "Маркетплейс", icon: "ShoppingCart" },
