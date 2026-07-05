@@ -84,7 +84,6 @@ def _ai_column_map(columns, sample_rows):
         "model": "openai/gpt-4o-mini",
         "messages": [{"role": "user", "content": prompt}],
         "temperature": 0.1,
-        "response_format": {"type": "json_object"},
     }).encode("utf-8")
     req = urllib.request.Request(
         "https://api.polza.ai/api/v1/chat/completions",
@@ -96,13 +95,61 @@ def _ai_column_map(columns, sample_rows):
         with urllib.request.urlopen(req, timeout=28) as resp:
             data = json.loads(resp.read())
         text = data["choices"][0]["message"]["content"].strip()
+        # вырезаем markdown-обёртку ```json ... ```
         if text.startswith("```"):
-            text = text.strip("`").split("\n", 1)[1] if "\n" in text else text.strip("`")
+            text = text.split("```", 2)[1] if text.count("```") >= 2 else text.strip("`")
+            if text.lstrip().lower().startswith("json"):
+                text = text.lstrip()[4:]
+        # берём от первой { до последней }
+        start, end = text.find("{"), text.rfind("}")
+        if start != -1 and end != -1:
+            text = text[start:end + 1]
         parsed = json.loads(text)
         cmap = parsed.get("map", parsed)
-        return {str(k): str(v) for k, v in cmap.items() if v in FIELDS}
-    except (urllib.error.URLError, urllib.error.HTTPError, KeyError, ValueError, json.JSONDecodeError, TypeError):
+        result = {str(k): str(v) for k, v in cmap.items() if v in FIELDS}
+        return result or None
+    except urllib.error.HTTPError as e:
+        print(f"[ai_column_map] HTTPError {e.code}: {e.read().decode()[:300]}")
         return None
+    except Exception as ex:
+        print(f"[ai_column_map] error: {ex}")
+        return None
+
+
+def _heuristic_map(columns):
+    """Запасное сопоставление колонок по ключевым словам (если ИИ недоступен)."""
+    rules = [
+        ("inn", ["инн"]),
+        ("name", ["названиепредприятия", "наименование", "названиеорганизации", "предприятие", "организация", "хозяйство", "название", "юрлицо", "компания"]),
+        ("ownership", ["формасобственности", "подчиненность", "подчинённость", "вышестоящ"]),
+        ("postal_code", ["почтовыйиндекс", "индекс"]),
+        ("address", ["почтовыйадрес", "адрес"]),
+        ("contact_person", ["руководитель", "контактноелицо", "контакт", "фио", "директор"]),
+        ("phone", ["телефон", "тел"]),
+        ("fax", ["факс"]),
+        ("email", ["email", "e_mail", "e-mail", "почта", "мейл"]),
+        ("website", ["сайт", "website", "web", "url"]),
+        ("staff_count", ["численность", "штат", "сотрудник"]),
+        ("founded_year", ["годоснования", "основан", "годсоздания"]),
+        ("revenue", ["выручка", "оборот", "доход"]),
+        ("crops", ["основнаяпродукция", "продукция", "культур"]),
+        ("activity", ["направлениедеятельности", "деятельность", "дополнительныеуслуги", "услуги"]),
+        ("district", ["район"]),
+        ("locality", ["населенныйпункт", "населённыйпункт", "село", "город", "поселок"]),
+        ("volume_tons", ["объемтонн", "объемвыручки", "тонн"]),
+    ]
+    cmap = {}
+    used = set()
+    for col in columns:
+        norm = str(col).lower().replace(" ", "").replace(".", "").replace("_", "").replace("-", "")
+        for field, keys in rules:
+            if field in used:
+                continue
+            if any(k in norm for k in keys):
+                cmap[col] = field
+                used.add(field)
+                break
+    return cmap
 
 
 def _apply_map(raw_rows, cmap):
@@ -157,12 +204,16 @@ def handler(event: dict, context) -> dict:
             return err("Файл пустой")
         columns = list(raw_rows[0].keys())
         sample = raw_rows[:5]
-        cmap = _ai_column_map(columns, sample)
-        if not cmap:
-            return err("ИИ не смог разобрать таблицу. Проверьте ключ Polza.ai или используйте обычный импорт.", 502)
+        cmap = _ai_column_map(columns, sample) or {}
+        # если ИИ не нашёл название — дополняем/заменяем эвристикой по заголовкам
+        if "name" not in cmap.values():
+            heur = _heuristic_map(columns)
+            for col, field in heur.items():
+                if col not in cmap and field not in cmap.values():
+                    cmap[col] = field
         rows = _apply_map(raw_rows, cmap)
         if not rows:
-            return err("Не удалось распознать ни одного производителя. В таблице нет столбца с наименованием юрлица.")
+            return err("Не удалось распознать ни одного производителя. Проверьте, что в таблице есть столбец с названием предприятия.")
         inserted = 0
         for data in rows:
             data.setdefault("region", region)
