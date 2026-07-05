@@ -117,6 +117,74 @@ def _ai_column_map(columns, sample_rows):
         return None
 
 
+def _ai_text(prompt, system="", temperature=0.5, max_tokens=900):
+    """Универсальный вызов ИИ Polza.ai — возвращает текст ответа или None."""
+    api_key = os.environ.get("POLZA_API_KEY", "")
+    if not api_key:
+        return None
+    messages = []
+    if system:
+        messages.append({"role": "system", "content": system})
+    messages.append({"role": "user", "content": prompt})
+    payload = json.dumps({
+        "model": "openai/gpt-4o-mini",
+        "messages": messages,
+        "temperature": temperature,
+        "max_tokens": max_tokens,
+    }).encode("utf-8")
+    req = urllib.request.Request(
+        "https://api.polza.ai/api/v1/chat/completions",
+        data=payload,
+        headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=28) as resp:
+            data = json.loads(resp.read())
+        return data["choices"][0]["message"]["content"].strip()
+    except urllib.error.HTTPError as e:
+        print(f"[ai_text] HTTPError {e.code}: {e.read().decode()[:300]}")
+        return None
+    except Exception as ex:
+        print(f"[ai_text] error: {ex}")
+        return None
+
+
+def _supplier_profile(cur, sid):
+    """Читает поставщика для CRM и возвращает dict полей."""
+    cur.execute(f"""SELECT id, name, inn, region, district, locality, crops, activity,
+                           volume_tons, contact_person, phone, email, address, ownership,
+                           revenue, staff_count, founded_year, status, notes, ai_analysis, ai_letter
+                    FROM {SCHEMA}.suppliers WHERE id=%s""", (sid,))
+    row = cur.fetchone()
+    if not row:
+        return None
+    keys = ["id", "name", "inn", "region", "district", "locality", "crops", "activity",
+            "volume_tons", "contact_person", "phone", "email", "address", "ownership",
+            "revenue", "staff_count", "founded_year", "status", "notes", "ai_analysis", "ai_letter"]
+    return dict(zip(keys, row))
+
+
+def _profile_text(p):
+    """Текстовое описание поставщика для промпта ИИ."""
+    parts = [
+        f"Название: {p.get('name') or '—'}",
+        f"ИНН: {p.get('inn') or '—'}",
+        f"Регион/район: {p.get('region') or '—'}, {p.get('district') or '—'} район, {p.get('locality') or ''}",
+        f"Культуры/продукция: {p.get('crops') or '—'}",
+        f"Направление деятельности: {p.get('activity') or '—'}",
+        f"Форма собственности: {p.get('ownership') or '—'}",
+        f"Объём (тонн): {p.get('volume_tons') if p.get('volume_tons') is not None else '—'}",
+        f"Выручка: {p.get('revenue') or '—'}",
+        f"Численность: {p.get('staff_count') or '—'}",
+        f"Год основания: {p.get('founded_year') or '—'}",
+        f"Руководитель/контакт: {p.get('contact_person') or '—'}",
+        f"Телефон: {p.get('phone') or '—'}",
+        f"Email: {p.get('email') or '—'}",
+    ]
+    return "\n".join(parts)
+
+
 def _heuristic_map(columns):
     """Запасное сопоставление колонок по ключевым словам (если ИИ недоступен)."""
     rules = [
@@ -276,6 +344,62 @@ def handler(event: dict, context) -> dict:
             inserted += 1
         return ok({"imported": inserted})
 
+    # ── CRM: ИИ-анализ поставщика ──
+    if method == "POST" and action == "ai_analyze":
+        p = _supplier_profile(cur, sid or body.get("id"))
+        if not p:
+            return err("Поставщик не найден", 404)
+        system = (
+            "Ты — опытный менеджер по закупкам сельхозпродукции агротрейдера в Саратовской области. "
+            "Компания закупает у сельхозпроизводителей зерно, подсолнечник и другую растениеводческую продукцию. "
+            "Твоя задача — кратко и по делу проанализировать потенциального поставщика."
+        )
+        prompt = (
+            "Проанализируй сельхозпроизводителя как потенциального поставщика.\n\n"
+            f"{_profile_text(p)}\n\n"
+            "Дай структурированный анализ на русском (маркдаун, кратко):\n"
+            "1. **Профиль** — тип хозяйства (КФХ/СХО/агрохолдинг), масштаб, что производит.\n"
+            "2. **Что можем закупать** — конкретные культуры/продукция для сотрудничества.\n"
+            "3. **Потенциал** — оценка перспективности (высокий/средний/низкий) с обоснованием.\n"
+            "4. **Риски и на что обратить внимание** при переговорах.\n"
+            "5. **Рекомендация** — первый шаг для контакта.\n"
+            "Без воды, по 1-2 предложения на пункт."
+        )
+        text = _ai_text(prompt, system=system, temperature=0.4, max_tokens=900)
+        if not text:
+            return err("ИИ-анализ временно недоступен. Попробуйте позже.", 502)
+        cur.execute(f"UPDATE {SCHEMA}.suppliers SET ai_analysis=%s, updated_at=now() WHERE id=%s", (text, p["id"]))
+        return ok({"analysis": text})
+
+    # ── CRM: ИИ-генерация письма о сотрудничестве ──
+    if method == "POST" and action == "ai_letter":
+        p = _supplier_profile(cur, sid or body.get("id"))
+        if not p:
+            return err("Поставщик не найден", 404)
+        tone = body.get("tone", "деловой")
+        our_company = body.get("company", "агротрейдер «АгроПорт»")
+        system = (
+            "Ты — менеджер по развитию агротрейдера. Пишешь деловые письма сельхозпроизводителям "
+            "с предложением о сотрудничестве (закупка зерна, подсолнечника, растениеводческой продукции). "
+            "Пиши грамотно, вежливо, конкретно, на русском языке."
+        )
+        contact = p.get("contact_person") or "уважаемый руководитель"
+        prompt = (
+            f"Составь письмо о сотрудничестве от компании {our_company} для сельхозпроизводителя.\n\n"
+            f"Данные адресата:\n{_profile_text(p)}\n\n"
+            f"Тон письма: {tone}.\n"
+            f"Обращение — к контактному лицу ({contact}), если оно указано.\n"
+            "Структура: приветствие → кто мы и почему обращаемся именно к ним (учитывай их культуры/район) "
+            "→ что предлагаем (закупка их продукции на выгодных условиях, логистика, оплата) "
+            "→ призыв к действию (созвон/встреча) → подпись.\n"
+            "Объём — 150-220 слов. Верни только текст письма, без пояснений."
+        )
+        text = _ai_text(prompt, system=system, temperature=0.6, max_tokens=800)
+        if not text:
+            return err("Генерация письма временно недоступна. Попробуйте позже.", 502)
+        cur.execute(f"UPDATE {SCHEMA}.suppliers SET ai_letter=%s, updated_at=now() WHERE id=%s", (text, p["id"]))
+        return ok({"letter": text})
+
     # Исключение служебных/мусорных строк из аналитики и справочников
     NOT_JUNK = "status <> 'rejected' AND name NOT LIKE '[служебная строка]%' AND "
     JUNK_ACT = "btrim(a.act) NOT IN ('Направление деятельности','Дополнительные услуги и продукция') AND "
@@ -341,11 +465,14 @@ def handler(event: dict, context) -> dict:
         activity = params.get("activity", "")
         crop = params.get("crop", "")
         ownership = params.get("ownership", "")
+        farmer = params.get("farmer", "")        # "1" — только сельхозпроизводители
+        priority = params.get("priority", "")     # "2" — районы вокруг Аткарска
+        inn_prefix = params.get("inn_prefix", "") # напр. "64" — саратовские
         page = int(params.get("page", 1))
         limit = 50
         offset = (page - 1) * limit
 
-        where = "WHERE 1=1"
+        where = "WHERE name NOT LIKE '[служебная строка]%%'"
         args = []
         if search:
             where += " AND (name ILIKE %s OR inn ILIKE %s OR contact_person ILIKE %s OR locality ILIKE %s)"
@@ -362,6 +489,12 @@ def handler(event: dict, context) -> dict:
             where += " AND crops ILIKE %s"; args.append(f"%{crop}%")
         if ownership:
             where += " AND ownership=%s"; args.append(ownership)
+        if farmer == "1":
+            where += " AND is_farmer = true"
+        if priority:
+            where += " AND priority = %s"; args.append(int(priority))
+        if inn_prefix:
+            where += " AND inn LIKE %s"; args.append(f"{inn_prefix}%")
 
         cur.execute(f"SELECT COUNT(*) FROM {SCHEMA}.suppliers {where}", args)
         total = cur.fetchone()[0]
@@ -370,14 +503,16 @@ def handler(event: dict, context) -> dict:
             f"""SELECT id, name, inn, region, district, locality, crops, volume_tons,
                        contact_person, phone, email, address, status, source, notes,
                        ownership, website, fax, revenue, staff_count, founded_year, activity, postal_code,
+                       is_farmer, priority, ai_analysis, ai_letter,
                        created_at, updated_at
                 FROM {SCHEMA}.suppliers {where}
-                ORDER BY created_at DESC LIMIT %s OFFSET %s""",
+                ORDER BY priority DESC, created_at DESC LIMIT %s OFFSET %s""",
             args + [limit, offset]
         )
         cols = ["id","name","inn","region","district","locality","crops","volume_tons",
                 "contact_person","phone","email","address","status","source","notes",
                 "ownership","website","fax","revenue","staff_count","founded_year","activity","postal_code",
+                "is_farmer","priority","ai_analysis","ai_letter",
                 "created_at","updated_at"]
         items = [dict(zip(cols, row)) for row in cur.fetchall()]
 

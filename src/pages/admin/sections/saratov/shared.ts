@@ -7,7 +7,14 @@ export interface Supplier {
   status: string; source: string; notes: string; created_at: string;
   ownership?: string; website?: string; fax?: string; revenue?: string;
   staff_count?: string; founded_year?: string; activity?: string; postal_code?: string;
+  is_farmer?: boolean; priority?: number; ai_analysis?: string; ai_letter?: string;
 }
+
+// Приоритетные районы вокруг Аткарска
+export const PRIORITY_DISTRICTS = [
+  "Аткарский", "Екатериновский", "Петровский", "Калининский",
+  "Лысогорский", "Татищевский", "Аркадакский",
+];
 
 export const STATUS_LABELS: Record<string, string> = {
   new: "Новый", in_progress: "В работе", negotiation: "Переговоры",

@@ -12,7 +12,7 @@ export default function AdminSaratov() {
         </div>
         <div>
           <h2 className="font-heading font-bold text-lg leading-none">Саратовская область</h2>
-          <p className="text-xs text-muted-foreground mt-1">План работы и база сельхозпроизводителей</p>
+          <p className="text-xs text-muted-foreground mt-1">CRM сельхозпроизводителей с ИИ-помощником менеджера</p>
         </div>
       </div>
       <PlanBlock />

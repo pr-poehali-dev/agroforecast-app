@@ -164,6 +164,10 @@ export const adminApi = {
     req(`${URLS.suppliers}?action=facets${region ? `&region=${encodeURIComponent(region)}` : ""}`),
   getSupplierAnalytics: (region = "") =>
     req(`${URLS.suppliers}?action=analytics${region ? `&region=${encodeURIComponent(region)}` : ""}`),
+  analyzeSupplier: (id: number) =>
+    req(`${URLS.suppliers}?action=ai_analyze&id=${id}`, { method: "POST", body: JSON.stringify({}) }),
+  generateSupplierLetter: (id: number, opts: { tone?: string; company?: string } = {}) =>
+    req(`${URLS.suppliers}?action=ai_letter&id=${id}`, { method: "POST", body: JSON.stringify(opts) }),
 
   // ── Region plan (план по региону) ──
   getRegionPlan: (region: string) =>

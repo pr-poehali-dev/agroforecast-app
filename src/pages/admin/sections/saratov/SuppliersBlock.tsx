@@ -4,6 +4,7 @@ import { adminApi } from "@/lib/adminApi";
 import Icon from "@/components/ui/icon";
 import { Supplier, Facet, Facets, Analytics, REGION, STATUS_LABELS, STATUS_COLORS } from "./shared";
 import SupplierModal from "./SupplierModal";
+import CrmModal from "./CrmModal";
 
 // ── Блок базы поставщиков ────────────────────────────────────────────────────
 export default function SuppliersBlock() {
@@ -16,20 +17,32 @@ export default function SuppliersBlock() {
   const [activity, setActivity] = useState("");
   const [crop, setCrop] = useState("");
   const [ownership, setOwnership] = useState("");
+  const [farmer, setFarmer] = useState(true);       // по умолчанию — только сельхозпроизводители
+  const [priorityOnly, setPriorityOnly] = useState(false); // районы вокруг Аткарска
+  const [saratovOnly, setSaratovOnly] = useState(false);   // ИНН 64
   const [page, setPage] = useState(1);
   const [modal, setModal] = useState<Partial<Supplier> | null | false>(false);
+  const [crm, setCrm] = useState<Supplier | null>(null);
   const [importMsg, setImportMsg] = useState("");
   const [importing, setImporting] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [facets, setFacets] = useState<Facets | null>(null);
   const [showAnalytics, setShowAnalytics] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  const filterParams = () => ({
+    region, district, activity, crop, ownership, search, status,
+    farmer: farmer ? "1" : "",
+    priority: priorityOnly ? "2" : "",
+    inn_prefix: saratovOnly ? "64" : "",
+  });
+
   const load = () => {
     setLoading(true);
-    adminApi.getSuppliers({ region, district, activity, crop, ownership, search, status, page })
+    adminApi.getSuppliers({ ...filterParams(), page })
       .then(setData).finally(() => setLoading(false));
   };
-  useEffect(() => { load(); }, [search, status, region, district, activity, crop, ownership, page]);
+  useEffect(() => { load(); }, [search, status, region, district, activity, crop, ownership, farmer, priorityOnly, saratovOnly, page]);
 
   // Справочники фильтров зависят от выбранного региона
   useEffect(() => {
@@ -37,9 +50,41 @@ export default function SuppliersBlock() {
   }, [region]);
 
   const resetFilters = () => {
-    setDistrict(""); setActivity(""); setCrop(""); setOwnership(""); setSearch(""); setStatus(""); setPage(1);
+    setDistrict(""); setActivity(""); setCrop(""); setOwnership(""); setSearch(""); setStatus("");
+    setPriorityOnly(false); setSaratovOnly(false); setPage(1);
   };
-  const activeFilters = [district, activity, crop, ownership].filter(Boolean).length;
+  const activeFilters = [district, activity, crop, ownership].filter(Boolean).length + (priorityOnly ? 1 : 0) + (saratovOnly ? 1 : 0);
+
+  // Выгрузка отфильтрованного перечня в Excel
+  const handleExport = async () => {
+    setExporting(true); setImportMsg("Готовлю выгрузку…");
+    try {
+      const rows: Record<string, unknown>[] = [];
+      const first = await adminApi.getSuppliers({ ...filterParams(), page: 1 });
+      const pages = first.pages || 1;
+      const collect = (list: Supplier[]) => list.forEach(x => rows.push({
+        "Название": x.name, "ИНН": x.inn, "Район": x.district || "",
+        "Населённый пункт": x.locality || "", "Культуры / продукция": x.crops || "",
+        "Направление": x.activity || "", "Объём, т": x.volume_tons ?? "",
+        "Форма собственности": x.ownership || "", "Контактное лицо": x.contact_person || "",
+        "Телефон": x.phone || "", "Email": x.email || "", "Адрес": x.address || "",
+        "Статус": STATUS_LABELS[x.status] || x.status,
+      }));
+      collect(first.suppliers);
+      for (let p = 2; p <= pages; p++) {
+        setImportMsg(`Выгружаю ${p} из ${pages} страниц…`);
+        const d = await adminApi.getSuppliers({ ...filterParams(), page: p });
+        collect(d.suppliers);
+      }
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Хозяйства");
+      XLSX.writeFile(wb, `хозяйства_${region}${priorityOnly ? "_приоритет" : ""}.xlsx`);
+      setImportMsg(`Выгружено хозяйств: ${rows.length}.`);
+    } catch (e: unknown) {
+      setImportMsg(e instanceof Error ? e.message : "Ошибка выгрузки");
+    } finally { setExporting(false); }
+  };
 
   const handleDelete = async (id: number) => {
     if (!confirm("Удалить хозяйство из базы?")) return;
@@ -118,6 +163,11 @@ export default function SuppliersBlock() {
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-secondary text-xs font-medium hover:bg-secondary/80">
             <Icon name="BarChart3" size={13} className="text-primary" />Аналитика
           </button>
+          <button onClick={handleExport} disabled={exporting}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-secondary text-xs font-medium hover:bg-secondary/80 disabled:opacity-60">
+            {exporting ? <Icon name="Loader" size={13} className="animate-spin" /> : <Icon name="Download" size={13} className="text-primary" />}
+            Выгрузить
+          </button>
           <button onClick={() => fileRef.current?.click()} disabled={importing}
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-secondary text-xs font-medium hover:bg-secondary/80 disabled:opacity-60">
             {importing ? <Icon name="Loader" size={13} className="animate-spin" /> : <Icon name="Upload" size={13} />}
@@ -172,6 +222,14 @@ export default function SuppliersBlock() {
               className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background text-xs focus:outline-none focus:border-primary" />
           </div>
         </div>
+
+        {/* Быстрые CRM-фильтры */}
+        <div className="flex flex-wrap gap-2">
+          <Toggle active={farmer} onClick={() => { setFarmer(f => !f); setPage(1); }} icon="Wheat" label="Только сельхозпроизводители" />
+          <Toggle active={priorityOnly} onClick={() => { setPriorityOnly(p => !p); setPage(1); }} icon="Star" label="Районы вокруг Аткарска" />
+          <Toggle active={saratovOnly} onClick={() => { setSaratovOnly(p => !p); setPage(1); }} icon="MapPin" label="Саратовские (ИНН 64)" />
+        </div>
+
         {activeFilters > 0 && (
           <button onClick={resetFilters} className="flex items-center gap-1 text-[11px] text-primary hover:underline">
             <Icon name="X" size={12} />Сбросить фильтры ({activeFilters})
@@ -187,11 +245,16 @@ export default function SuppliersBlock() {
             <div key={sup.id} className="glass-card rounded-xl p-4 flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  {(sup.priority ?? 0) >= 2 && (
+                    <span className="flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-700">
+                      <Icon name="Star" size={10} />Приоритет
+                    </span>
+                  )}
                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${STATUS_COLORS[sup.status] || "bg-secondary text-muted-foreground"}`}>
                     {STATUS_LABELS[sup.status] || sup.status}
                   </span>
                   {sup.district && <span className="text-[10px] text-muted-foreground">{sup.district}{sup.locality ? `, ${sup.locality}` : ""}</span>}
-                  {sup.crops && <span className="text-[10px] text-primary">{sup.crops}</span>}
+                  {sup.crops && <span className="text-[10px] text-primary truncate max-w-[240px]">{sup.crops}</span>}
                 </div>
                 <p className="text-sm font-medium truncate">{sup.name}</p>
                 <div className="flex items-center gap-3 mt-0.5 flex-wrap">
@@ -199,9 +262,15 @@ export default function SuppliersBlock() {
                   {sup.volume_tons != null && <span className="text-[10px] text-muted-foreground">{sup.volume_tons} т</span>}
                   {sup.contact_person && <span className="text-[10px] text-muted-foreground">{sup.contact_person}</span>}
                   {sup.phone && <span className="text-[10px] text-muted-foreground">{sup.phone}</span>}
+                  {sup.ai_analysis && <span className="flex items-center gap-0.5 text-[10px] text-emerald-600"><Icon name="ClipboardCheck" size={10} />анализ</span>}
+                  {sup.ai_letter && <span className="flex items-center gap-0.5 text-[10px] text-emerald-600"><Icon name="MailCheck" size={10} />письмо</span>}
                 </div>
               </div>
               <div className="flex items-center gap-1 shrink-0">
+                <button onClick={() => setCrm(sup)} title="ИИ-менеджер: анализ и письмо"
+                  className="flex items-center gap-1 px-2 py-1.5 rounded-lg hero-gradient text-white text-[11px] font-medium">
+                  <Icon name="Sparkles" size={13} />ИИ
+                </button>
                 <button onClick={() => setModal(sup)} className="p-1.5 hover:bg-primary/10 rounded-lg text-primary"><Icon name="Edit" size={14} /></button>
                 <button onClick={() => handleDelete(sup.id)} className="p-1.5 hover:bg-destructive/10 rounded-lg text-destructive"><Icon name="Trash2" size={14} /></button>
               </div>
@@ -231,9 +300,22 @@ export default function SuppliersBlock() {
       )}
 
       {modal !== false && <SupplierModal item={modal || {}} onClose={() => setModal(false)} onSave={() => { setModal(false); load(); }} />}
+      {crm && <CrmModal item={crm} onClose={() => { setCrm(null); load(); }} />}
       {showAnalytics && <AnalyticsModal region={region} onClose={() => setShowAnalytics(false)}
         onPick={(f) => { if (f.district !== undefined) setDistrict(f.district); if (f.activity !== undefined) setActivity(f.activity); if (f.ownership !== undefined) setOwnership(f.ownership); setPage(1); setShowAnalytics(false); }} />}
     </div>
+  );
+}
+
+// ── Переключатель быстрого фильтра ───────────────────────────────────────────
+function Toggle({ active, onClick, icon, label }: {
+  active: boolean; onClick: () => void; icon: string; label: string;
+}) {
+  return (
+    <button onClick={onClick}
+      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium ${active ? "bg-primary text-white" : "bg-secondary text-muted-foreground hover:bg-secondary/80"}`}>
+      <Icon name={icon} size={13} />{label}
+    </button>
   );
 }
 
