@@ -160,6 +160,10 @@ export const adminApi = {
     req(`${URLS.suppliers}?action=import`, { method: "POST", body: JSON.stringify({ rows, region }) }),
   aiImportSuppliers: (rows: Record<string, unknown>[], region: string) =>
     req(`${URLS.suppliers}?action=ai_import`, { method: "POST", body: JSON.stringify({ rows, region }) }),
+  getSupplierFacets: (region = "") =>
+    req(`${URLS.suppliers}?action=facets${region ? `&region=${encodeURIComponent(region)}` : ""}`),
+  getSupplierAnalytics: (region = "") =>
+    req(`${URLS.suppliers}?action=analytics${region ? `&region=${encodeURIComponent(region)}` : ""}`),
 
   // ── Region plan (план по региону) ──
   getRegionPlan: (region: string) =>

@@ -276,12 +276,71 @@ def handler(event: dict, context) -> dict:
             inserted += 1
         return ok({"imported": inserted})
 
+    # Исключение служебных/мусорных строк из аналитики и справочников
+    NOT_JUNK = "status <> 'rejected' AND name NOT LIKE '[служебная строка]%' AND "
+    JUNK_ACT = "btrim(a.act) NOT IN ('Направление деятельности','Дополнительные услуги и продукция') AND "
+    JUNK_OWN = "ownership NOT IN ('Подчиненность вышестоящей организации','Форма собственности') AND "
+
+    # ── Справочники для фильтров (facets) ──
+    if method == "GET" and action == "facets":
+        region = params.get("region", "")
+        # Условие по региону (для районов/направлений/собственности)
+        rcond = "region=%s AND " if region else ""
+        rargs = [region] if region else []
+        # Регионы (всегда полный список)
+        cur.execute(f"SELECT region, COUNT(*) FROM {SCHEMA}.suppliers WHERE {NOT_JUNK}region IS NOT NULL AND region<>'' GROUP BY region ORDER BY 2 DESC")
+        regions = [{"value": r[0], "count": r[1]} for r in cur.fetchall()]
+        # Районы (по выбранному региону, если задан)
+        cur.execute(f"SELECT district, COUNT(*) FROM {SCHEMA}.suppliers WHERE {NOT_JUNK}{rcond}district IS NOT NULL AND district<>'' GROUP BY district ORDER BY 1", rargs)
+        districts = [{"value": r[0], "count": r[1]} for r in cur.fetchall()]
+        # Направления деятельности — разбиваем строки по ';'
+        cur.execute(f"""
+            SELECT btrim(a.act) AS act, COUNT(*) AS cnt
+            FROM {SCHEMA}.suppliers s,
+                 LATERAL unnest(string_to_array(s.activity, ';')) AS a(act)
+            WHERE {NOT_JUNK}{rcond}{JUNK_ACT}btrim(a.act) <> ''
+            GROUP BY btrim(a.act) ORDER BY cnt DESC LIMIT 60
+        """, rargs)
+        activities = [{"value": r[0], "count": r[1]} for r in cur.fetchall()]
+        # Формы собственности
+        cur.execute(f"SELECT ownership, COUNT(*) FROM {SCHEMA}.suppliers WHERE {NOT_JUNK}{rcond}{JUNK_OWN}ownership IS NOT NULL AND ownership<>'' GROUP BY ownership ORDER BY 2 DESC", rargs)
+        ownerships = [{"value": r[0], "count": r[1]} for r in cur.fetchall()]
+        return ok({"regions": regions, "districts": districts, "activities": activities, "ownerships": ownerships})
+
+    # ── Аналитика: сводка по районам и направлениям ──
+    if method == "GET" and action == "analytics":
+        region = params.get("region", "") or "Саратовская область"
+        cur.execute(f"SELECT COUNT(*) FROM {SCHEMA}.suppliers WHERE {NOT_JUNK}region=%s", [region])
+        total = cur.fetchone()[0]
+        cur.execute(f"""SELECT COALESCE(NULLIF(district,''),'— не указан') AS d, COUNT(*)
+                        FROM {SCHEMA}.suppliers WHERE {NOT_JUNK}region=%s GROUP BY d ORDER BY 2 DESC""", [region])
+        by_district = [{"district": r[0], "count": r[1]} for r in cur.fetchall()]
+        cur.execute(f"""
+            SELECT btrim(a.act) AS act, COUNT(*) AS cnt
+            FROM {SCHEMA}.suppliers s,
+                 LATERAL unnest(string_to_array(s.activity, ';')) AS a(act)
+            WHERE {NOT_JUNK}s.region=%s AND {JUNK_ACT}btrim(a.act) <> ''
+            GROUP BY btrim(a.act) ORDER BY cnt DESC LIMIT 25
+        """, [region])
+        by_activity = [{"activity": r[0], "count": r[1]} for r in cur.fetchall()]
+        cur.execute(f"""SELECT COALESCE(NULLIF(ownership,''),'— не указана') AS o, COUNT(*)
+                        FROM {SCHEMA}.suppliers
+                        WHERE {NOT_JUNK}region=%s
+                          AND COALESCE(ownership,'') NOT IN ('Подчиненность вышестоящей организации','Форма собственности')
+                        GROUP BY o ORDER BY 2 DESC""", [region])
+        by_ownership = [{"ownership": r[0], "count": r[1]} for r in cur.fetchall()]
+        return ok({"region": region, "total": total,
+                   "by_district": by_district, "by_activity": by_activity, "by_ownership": by_ownership})
+
     # ── Список ──
     if method == "GET" and not sid:
         search = params.get("search", "")
         region = params.get("region", "")
         district = params.get("district", "")
         status = params.get("status", "")
+        activity = params.get("activity", "")
+        crop = params.get("crop", "")
+        ownership = params.get("ownership", "")
         page = int(params.get("page", 1))
         limit = 50
         offset = (page - 1) * limit
@@ -297,6 +356,12 @@ def handler(event: dict, context) -> dict:
             where += " AND district=%s"; args.append(district)
         if status:
             where += " AND status=%s"; args.append(status)
+        if activity:
+            where += " AND activity ILIKE %s"; args.append(f"%{activity}%")
+        if crop:
+            where += " AND crops ILIKE %s"; args.append(f"%{crop}%")
+        if ownership:
+            where += " AND ownership=%s"; args.append(ownership)
 
         cur.execute(f"SELECT COUNT(*) FROM {SCHEMA}.suppliers {where}", args)
         total = cur.fetchone()[0]
