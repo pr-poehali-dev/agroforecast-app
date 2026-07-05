@@ -16,7 +16,9 @@ CORS = {
 }
 
 FIELDS = ["name", "inn", "region", "district", "locality", "crops", "volume_tons",
-          "contact_person", "phone", "email", "address", "status", "source", "notes"]
+          "contact_person", "phone", "email", "address", "status", "source", "notes",
+          "ownership", "website", "fax", "revenue", "staff_count", "founded_year",
+          "activity", "postal_code"]
 
 def get_db():
     conn = psycopg2.connect(os.environ["DATABASE_URL"])
@@ -52,21 +54,31 @@ def _ai_column_map(columns, sample_rows):
         f"Колонки таблицы: {json.dumps(columns, ensure_ascii=False)}\n"
         f"Примеры строк (первые несколько): {json.dumps(sample_rows, ensure_ascii=False)}\n\n"
         "Поля базы данных:\n"
-        "- name: наименование юрлица / организации / хозяйства / КФХ / ИП / ФИО производителя (ОБЯЗАТЕЛЬНО)\n"
-        "- inn: ИНН\n"
+        "- name: наименование предприятия / юрлица / организации / хозяйства / КФХ / ИП (ОБЯЗАТЕЛЬНО)\n"
+        "- inn: ИНН (в т.ч. 'ИНН клиента')\n"
         "- district: район\n"
         "- locality: населённый пункт, село, город\n"
-        "- crops: культуры (пшеница, подсолнечник и т.п.)\n"
+        "- crops: основная продукция и услуги, что производит/поставляет\n"
+        "- activity: направление деятельности, дополнительные услуги и продукция\n"
         "- volume_tons: объём в тоннах (число)\n"
-        "- contact_person: контактное лицо, ФИО контакта, руководитель\n"
+        "- revenue: объём выручки\n"
+        "- staff_count: численность сотрудников\n"
+        "- founded_year: год основания\n"
+        "- ownership: форма собственности, подчинённость вышестоящей организации\n"
+        "- contact_person: руководитель, контактное лицо, ФИО\n"
         "- phone: телефон\n"
-        "- email: электронная почта\n"
-        "- address: адрес\n"
-        "- notes: прочее, примечания, комментарии\n\n"
-        "Правила: наименование юрлица (ООО, АО, КФХ, ИП, СПК, любое название организации) — это name. "
-        "Если явного 'хозяйства' нет, name — это столбец с названием компании/юрлица. "
-        "Верни СТРОГО JSON вида {\"map\": {\"Название колонки из таблицы\": \"поле_базы\"}}. "
-        "Включай только колонки, которые уверенно распознал. Без markdown, только JSON."
+        "- fax: факс\n"
+        "- email: электронная почта (E_Mail)\n"
+        "- website: сайт, веб-адрес\n"
+        "- address: почтовый адрес\n"
+        "- postal_code: почтовый индекс\n"
+        "- notes: прочее, что не подошло к полям выше\n\n"
+        "Правила: наименование юрлица (ООО, АО, КФХ, ИП, СПК, любое название организации/предприятия) — это name. "
+        "'Название предприятия' → name. 'Руководитель' → contact_person. 'ИНН клиента' → inn. "
+        "'Основная продукция и услуги' → crops. 'Направление деятельности' и 'Дополнительные услуги и продукция' → activity. "
+        "Если явного 'хозяйства' нет, name — это столбец с названием компании/предприятия/юрлица. "
+        "Сопоставь КАЖДУЮ значимую колонку. Верни СТРОГО JSON вида {\"map\": {\"Название колонки из таблицы\": \"поле_базы\"}}. "
+        "Без markdown, только JSON."
     )
     payload = json.dumps({
         "model": "openai/gpt-4o-mini",
@@ -213,13 +225,17 @@ def handler(event: dict, context) -> dict:
 
         cur.execute(
             f"""SELECT id, name, inn, region, district, locality, crops, volume_tons,
-                       contact_person, phone, email, address, status, source, notes, created_at, updated_at
+                       contact_person, phone, email, address, status, source, notes,
+                       ownership, website, fax, revenue, staff_count, founded_year, activity, postal_code,
+                       created_at, updated_at
                 FROM {SCHEMA}.suppliers {where}
                 ORDER BY created_at DESC LIMIT %s OFFSET %s""",
             args + [limit, offset]
         )
         cols = ["id","name","inn","region","district","locality","crops","volume_tons",
-                "contact_person","phone","email","address","status","source","notes","created_at","updated_at"]
+                "contact_person","phone","email","address","status","source","notes",
+                "ownership","website","fax","revenue","staff_count","founded_year","activity","postal_code",
+                "created_at","updated_at"]
         items = [dict(zip(cols, row)) for row in cur.fetchall()]
 
         # сводка по статусам
@@ -233,7 +249,7 @@ def handler(event: dict, context) -> dict:
     if method == "POST":
         data = _clean(body)
         if not data.get("name"):
-            return err("Название хозяйства обязательно")
+            return err("Название предприятия обязательно")
         data.setdefault("region", "Саратовская область")
         data.setdefault("source", "manual")
         data.setdefault("status", "new")

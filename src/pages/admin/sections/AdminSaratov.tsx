@@ -10,6 +10,8 @@ interface Supplier {
   locality: string; crops: string; volume_tons: number | null;
   contact_person: string; phone: string; email: string; address: string;
   status: string; source: string; notes: string; created_at: string;
+  ownership?: string; website?: string; fax?: string; revenue?: string;
+  staff_count?: string; founded_year?: string; activity?: string; postal_code?: string;
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -27,7 +29,8 @@ const STATUS_COLORS: Record<string, string> = {
 const emptyForm = () => ({
   name: "", inn: "", region: REGION, district: "", locality: "", crops: "",
   volume_tons: "", contact_person: "", phone: "", email: "", address: "",
-  status: "new", notes: "",
+  status: "new", notes: "", ownership: "", website: "", fax: "", revenue: "",
+  staff_count: "", founded_year: "", activity: "", postal_code: "",
 });
 
 // ── Модалка карточки поставщика ──────────────────────────────────────────────
@@ -92,10 +95,28 @@ function SupplierModal({ item, onClose, onSave }: {
               <input value={String(form.email)} onChange={e => set("email", e.target.value)} className={inputCls} placeholder="agro@mail.ru" /></div>
             <div><label className={lblCls}>Адрес</label>
               <input value={String(form.address)} onChange={e => set("address", e.target.value)} className={inputCls} placeholder="г. Аткарск, ул. …" /></div>
+            <div><label className={lblCls}>Почтовый индекс</label>
+              <input value={String(form.postal_code)} onChange={e => set("postal_code", e.target.value)} className={inputCls} placeholder="412420" /></div>
+            <div><label className={lblCls}>Форма собственности</label>
+              <input value={String(form.ownership)} onChange={e => set("ownership", e.target.value)} className={inputCls} placeholder="ООО / АО / КФХ" /></div>
+            <div><label className={lblCls}>Сайт</label>
+              <input value={String(form.website)} onChange={e => set("website", e.target.value)} className={inputCls} placeholder="agro.ru" /></div>
+            <div><label className={lblCls}>Факс</label>
+              <input value={String(form.fax)} onChange={e => set("fax", e.target.value)} className={inputCls} placeholder="+7 …" /></div>
+            <div><label className={lblCls}>Выручка</label>
+              <input value={String(form.revenue)} onChange={e => set("revenue", e.target.value)} className={inputCls} placeholder="120 млн ₽" /></div>
+            <div><label className={lblCls}>Численность</label>
+              <input value={String(form.staff_count)} onChange={e => set("staff_count", e.target.value)} className={inputCls} placeholder="45" /></div>
+            <div><label className={lblCls}>Год основания</label>
+              <input value={String(form.founded_year)} onChange={e => set("founded_year", e.target.value)} className={inputCls} placeholder="2005" /></div>
+          </div>
+          <div>
+            <label className={lblCls}>Направление деятельности</label>
+            <input value={String(form.activity)} onChange={e => set("activity", e.target.value)} className={inputCls} placeholder="Растениеводство, доп. услуги" />
           </div>
           <div>
             <label className={lblCls}>Заметки</label>
-            <textarea value={String(form.notes)} rows={2} onChange={e => set("notes", e.target.value)} className={`${inputCls} resize-none`} placeholder="Комментарий по хозяйству" />
+            <textarea value={String(form.notes)} rows={2} onChange={e => set("notes", e.target.value)} className={`${inputCls} resize-none`} placeholder="Комментарий по предприятию" />
           </div>
           {error && <p className="text-xs text-destructive">{error}</p>}
           <div className="flex gap-3 pt-2">
