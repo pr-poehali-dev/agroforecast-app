@@ -187,6 +187,8 @@ export const adminApi = {
     req(`${URLS.procurement}?action=send`, { method: "POST", body: JSON.stringify({ message_id: messageId, ...opts }) }),
   getSupplierMessages: (id: number) =>
     req(`${URLS.procurement}?action=messages&id=${id}`),
+  getMaxStatus: (id: number) =>
+    req(`${URLS.procurement}?action=max_status&id=${id}`),
 
   // ── Region plan (план по региону) ──
   getRegionPlan: (region: string) =>

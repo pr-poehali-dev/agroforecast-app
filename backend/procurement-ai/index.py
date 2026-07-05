@@ -153,8 +153,32 @@ def send_email(to_addr, subject, body):
         return False, str(ex)
 
 
+def send_max(chat_id, text):
+    """Отправка сообщения через MAX Bot API. Возвращает (ok: bool, error: str).
+    chat_id — числовой идентификатор чата/пользователя (получаем, когда клиент сам напишет боту)."""
+    token = os.environ.get("MAX_BOT_TOKEN", "")
+    if not token:
+        return False, "Не задан токен MAX-бота (MAX_BOT_TOKEN)."
+    if not chat_id or not str(chat_id).strip().lstrip("-").isdigit():
+        return False, "Для MAX нужен числовой chat_id получателя (клиент должен сначала написать боту)."
+    url = f"https://botapi.max.ru/messages?access_token={token}&chat_id={int(chat_id)}"
+    payload = json.dumps({"text": text}).encode("utf-8")
+    r = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"}, method="POST")
+    try:
+        with urllib.request.urlopen(r, timeout=20) as resp:
+            resp.read()
+        return True, ""
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode()[:300]
+        print(f"[send_max] HTTPError {e.code}: {detail}")
+        return False, f"MAX API {e.code}: {detail}"
+    except Exception as ex:
+        print(f"[send_max] error: {ex}")
+        return False, str(ex)
+
+
 def handler(event: dict, context) -> dict:
-    """ИИ-менеджер по закупкам: генерация писем/сообщений и отправка через SMTP с подтверждением."""
+    """ИИ-менеджер по закупкам: генерация писем/сообщений и отправка через SMTP/MAX с подтверждением."""
     method = event.get("httpMethod", "GET")
     if method == "OPTIONS":
         return {"statusCode": 200, "headers": CORS, "body": ""}
@@ -168,10 +192,72 @@ def handler(event: dict, context) -> dict:
 
     conn = get_db()
     cur = conn.cursor()
+
+    # ── Webhook MAX: приём входящих сообщений (публичный, без admin-токена) ──
+    if action == "max_webhook":
+        upd = body or {}
+        msg = upd.get("message") or {}
+        # Структура MAX: message.recipient.chat_id, message.sender, message.body.text
+        chat_id = (msg.get("recipient") or {}).get("chat_id") or (msg.get("sender") or {}).get("user_id")
+        sender = msg.get("sender") or {}
+        sender_name = sender.get("name") or sender.get("username") or ""
+        text_in = (msg.get("body") or {}).get("text") or upd.get("text") or ""
+        if chat_id:
+            # пытаемся привязать к поставщику по имени контакта
+            cur.execute(
+                f"""SELECT id FROM {SCHEMA}.suppliers
+                    WHERE max_chat_id = %s
+                       OR (contact_person IS NOT NULL AND contact_person <> '' AND %s ILIKE '%%' || contact_person || '%%')
+                    ORDER BY (max_chat_id = %s) DESC LIMIT 1""",
+                (chat_id, sender_name, chat_id)
+            )
+            row = cur.fetchone()
+            matched = row[0] if row else None
+            if matched:
+                cur.execute(f"UPDATE {SCHEMA}.suppliers SET max_chat_id=%s WHERE id=%s", (chat_id, matched))
+            cur.execute(
+                f"INSERT INTO {SCHEMA}.max_inbox (chat_id, sender_name, text, supplier_id) VALUES (%s, %s, %s, %s)",
+                (chat_id, sender_name, text_in, matched)
+            )
+        return ok({"ok": True})
+
     if not verify_admin(cur, event.get("headers")):
         return err("Требуется авторизация администратора", 401)
 
     sid = params.get("id") or body.get("id")
+
+    # ── Разовая регистрация webhook MAX-бота ──
+    if method == "POST" and action == "max_setup":
+        token = os.environ.get("MAX_BOT_TOKEN", "")
+        if not token:
+            return err("Не задан токен MAX-бота (MAX_BOT_TOKEN).", 400)
+        webhook_url = body.get("webhook_url", "")
+        if not webhook_url:
+            return err("Не указан webhook_url")
+        api = f"https://botapi.max.ru/subscriptions?access_token={token}"
+        payload = json.dumps({"url": webhook_url, "update_types": ["message_created"]}).encode("utf-8")
+        r = urllib.request.Request(api, data=payload, headers={"Content-Type": "application/json"}, method="POST")
+        try:
+            with urllib.request.urlopen(r, timeout=20) as resp:
+                res = resp.read().decode()
+            return ok({"ok": True, "response": res[:300]})
+        except urllib.error.HTTPError as e:
+            return err(f"MAX API {e.code}: {e.read().decode()[:300]}", 502)
+        except Exception as ex:
+            return err(str(ex), 502)
+
+    # ── Отдать сохранённый MAX chat_id и последние входящие по поставщику ──
+    if method == "GET" and action == "max_status" and sid:
+        cur.execute(f"SELECT max_chat_id FROM {SCHEMA}.suppliers WHERE id=%s", (sid,))
+        r = cur.fetchone()
+        chat_id = r[0] if r else None
+        cur.execute(
+            f"""SELECT sender_name, text, created_at FROM {SCHEMA}.max_inbox
+                WHERE supplier_id=%s OR chat_id=%s ORDER BY created_at DESC LIMIT 10""",
+            (sid, chat_id)
+        )
+        inbox = [{"sender": s, "text": t, "created_at": c} for s, t, c in cur.fetchall()]
+        return ok({"max_chat_id": chat_id, "inbox": inbox})
 
     # ── Сгенерировать письмо/сообщение ИИ-закупщиком (черновик) ──
     if method == "POST" and action == "compose":
@@ -243,13 +329,19 @@ def handler(event: dict, context) -> dict:
         recipient = (body.get("recipient") or recipient or "").strip()
         subject = body.get("subject", subject)
         mbody = body.get("body", mbody)
+        # для MAX без явного chat_id пробуем сохранённый у поставщика
+        if channel == "max" and (not recipient or not recipient.lstrip("-").isdigit()):
+            cur.execute(f"SELECT max_chat_id FROM {SCHEMA}.suppliers WHERE id=%s", (s_id,))
+            r = cur.fetchone()
+            if r and r[0]:
+                recipient = str(r[0])
         if not recipient:
             return err("Не указан получатель (email/адрес).")
 
         if channel == "email":
             success, error_text = send_email(recipient, subject or "Сообщение от АгроПорт", mbody)
         else:
-            success, error_text = False, "Канал MAX ещё не подключён (нужен токен бота MAX)."
+            success, error_text = send_max(recipient, mbody)
 
         if success:
             cur.execute(

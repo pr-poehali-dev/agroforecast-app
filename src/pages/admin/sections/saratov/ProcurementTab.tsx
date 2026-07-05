@@ -36,9 +36,14 @@ export default function ProcurementTab({ item }: { item: Supplier }) {
   const [error, setError] = useState("");
   const [okMsg, setOkMsg] = useState("");
   const [messages, setMessages] = useState<Msg[]>([]);
+  const [maxChatId, setMaxChatId] = useState<number | null>(null);
+  const [maxInbox, setMaxInbox] = useState<{ sender: string; text: string; created_at: string }[]>([]);
 
   const loadMessages = () => adminApi.getSupplierMessages(item.id).then(d => setMessages(d.messages || [])).catch(() => {});
   useEffect(loadMessages, [item.id]);
+  useEffect(() => {
+    adminApi.getMaxStatus(item.id).then(d => { setMaxChatId(d.max_chat_id || null); setMaxInbox(d.inbox || []); }).catch(() => {});
+  }, [item.id]);
 
   const compose = async () => {
     setComposing(true); setError(""); setOkMsg("");
@@ -74,11 +79,19 @@ export default function ProcurementTab({ item }: { item: Supplier }) {
             className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium ${channel === "email" ? "bg-primary text-white" : "bg-secondary text-muted-foreground hover:bg-secondary/80"}`}>
             <Icon name="Mail" size={12} />Email
           </button>
-          <button onClick={() => { setChannel("max"); setRecipient(item.phone || ""); }}
+          <button onClick={() => { setChannel("max"); setRecipient(maxChatId ? String(maxChatId) : ""); }}
             className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium ${channel === "max" ? "bg-primary text-white" : "bg-secondary text-muted-foreground hover:bg-secondary/80"}`}>
             <Icon name="MessageCircle" size={12} />MAX
           </button>
         </div>
+
+        {channel === "max" && (
+          <div className={`rounded-lg px-2.5 py-2 text-[11px] ${maxChatId ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+            {maxChatId
+              ? <span className="flex items-center gap-1"><Icon name="CheckCircle2" size={12} />Поставщик привязан к MAX — можно писать напрямую.</span>
+              : <span className="flex items-center gap-1"><Icon name="Info" size={12} />Бот в MAX не может написать первым. Попросите поставщика написать вашему боту — привязка появится автоматически.</span>}
+          </div>
+        )}
 
         <div>
           <label className="block text-[10px] font-medium text-muted-foreground mb-1">Цель обращения</label>
@@ -139,6 +152,23 @@ export default function ProcurementTab({ item }: { item: Supplier }) {
       {error && <p className="text-xs text-destructive">{error}</p>}
 
       {/* История отправленных */}
+      {maxInbox.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-[11px] font-medium text-muted-foreground flex items-center gap-1">
+            <Icon name="MessageCircle" size={12} className="text-primary" />Входящие из MAX
+          </p>
+          {maxInbox.map((m, i) => (
+            <div key={i} className="glass-card rounded-xl p-3">
+              <div className="flex items-center gap-2 mb-0.5">
+                <span className="text-[11px] font-medium">{m.sender || "Поставщик"}</span>
+                <span className="text-[10px] text-muted-foreground">{fmt(m.created_at)}</span>
+              </div>
+              <p className="text-xs text-foreground/80 whitespace-pre-wrap">{m.text}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
       {messages.length > 0 && (
         <div className="space-y-2">
           <p className="text-[11px] font-medium text-muted-foreground">Отправленные сообщения</p>
