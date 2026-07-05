@@ -168,6 +168,10 @@ export const adminApi = {
     req(`${URLS.suppliers}?action=ai_analyze&id=${id}`, { method: "POST", body: JSON.stringify({}) }),
   generateSupplierLetter: (id: number, opts: { tone?: string; company?: string } = {}) =>
     req(`${URLS.suppliers}?action=ai_letter&id=${id}`, { method: "POST", body: JSON.stringify(opts) }),
+  enrichSupplier: (id: number) =>
+    req(`${URLS.suppliers}?action=ai_enrich&id=${id}`, { method: "POST", body: JSON.stringify({}) }),
+  enrichSuppliersBatch: (innPrefix = "64", batch = 4) =>
+    req(`${URLS.suppliers}?action=ai_enrich_batch`, { method: "POST", body: JSON.stringify({ inn_prefix: innPrefix, batch }) }),
   getSupplierHistory: (id: number) =>
     req(`${URLS.suppliers}?action=history&id=${id}`),
   addSupplierInteraction: (id: number, data: { type: string; content: string; author?: string }) =>

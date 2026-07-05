@@ -150,6 +150,26 @@ def _ai_text(prompt, system="", temperature=0.5, max_tokens=900):
         return None
 
 
+def _ai_json(prompt, system="", temperature=0.2, max_tokens=1200):
+    """Вызов ИИ с ожиданием JSON-ответа. Возвращает dict или None."""
+    text = _ai_text(prompt, system=system, temperature=temperature, max_tokens=max_tokens)
+    if not text:
+        return None
+    # вырезаем markdown-обёртку ```json ... ```
+    if text.startswith("```"):
+        text = text.split("```", 2)[1] if text.count("```") >= 2 else text.strip("`")
+        if text.lstrip().lower().startswith("json"):
+            text = text.lstrip()[4:]
+    start, end = text.find("{"), text.rfind("}")
+    if start != -1 and end != -1:
+        text = text[start:end + 1]
+    try:
+        return json.loads(text)
+    except Exception as ex:
+        print(f"[ai_json] parse error: {ex}; text={text[:200]}")
+        return None
+
+
 def _supplier_profile(cur, sid):
     """Читает поставщика для CRM и возвращает dict полей."""
     cur.execute(f"""SELECT id, name, inn, region, district, locality, crops, activity,
@@ -404,6 +424,142 @@ def handler(event: dict, context) -> dict:
             (p["id"], "Сгенерировано письмо о сотрудничестве (ИИ)")
         )
         return ok({"letter": text})
+
+    # ── CRM: ИИ-обогащение карточки (структурирование данных) ──
+    if method == "POST" and action == "ai_enrich":
+        p = _supplier_profile(cur, sid or body.get("id"))
+        if not p:
+            return err("Поставщик не найден", 404)
+        system = (
+            "Ты — аналитик CRM агротрейдера. Тебе дают сырые данные о сельхозпроизводителе. "
+            "Твоя задача — аккуратно СТРУКТУРИРОВАТЬ и НОРМАЛИЗОВАТЬ уже имеющуюся информацию, "
+            "не выдумывая факты. Если данных нет — оставляй пустую строку. "
+            "Отвечай строго валидным JSON без пояснений."
+        )
+        prompt = (
+            "Разбери данные сельхозпроизводителя и верни JSON с нормализованными полями.\n\n"
+            f"Исходные данные:\n{_profile_text(p)}\n\n"
+            "Верни JSON строго такой структуры:\n"
+            "{\n"
+            '  "crops_clean": "культуры через запятую, аккуратно (из имеющихся данных)",\n'
+            '  "activity_clean": "направления деятельности через запятую",\n'
+            '  "farm_type": "тип: КФХ / СХО / агрохолдинг / ИП / кооператив (по названию и данным)",\n'
+            '  "scale": "масштаб: малое / среднее / крупное (по выручке/численности, иначе пусто)",\n'
+            '  "buy_products": "что мы можем у них закупать (зерно, подсолнечник и т.п.)",\n'
+            '  "phones_clean": "телефоны в нормальном формате через запятую",\n'
+            '  "emails_clean": "email через запятую",\n'
+            '  "dossier": "краткое досье 3-4 предложения: кто это, чем интересен как поставщик",\n'
+            '  "recommendation": "рекомендованный первый шаг для контакта, 1-2 предложения"\n'
+            "}\n"
+            "Только реальные факты из исходных данных. Не придумывай ИНН, объёмы, контакты."
+        )
+        result = _ai_json(prompt, system=system)
+        if not result:
+            return err("ИИ-обогащение временно недоступно. Попробуйте позже.", 502)
+
+        # Обновляем только ПУСТЫЕ поля карточки, реальные данные не затираем
+        updates = {}
+        if not (p.get("crops") or "").strip() and result.get("crops_clean"):
+            updates["crops"] = result["crops_clean"][:2000]
+        if not (p.get("activity") or "").strip() and result.get("activity_clean"):
+            updates["activity"] = result["activity_clean"][:2000]
+        if not (p.get("phone") or "").strip() and result.get("phones_clean"):
+            updates["phone"] = result["phones_clean"][:200]
+        if not (p.get("email") or "").strip() and result.get("emails_clean"):
+            updates["email"] = result["emails_clean"][:200]
+
+        # Собираем досье в ai_analysis (обзорная карточка)
+        dossier_parts = []
+        if result.get("farm_type"):
+            dossier_parts.append(f"**Тип хозяйства:** {result['farm_type']}")
+        if result.get("scale"):
+            dossier_parts.append(f"**Масштаб:** {result['scale']}")
+        if result.get("buy_products"):
+            dossier_parts.append(f"**Что можем закупать:** {result['buy_products']}")
+        if result.get("dossier"):
+            dossier_parts.append(f"**Досье:** {result['dossier']}")
+        if result.get("recommendation"):
+            dossier_parts.append(f"**Рекомендация:** {result['recommendation']}")
+        dossier = "\n\n".join(dossier_parts)
+
+        set_parts = []
+        set_args = []
+        for k, v in updates.items():
+            set_parts.append(f"{k}=%s"); set_args.append(v)
+        if dossier:
+            set_parts.append("ai_analysis=%s"); set_args.append(dossier)
+        if set_parts:
+            set_args.append(p["id"])
+            cur.execute(
+                f"UPDATE {SCHEMA}.suppliers SET {', '.join(set_parts)}, updated_at=now() WHERE id=%s",
+                set_args
+            )
+        # фиксируем в истории
+        filled = ", ".join(updates.keys()) if updates else "досье"
+        cur.execute(
+            f"INSERT INTO {SCHEMA}.supplier_interactions (supplier_id, type, content) VALUES (%s, 'note', %s)",
+            (p["id"], f"ИИ обогатил карточку (обновлено: {filled})")
+        )
+        return ok({"enriched": result, "updated_fields": list(updates.keys()), "dossier": dossier})
+
+    # ── CRM: массовое ИИ-обогащение (партиями) ──
+    if method == "POST" and action == "ai_enrich_batch":
+        inn_prefix = body.get("inn_prefix", "64")
+        batch = min(int(body.get("batch", 4)), 6)
+        cur.execute(
+            f"""SELECT id FROM {SCHEMA}.suppliers
+                WHERE inn LIKE %s AND is_farmer = true
+                  AND status <> 'rejected' AND name NOT LIKE '[служебная строка]%%'
+                  AND (ai_analysis IS NULL OR ai_analysis = '')
+                ORDER BY priority DESC, id
+                LIMIT %s""",
+            (f"{inn_prefix}%", batch)
+        )
+        ids = [r[0] for r in cur.fetchall()]
+        # сколько ещё осталось необработанных
+        cur.execute(
+            f"""SELECT COUNT(*) FROM {SCHEMA}.suppliers
+                WHERE inn LIKE %s AND is_farmer = true
+                  AND status <> 'rejected' AND name NOT LIKE '[служебная строка]%%'
+                  AND (ai_analysis IS NULL OR ai_analysis = '')""",
+            (f"{inn_prefix}%",)
+        )
+        remaining_before = cur.fetchone()[0]
+
+        system = (
+            "Ты — аналитик CRM агротрейдера. Структурируй имеющиеся данные о хозяйстве, "
+            "не выдумывая факты. Отвечай строго валидным JSON."
+        )
+        processed = 0
+        for supplier_id in ids:
+            p = _supplier_profile(cur, supplier_id)
+            if not p:
+                continue
+            prompt = (
+                "Разбери данные сельхозпроизводителя и верни JSON.\n\n"
+                f"{_profile_text(p)}\n\n"
+                'Формат: {"farm_type":"", "scale":"", "buy_products":"", '
+                '"dossier":"3-4 предложения", "recommendation":"1-2 предложения"}\n'
+                "Только реальные факты из данных."
+            )
+            result = _ai_json(prompt, system=system, max_tokens=700)
+            if not result:
+                continue
+            parts = []
+            if result.get("farm_type"): parts.append(f"**Тип хозяйства:** {result['farm_type']}")
+            if result.get("scale"): parts.append(f"**Масштаб:** {result['scale']}")
+            if result.get("buy_products"): parts.append(f"**Что можем закупать:** {result['buy_products']}")
+            if result.get("dossier"): parts.append(f"**Досье:** {result['dossier']}")
+            if result.get("recommendation"): parts.append(f"**Рекомендация:** {result['recommendation']}")
+            dossier = "\n\n".join(parts)
+            if dossier:
+                cur.execute(f"UPDATE {SCHEMA}.suppliers SET ai_analysis=%s, updated_at=now() WHERE id=%s", (dossier, supplier_id))
+                cur.execute(
+                    f"INSERT INTO {SCHEMA}.supplier_interactions (supplier_id, type, content) VALUES (%s, 'note', %s)",
+                    (supplier_id, "ИИ сформировал досье (массовое обогащение)")
+                )
+                processed += 1
+        return ok({"processed": processed, "remaining": max(0, remaining_before - processed)})
 
     # ── История взаимодействий: список ──
     if method == "GET" and action == "history" and sid:

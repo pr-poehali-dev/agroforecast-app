@@ -10,6 +10,8 @@ export default function AiTab({ item }: { item: Supplier }) {
   const [letter, setLetter] = useState(item.ai_letter || "");
   const [tone, setTone] = useState("деловой");
   const [loading, setLoading] = useState(false);
+  const [enriching, setEnriching] = useState(false);
+  const [enrichMsg, setEnrichMsg] = useState("");
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
 
@@ -20,6 +22,19 @@ export default function AiTab({ item }: { item: Supplier }) {
       setAnalysis(d.analysis);
     } catch (e: unknown) { setError(e instanceof Error ? e.message : "Ошибка ИИ"); }
     finally { setLoading(false); }
+  };
+
+  const runEnrich = async () => {
+    setEnriching(true); setError(""); setEnrichMsg("");
+    try {
+      const d = await adminApi.enrichSupplier(item.id);
+      if (d.dossier) setAnalysis(d.dossier);
+      const upd = (d.updated_fields || []).length;
+      setEnrichMsg(upd > 0
+        ? `Досье сформировано, дозаполнено полей: ${upd}. Обновите карточку, чтобы увидеть.`
+        : "Досье сформировано. Все контактные поля уже были заполнены.");
+    } catch (e: unknown) { setError(e instanceof Error ? e.message : "Ошибка ИИ"); }
+    finally { setEnriching(false); }
   };
 
   const runLetter = async () => {
@@ -65,12 +80,19 @@ export default function AiTab({ item }: { item: Supplier }) {
         </div>
       )}
 
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap">
         <button onClick={tab === "analysis" ? runAnalysis : runLetter} disabled={loading}
           className="flex items-center gap-1.5 px-3 py-2 rounded-xl hero-gradient text-white text-xs font-medium disabled:opacity-60">
           {loading ? <Icon name="Loader" size={13} className="animate-spin" /> : <Icon name="Sparkles" size={13} />}
           {loading ? "ИИ работает…" : (current ? "Сгенерировать заново" : (tab === "analysis" ? "Проанализировать" : "Составить письмо"))}
         </button>
+        {tab === "analysis" && (
+          <button onClick={runEnrich} disabled={enriching}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-secondary text-xs font-medium hover:bg-secondary/80 disabled:opacity-60">
+            {enriching ? <Icon name="Loader" size={13} className="animate-spin" /> : <Icon name="Wand2" size={13} className="text-primary" />}
+            {enriching ? "Обогащаю…" : "Обогатить данные"}
+          </button>
+        )}
         {current && (
           <button onClick={() => copy(current)}
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-secondary text-xs font-medium hover:bg-secondary/80">
@@ -80,6 +102,11 @@ export default function AiTab({ item }: { item: Supplier }) {
         )}
       </div>
 
+      {enrichMsg && (
+        <div className="flex items-start gap-2 text-xs px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700">
+          <Icon name="CheckCircle2" size={13} className="shrink-0 mt-0.5" /><span>{enrichMsg}</span>
+        </div>
+      )}
       {error && <p className="text-xs text-destructive">{error}</p>}
 
       {current ? (

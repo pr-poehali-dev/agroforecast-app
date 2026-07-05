@@ -24,6 +24,7 @@ export default function SuppliersBlock() {
   const [importMsg, setImportMsg] = useState("");
   const [importing, setImporting] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [enrichingAll, setEnrichingAll] = useState(false);
   const [facets, setFacets] = useState<Facets | null>(null);
   const [showAnalytics, setShowAnalytics] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -145,6 +146,25 @@ export default function SuppliersBlock() {
     }
   };
 
+  // Массовое ИИ-обогащение саратовских хозяйств без досье (партиями)
+  const handleEnrichAll = async () => {
+    if (!confirm("ИИ сформирует досье для саратовских хозяйств без анализа. Это может занять несколько минут. Продолжить?")) return;
+    setEnrichingAll(true); setImportMsg("ИИ обогащает карточки…");
+    try {
+      let totalDone = 0;
+      for (let i = 0; i < 60; i++) {
+        const res = await adminApi.enrichSuppliersBatch("64", 4);
+        totalDone += res.processed || 0;
+        setImportMsg(`ИИ обработал ${totalDone} хозяйств, осталось ~${res.remaining}…`);
+        if (!res.processed || res.remaining <= 0) break;
+      }
+      setImportMsg(`Готово. ИИ сформировал досье для ${totalDone} хозяйств.`);
+      load();
+    } catch (e: unknown) {
+      setImportMsg(e instanceof Error ? e.message : "Ошибка обогащения");
+    } finally { setEnrichingAll(false); }
+  };
+
   const s = data?.stats || {};
 
   return (
@@ -165,6 +185,11 @@ export default function SuppliersBlock() {
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-secondary text-xs font-medium hover:bg-secondary/80 disabled:opacity-60">
             {exporting ? <Icon name="Loader" size={13} className="animate-spin" /> : <Icon name="Download" size={13} className="text-primary" />}
             Выгрузить
+          </button>
+          <button onClick={handleEnrichAll} disabled={enrichingAll} title="ИИ формирует досье для саратовских хозяйств без анализа"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-secondary text-xs font-medium hover:bg-secondary/80 disabled:opacity-60">
+            {enrichingAll ? <Icon name="Loader" size={13} className="animate-spin" /> : <Icon name="Wand2" size={13} className="text-primary" />}
+            ИИ-обогащение
           </button>
           <button onClick={() => fileRef.current?.click()} disabled={importing}
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-secondary text-xs font-medium hover:bg-secondary/80 disabled:opacity-60">
