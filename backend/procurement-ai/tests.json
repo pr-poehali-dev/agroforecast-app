@@ -1,0 +1,19 @@
+{
+  "tests": [
+    {
+      "name": "Compose without token returns 401",
+      "method": "POST",
+      "path": "/?action=compose",
+      "body": {"id": 1},
+      "expectedStatus": 401,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "OPTIONS preflight",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    }
+  ]
+}

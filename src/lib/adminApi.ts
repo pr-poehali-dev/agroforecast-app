@@ -9,6 +9,7 @@ const URLS = {
   agent: "https://functions.poehali.dev/da876f65-9bf1-47dd-a655-51724a287820",
   suppliers: "https://functions.poehali.dev/f855736f-6aea-46bc-b19f-5da2b53735cd",
   regionPlan: "https://functions.poehali.dev/12ca1111-c9f0-4f38-bffe-b5bd19cb4cff",
+  procurement: "https://functions.poehali.dev/d785322c-a846-4496-9e64-9e42975dffdb",
 };
 
 const TOKEN_KEY = "admin_token";
@@ -178,6 +179,14 @@ export const adminApi = {
     req(`${URLS.suppliers}?action=history&id=${id}`, { method: "POST", body: JSON.stringify(data) }),
   deleteSupplierInteraction: (hid: number) =>
     req(`${URLS.suppliers}?action=history&hid=${hid}`, { method: "DELETE" }),
+
+  // ── ИИ-менеджер по закупкам ──
+  composeMessage: (id: number, opts: { channel?: string; goal?: string; instructions?: string }) =>
+    req(`${URLS.procurement}?action=compose&id=${id}`, { method: "POST", body: JSON.stringify(opts) }),
+  sendMessage: (messageId: number, opts: { recipient?: string; subject?: string; body?: string } = {}) =>
+    req(`${URLS.procurement}?action=send`, { method: "POST", body: JSON.stringify({ message_id: messageId, ...opts }) }),
+  getSupplierMessages: (id: number) =>
+    req(`${URLS.procurement}?action=messages&id=${id}`),
 
   // ── Region plan (план по региону) ──
   getRegionPlan: (region: string) =>

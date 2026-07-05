@@ -4,8 +4,9 @@ import { Supplier, STATUS_LABELS, STATUS_COLORS } from "./shared";
 import ProfileTab from "./ProfileTab";
 import HistoryTab from "./HistoryTab";
 import AiTab from "./AiTab";
+import ProcurementTab from "./ProcurementTab";
 
-type Tab = "profile" | "history" | "ai";
+type Tab = "profile" | "history" | "ai" | "procurement";
 
 // ── Полная карточка поставщика с вкладками ───────────────────────────────────
 export default function SupplierCard({ item, onClose, onSaved }: {
@@ -16,6 +17,7 @@ export default function SupplierCard({ item, onClose, onSaved }: {
 
   const tabs: { key: Tab; label: string; icon: string }[] = [
     { key: "profile", label: "Профиль", icon: "User" },
+    { key: "procurement", label: "Закупщик", icon: "Send" },
     { key: "history", label: "История", icon: "History" },
     { key: "ai", label: "ИИ-помощник", icon: "Sparkles" },
   ];
@@ -64,6 +66,7 @@ export default function SupplierCard({ item, onClose, onSaved }: {
         {/* Контент вкладки */}
         <div className="p-5">
           {(isNew || tab === "profile") && <ProfileTab item={item} onSaved={onSaved} />}
+          {!isNew && tab === "procurement" && <ProcurementTab item={item as Supplier} />}
           {!isNew && tab === "history" && <HistoryTab supplierId={item.id!} />}
           {!isNew && tab === "ai" && <AiTab item={item as Supplier} />}
         </div>
