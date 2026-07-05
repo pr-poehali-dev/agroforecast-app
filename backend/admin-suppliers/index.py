@@ -205,6 +205,7 @@ def handler(event: dict, context) -> dict:
         columns = list(raw_rows[0].keys())
         sample = raw_rows[:5]
         cmap = _ai_column_map(columns, sample) or {}
+        used_ai = bool(cmap)
         # если ИИ не нашёл название — дополняем/заменяем эвристикой по заголовкам
         if "name" not in cmap.values():
             heur = _heuristic_map(columns)
@@ -226,7 +227,7 @@ def handler(event: dict, context) -> dict:
                 [data[c] for c in cols]
             )
             inserted += 1
-        return ok({"imported": inserted, "mapping": cmap})
+        return ok({"imported": inserted, "mapping": cmap, "used_ai": used_ai})
 
     # ── Пакетный импорт из Excel/CSV ──
     if method == "POST" and action == "import":

@@ -246,55 +246,53 @@ function SuppliersBlock() {
     await adminApi.deleteSupplier(id); load();
   };
 
-  const KEY_MAP: Record<string, string> = {
-    "название": "name", "наименование": "name", "хозяйство": "name", "name": "name", "организация": "name",
-    "инн": "inn", "inn": "inn",
-    "район": "district", "district": "district",
-    "населенныйпункт": "locality", "нас.пункт": "locality", "село": "locality", "locality": "locality", "город": "locality",
-    "культуры": "crops", "культура": "crops", "crops": "crops",
-    "объем": "volume_tons", "объемтонн": "volume_tons", "объём": "volume_tons", "тонн": "volume_tons", "volume": "volume_tons",
-    "контакт": "contact_person", "контактноелицо": "contact_person", "фио": "contact_person", "contact": "contact_person",
-    "телефон": "phone", "тел": "phone", "phone": "phone",
-    "email": "email", "почта": "email", "e-mail": "email",
-    "адрес": "address", "address": "address",
-    "заметки": "notes", "комментарий": "notes", "notes": "notes",
-  };
-
-  const normKey = (k: string) => KEY_MAP[k.toLowerCase().replace(/[\s._-]/g, "")] || "";
+  // Ключевые слова, по которым определяем строку заголовков
+  const HEADER_HINTS = ["назван", "наимен", "инн", "руковод", "телефон", "адрес",
+    "предприят", "организац", "почт", "продукц", "деятельн", "собственн", "e_mail", "email"];
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setImporting(true); setImportMsg("ИИ разбирает таблицу…");
+    setImporting(true); setImportMsg("Читаю файл…");
     try {
       const buf = await file.arrayBuffer();
       const wb = XLSX.read(buf, { type: "array" });
       const sheet = wb.Sheets[wb.SheetNames[0]];
-      const raw: Record<string, unknown>[] = XLSX.utils.sheet_to_json(sheet, { defval: "" });
-      if (!raw.length) { setImportMsg("Файл пустой или без данных."); setImporting(false); return; }
+      // Читаем как матрицу — сами находим строку заголовков
+      const matrix: unknown[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+      if (!matrix.length) { setImportMsg("Файл пустой или без данных."); setImporting(false); return; }
 
-      // Сначала ИИ сам определяет колонки (наименование юрлица, ИНН, район, культуры…)
-      try {
-        const res = await adminApi.aiImportSuppliers(raw, REGION);
-        setImportMsg(`ИИ распознал таблицу и добавил производителей: ${res.imported}`);
-        setPage(1); load();
-        return;
-      } catch {
-        setImportMsg("ИИ недоступен, разбираю по заголовкам столбцов…");
+      // Ищем строку заголовков в первых 15 строках
+      let headerIdx = 0, bestScore = -1;
+      for (let i = 0; i < Math.min(15, matrix.length); i++) {
+        const cells = matrix[i].map(c => String(c).toLowerCase());
+        const score = cells.filter(c => HEADER_HINTS.some(h => c.includes(h))).length;
+        if (score > bestScore) { bestScore = score; headerIdx = i; }
       }
-
-      // Запасной вариант — по известным заголовкам
-      const rows = raw.map(r => {
+      const headers = matrix[headerIdx].map(c => String(c).trim());
+      // Строки данных → объекты с заголовками-ключами
+      const raw: Record<string, unknown>[] = [];
+      for (let i = headerIdx + 1; i < matrix.length; i++) {
+        const row = matrix[i];
+        if (!row || row.every(c => String(c).trim() === "")) continue;
         const obj: Record<string, unknown> = {};
-        for (const [k, v] of Object.entries(r)) {
-          const nk = normKey(k);
-          if (nk && v !== "") obj[nk] = nk === "volume_tons" ? Number(String(v).replace(",", ".")) || null : String(v).trim();
-        }
-        return obj;
-      }).filter(o => o.name);
-      if (!rows.length) { setImportMsg("Не удалось распознать производителей. Проверьте таблицу."); setImporting(false); return; }
-      const res = await adminApi.importSuppliers(rows, REGION);
-      setImportMsg(`Импортировано производителей: ${res.imported}`);
+        headers.forEach((h, j) => { if (h) obj[h] = row[j] ?? ""; });
+        raw.push(obj);
+      }
+      if (!raw.length) { setImportMsg("Не нашёл строк с данными. Проверьте, что в файле есть таблица с заголовками."); setImporting(false); return; }
+
+      // Отправляем батчами по 100 строк (чтобы большой файл не обрывался)
+      const CHUNK = 100;
+      let total = 0; let usedAi = false;
+      for (let i = 0; i < raw.length; i += CHUNK) {
+        const chunk = raw.slice(i, i + CHUNK);
+        setImportMsg(`Обрабатываю ${Math.min(i + CHUNK, raw.length)} из ${raw.length}…`);
+        const res = await adminApi.aiImportSuppliers(chunk, REGION);
+        total += res.imported || 0;
+        usedAi = usedAi || !!res.used_ai;
+      }
+      const how = usedAi ? "ИИ распознал таблицу" : "Таблица распознана по заголовкам";
+      setImportMsg(`${how}. Добавлено производителей: ${total} из ${raw.length}.`);
       setPage(1); load();
     } catch (err: unknown) {
       setImportMsg(err instanceof Error ? err.message : "Ошибка чтения файла");
