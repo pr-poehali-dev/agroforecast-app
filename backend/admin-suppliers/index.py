@@ -4,6 +4,8 @@ CRUD + пакетный импорт из Excel/CSV (фронт присылае
 """
 import json, os
 import psycopg2
+import urllib.request
+import urllib.error
 
 SCHEMA = os.environ.get("MAIN_DB_SCHEMA", "t_p36960093_agroforecast_app")
 CORS = {
@@ -38,6 +40,78 @@ def _clean(row):
             out[k] = row[k]
     return out
 
+
+def _ai_column_map(columns, sample_rows):
+    """ИИ определяет, какая колонка таблицы какому полю базы соответствует."""
+    api_key = os.environ.get("POLZA_API_KEY", "")
+    if not api_key:
+        return None
+    prompt = (
+        "Ты разбираешь Excel-таблицу с сельхозпроизводителями (поставщиками зерна и подсолнечника). "
+        "Нужно сопоставить колонки таблицы с полями базы данных.\n\n"
+        f"Колонки таблицы: {json.dumps(columns, ensure_ascii=False)}\n"
+        f"Примеры строк (первые несколько): {json.dumps(sample_rows, ensure_ascii=False)}\n\n"
+        "Поля базы данных:\n"
+        "- name: наименование юрлица / организации / хозяйства / КФХ / ИП / ФИО производителя (ОБЯЗАТЕЛЬНО)\n"
+        "- inn: ИНН\n"
+        "- district: район\n"
+        "- locality: населённый пункт, село, город\n"
+        "- crops: культуры (пшеница, подсолнечник и т.п.)\n"
+        "- volume_tons: объём в тоннах (число)\n"
+        "- contact_person: контактное лицо, ФИО контакта, руководитель\n"
+        "- phone: телефон\n"
+        "- email: электронная почта\n"
+        "- address: адрес\n"
+        "- notes: прочее, примечания, комментарии\n\n"
+        "Правила: наименование юрлица (ООО, АО, КФХ, ИП, СПК, любое название организации) — это name. "
+        "Если явного 'хозяйства' нет, name — это столбец с названием компании/юрлица. "
+        "Верни СТРОГО JSON вида {\"map\": {\"Название колонки из таблицы\": \"поле_базы\"}}. "
+        "Включай только колонки, которые уверенно распознал. Без markdown, только JSON."
+    )
+    payload = json.dumps({
+        "model": "openai/gpt-4o-mini",
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.1,
+        "response_format": {"type": "json_object"},
+    }).encode("utf-8")
+    req = urllib.request.Request(
+        "https://api.polza.ai/api/v1/chat/completions",
+        data=payload,
+        headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=28) as resp:
+            data = json.loads(resp.read())
+        text = data["choices"][0]["message"]["content"].strip()
+        if text.startswith("```"):
+            text = text.strip("`").split("\n", 1)[1] if "\n" in text else text.strip("`")
+        parsed = json.loads(text)
+        cmap = parsed.get("map", parsed)
+        return {str(k): str(v) for k, v in cmap.items() if v in FIELDS}
+    except (urllib.error.URLError, urllib.error.HTTPError, KeyError, ValueError, json.JSONDecodeError, TypeError):
+        return None
+
+
+def _apply_map(raw_rows, cmap):
+    out = []
+    for r in raw_rows:
+        obj = {}
+        for col, val in r.items():
+            field = cmap.get(col)
+            if not field or val in (None, ""):
+                continue
+            if field == "volume_tons":
+                try:
+                    obj[field] = float(str(val).replace(",", ".").replace(" ", ""))
+                except ValueError:
+                    continue
+            else:
+                obj[field] = str(val).strip()
+        if obj.get("name"):
+            out.append(obj)
+    return out
+
 def handler(event: dict, context) -> dict:
     """CRUD и импорт базы поставщиков сельхозпродукции"""
     if event.get("httpMethod") == "OPTIONS":
@@ -62,6 +136,34 @@ def handler(event: dict, context) -> dict:
 
     sid = params.get("id")
     action = params.get("action", "")
+
+    # ── ИИ-импорт: сырые строки таблицы, ИИ сам определяет колонки ──
+    if method == "POST" and action == "ai_import":
+        raw_rows = body.get("rows") or []
+        region = body.get("region") or "Саратовская область"
+        if not raw_rows:
+            return err("Файл пустой")
+        columns = list(raw_rows[0].keys())
+        sample = raw_rows[:5]
+        cmap = _ai_column_map(columns, sample)
+        if not cmap:
+            return err("ИИ не смог разобрать таблицу. Проверьте ключ Polza.ai или используйте обычный импорт.", 502)
+        rows = _apply_map(raw_rows, cmap)
+        if not rows:
+            return err("Не удалось распознать ни одного производителя. В таблице нет столбца с наименованием юрлица.")
+        inserted = 0
+        for data in rows:
+            data.setdefault("region", region)
+            data.setdefault("source", "ai_import")
+            data.setdefault("status", "new")
+            cols = list(data.keys())
+            ph = ", ".join(["%s"] * len(cols))
+            cur.execute(
+                f"INSERT INTO {SCHEMA}.suppliers ({', '.join(cols)}) VALUES ({ph})",
+                [data[c] for c in cols]
+            )
+            inserted += 1
+        return ok({"imported": inserted, "mapping": cmap})
 
     # ── Пакетный импорт из Excel/CSV ──
     if method == "POST" and action == "import":

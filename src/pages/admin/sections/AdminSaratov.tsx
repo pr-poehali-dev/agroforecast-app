@@ -244,12 +244,25 @@ function SuppliersBlock() {
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setImporting(true); setImportMsg("");
+    setImporting(true); setImportMsg("ИИ разбирает таблицу…");
     try {
       const buf = await file.arrayBuffer();
       const wb = XLSX.read(buf, { type: "array" });
       const sheet = wb.Sheets[wb.SheetNames[0]];
       const raw: Record<string, unknown>[] = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+      if (!raw.length) { setImportMsg("Файл пустой или без данных."); setImporting(false); return; }
+
+      // Сначала ИИ сам определяет колонки (наименование юрлица, ИНН, район, культуры…)
+      try {
+        const res = await adminApi.aiImportSuppliers(raw, REGION);
+        setImportMsg(`ИИ распознал таблицу и добавил производителей: ${res.imported}`);
+        setPage(1); load();
+        return;
+      } catch {
+        setImportMsg("ИИ недоступен, разбираю по заголовкам столбцов…");
+      }
+
+      // Запасной вариант — по известным заголовкам
       const rows = raw.map(r => {
         const obj: Record<string, unknown> = {};
         for (const [k, v] of Object.entries(r)) {
@@ -258,9 +271,9 @@ function SuppliersBlock() {
         }
         return obj;
       }).filter(o => o.name);
-      if (!rows.length) { setImportMsg("Не найдено ни одной строки с названием хозяйства. Проверьте заголовки столбцов."); setImporting(false); return; }
+      if (!rows.length) { setImportMsg("Не удалось распознать производителей. Проверьте таблицу."); setImporting(false); return; }
       const res = await adminApi.importSuppliers(rows, REGION);
-      setImportMsg(`Импортировано хозяйств: ${res.imported}`);
+      setImportMsg(`Импортировано производителей: ${res.imported}`);
       setPage(1); load();
     } catch (err: unknown) {
       setImportMsg(err instanceof Error ? err.message : "Ошибка чтения файла");

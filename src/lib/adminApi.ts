@@ -153,6 +153,8 @@ export const adminApi = {
     req(`${URLS.suppliers}?id=${id}`, { method: "DELETE" }),
   importSuppliers: (rows: Record<string, unknown>[], region: string) =>
     req(`${URLS.suppliers}?action=import`, { method: "POST", body: JSON.stringify({ rows, region }) }),
+  aiImportSuppliers: (rows: Record<string, unknown>[], region: string) =>
+    req(`${URLS.suppliers}?action=ai_import`, { method: "POST", body: JSON.stringify({ rows, region }) }),
 
   // ── Region plan (план по региону) ──
   getRegionPlan: (region: string) =>
