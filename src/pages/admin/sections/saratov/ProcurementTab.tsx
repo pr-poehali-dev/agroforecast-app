@@ -38,11 +38,13 @@ export default function ProcurementTab({ item }: { item: Supplier }) {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [maxChatId, setMaxChatId] = useState<number | null>(null);
   const [maxInbox, setMaxInbox] = useState<{ sender: string; text: string; created_at: string }[]>([]);
+  const [work, setWork] = useState<{ allowed: boolean; now: string; window: string } | null>(null);
 
   const loadMessages = () => adminApi.getSupplierMessages(item.id).then(d => setMessages(d.messages || [])).catch(() => {});
   useEffect(loadMessages, [item.id]);
   useEffect(() => {
     adminApi.getMaxStatus(item.id).then(d => { setMaxChatId(d.max_chat_id || null); setMaxInbox(d.inbox || []); }).catch(() => {});
+    adminApi.getWorkHours().then(setWork).catch(() => {});
   }, [item.id]);
 
   const compose = async () => {
@@ -55,16 +57,25 @@ export default function ProcurementTab({ item }: { item: Supplier }) {
     finally { setComposing(false); }
   };
 
-  const send = async () => {
+  const send = async (force = false) => {
     if (!draftId) return;
     if (!recipient.trim()) { setError(channel === "email" ? "Укажите email получателя" : "Укажите адрес получателя"); return; }
     setSending(true); setError(""); setOkMsg("");
     try {
-      await adminApi.sendMessage(draftId, { recipient, subject, body: text });
+      await adminApi.sendMessage(draftId, { recipient, subject, body: text, force });
       setOkMsg("Сообщение отправлено и записано в историю.");
       setDraftId(null); setText(""); setSubject("");
       loadMessages();
-    } catch (e: unknown) { setError(e instanceof Error ? e.message : "Не удалось отправить"); }
+      adminApi.getWorkHours().then(setWork).catch(() => {});
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Не удалось отправить";
+      // Блокировка по времени/навязчивости — предлагаем принудительную отправку
+      if (!force && (msg.includes("вне рабочего времени") || msg.includes("навязчив") || msg.includes("касание"))) {
+        if (confirm(`${msg}\n\nОтправить сейчас принудительно?`)) { setSending(false); return send(true); }
+      } else {
+        setError(msg);
+      }
+    }
     finally { setSending(false); }
   };
 
@@ -72,6 +83,16 @@ export default function ProcurementTab({ item }: { item: Supplier }) {
 
   return (
     <div className="space-y-4">
+      {/* Индикатор рабочего времени ИИ-закупщика */}
+      {work && (
+        <div className={`flex items-center gap-2 rounded-xl px-3 py-2 text-[11px] ${work.allowed ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+          <Icon name={work.allowed ? "Clock" : "Moon"} size={13} />
+          {work.allowed
+            ? `Рабочее время закупщика (${work.window}) · сейчас ${work.now}. Можно писать поставщикам.`
+            : `Сейчас ${work.now} — вне рабочего времени (${work.window}). Отправка будет отложена, чтобы не беспокоить поставщика.`}
+        </div>
+      )}
+
       {/* Настройка запроса */}
       <div className="glass-card rounded-xl p-3 space-y-2.5">
         <div className="flex gap-1.5">
@@ -131,7 +152,7 @@ export default function ProcurementTab({ item }: { item: Supplier }) {
           )}
           <textarea value={text} rows={10} onChange={e => setText(e.target.value)} className={`${inputCls} resize-y font-sans`} />
           <div className="flex gap-2">
-            <button onClick={send} disabled={sending}
+            <button onClick={() => send(false)} disabled={sending}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl hero-gradient text-white text-xs font-medium disabled:opacity-60">
               {sending ? <Icon name="Loader" size={13} className="animate-spin" /> : <Icon name="Send" size={13} />}
               {sending ? "Отправляю…" : "Отправить"}

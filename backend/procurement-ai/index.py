@@ -8,6 +8,7 @@ import json, os, smtplib, ssl
 import psycopg2
 import urllib.request
 import urllib.error
+from datetime import datetime, timezone, timedelta
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.header import Header
@@ -39,7 +40,14 @@ PROCUREMENT_SYSTEM = (
     "сорная/масличная примесь, кислотное число масла.\n\n"
     "СТИЛЬ: деловой, уверенный, уважительный, конкретный. Оперируешь фактами и показателями качества, "
     "говоришь на языке аграриев. Всегда предлагаешь понятный следующий шаг. "
-    "Не выдумывай цены и объёмы, если их нет — предлагай обсудить. Пиши на русском."
+    "Не выдумывай цены и объёмы, если их нет — предлагай обсудить. Пиши на русском.\n\n"
+    "ПРАВИЛА ВЕЖЛИВОСТИ (строго соблюдай):\n"
+    "• Всегда здоровайся и обращайся уважительно, по имени-отчеству, если оно известно.\n"
+    "• Никакого давления, спама и навязчивости. Уважай занятость аграрника (посевная, уборка).\n"
+    "• Пиши кратко и по делу — цени время собеседника. Никакого агрессивного дожима.\n"
+    "• Если поставщик отказался или просит не беспокоить — вежливо поблагодари и не настаивай.\n"
+    "• Тон всегда доброжелательный и партнёрский, а не 'продающий любой ценой'.\n"
+    "• Благодари за ответ и всегда оставляй хорошее впечатление о компании."
 )
 
 
@@ -51,6 +59,20 @@ MANAGER_NAME = os.environ.get("MANAGER_NAME", "Александр")
 MANAGER_PHONE = os.environ.get("MANAGER_PHONE", "+7 927 748-68-68")
 MANAGER_EMAIL = os.environ.get("SMTP_USER", "")
 COMPANY_NAME = os.environ.get("COMPANY_NAME", "АгроПорт")
+
+
+# Рабочее время ИИ-закупщика: 9:00–17:00 по будням, часовой пояс Саратова (UTC+4)
+WORK_TZ = timezone(timedelta(hours=int(os.environ.get("WORK_TZ_OFFSET", "4"))))
+WORK_START = int(os.environ.get("WORK_HOUR_START", "9"))
+WORK_END = int(os.environ.get("WORK_HOUR_END", "17"))
+
+
+def within_working_hours():
+    """True, если сейчас рабочее время (пн-пт, 9:00–17:00). Возвращает (ok, now_local)."""
+    now = datetime.now(WORK_TZ)
+    is_weekday = now.weekday() < 5           # 0=пн ... 4=пт
+    is_hours = WORK_START <= now.hour < WORK_END
+    return (is_weekday and is_hours), now
 
 
 def get_db():
@@ -338,11 +360,31 @@ def handler(event: dict, context) -> dict:
         msg_id = cur.fetchone()[0]
         return ok({"id": msg_id, "channel": channel, "recipient": recipient, "subject": subject, "body": b})
 
+    # ── Проверить, рабочее ли сейчас время (для фронта) ──
+    if method == "GET" and action == "work_hours":
+        allowed, now = within_working_hours()
+        return ok({
+            "allowed": allowed,
+            "now": now.strftime("%H:%M"),
+            "weekday": now.weekday(),
+            "window": f"{WORK_START:02d}:00–{WORK_END:02d}:00, пн–пт",
+        })
+
     # ── Отправить черновик (после подтверждения менеджера) ──
     if method == "POST" and action == "send":
         msg_id = body.get("message_id")
         if not msg_id:
             return err("Не указан message_id")
+        # Ограничение по рабочему времени 9:00–17:00 (пн-пт), чтобы не беспокоить поставщиков
+        allowed, now = within_working_hours()
+        if not allowed and not body.get("force"):
+            return err(
+                f"Сейчас {now.strftime('%H:%M')} — вне рабочего времени закупщика "
+                f"({WORK_START:02d}:00–{WORK_END:02d}:00, пн–пт). "
+                "Чтобы не беспокоить поставщика, отправка отложена. "
+                "Можно отправить принудительно, подтвердив это.",
+                423,
+            )
         cur.execute(
             f"""SELECT id, supplier_id, channel, recipient, subject, body, status
                 FROM {SCHEMA}.supplier_messages WHERE id=%s""", (msg_id,)
@@ -351,6 +393,23 @@ def handler(event: dict, context) -> dict:
         if not row:
             return err("Сообщение не найдено", 404)
         _, s_id, channel, recipient, subject, mbody, status = row
+        # Защита от навязчивости: не чаще одного касания в 3 дня (если не force)
+        min_gap = int(os.environ.get("MIN_CONTACT_GAP_DAYS", "3"))
+        cur.execute(
+            f"""SELECT sent_at FROM {SCHEMA}.supplier_messages
+                WHERE supplier_id=%s AND status='sent' AND sent_at IS NOT NULL
+                ORDER BY sent_at DESC LIMIT 1""", (s_id,)
+        )
+        last = cur.fetchone()
+        if last and last[0] and not body.get("force"):
+            days_passed = (datetime.now() - last[0]).days
+            if days_passed < min_gap:
+                return err(
+                    f"Поставщику уже писали {days_passed} дн. назад. Чтобы не быть навязчивыми, "
+                    f"следующее касание рекомендуем не раньше чем через {min_gap} дн. "
+                    "Можно отправить принудительно.",
+                    429,
+                )
         # можно переопределить получателя/текст с фронта (после ручной правки)
         recipient = (body.get("recipient") or recipient or "").strip()
         subject = body.get("subject", subject)

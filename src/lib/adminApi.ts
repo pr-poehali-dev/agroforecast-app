@@ -183,12 +183,14 @@ export const adminApi = {
   // ── ИИ-менеджер по закупкам ──
   composeMessage: (id: number, opts: { channel?: string; goal?: string; instructions?: string }) =>
     req(`${URLS.procurement}?action=compose&id=${id}`, { method: "POST", body: JSON.stringify(opts) }),
-  sendMessage: (messageId: number, opts: { recipient?: string; subject?: string; body?: string } = {}) =>
+  sendMessage: (messageId: number, opts: { recipient?: string; subject?: string; body?: string; force?: boolean } = {}) =>
     req(`${URLS.procurement}?action=send`, { method: "POST", body: JSON.stringify({ message_id: messageId, ...opts }) }),
   getSupplierMessages: (id: number) =>
     req(`${URLS.procurement}?action=messages&id=${id}`),
   getMaxStatus: (id: number) =>
     req(`${URLS.procurement}?action=max_status&id=${id}`),
+  getWorkHours: () =>
+    req(`${URLS.procurement}?action=work_hours`),
 
   // ── Region plan (план по региону) ──
   getRegionPlan: (region: string) =>
