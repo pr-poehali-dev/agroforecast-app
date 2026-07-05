@@ -205,17 +205,34 @@ def handler(event: dict, context) -> dict:
             return err("Файл пустой")
         columns = list(raw_rows[0].keys())
         sample = raw_rows[:5]
+        print(f"[ai_import] columns={columns}")
+        print(f"[ai_import] sample_row={raw_rows[0]}")
         cmap = _ai_column_map(columns, sample) or {}
         used_ai = bool(cmap)
+        print(f"[ai_import] ai_map={cmap}")
         # если ИИ не нашёл название — дополняем/заменяем эвристикой по заголовкам
         if "name" not in cmap.values():
             heur = _heuristic_map(columns)
             for col, field in heur.items():
                 if col not in cmap and field not in cmap.values():
                     cmap[col] = field
+        # крайняя мера: если название так и не найдено — берём первый непустой текстовый столбец
+        if "name" not in cmap.values():
+            for col in columns:
+                if col in cmap:
+                    continue
+                val = str(raw_rows[0].get(col, "")).strip()
+                if val and not val.replace(".", "").replace(",", "").replace(" ", "").isdigit():
+                    cmap[col] = "name"
+                    break
+        print(f"[ai_import] final_map={cmap}")
         rows = _apply_map(raw_rows, cmap)
         if not rows:
-            return err("Не удалось распознать ни одного производителя. Проверьте, что в таблице есть столбец с названием предприятия.")
+            return err(
+                "Не удалось распознать столбец с названием предприятия. "
+                f"Столбцы в файле: {', '.join(str(c) for c in columns) or '—'}. "
+                "Убедитесь, что в таблице есть колонка с наименованием организации."
+            )
         inserted = 0
         for data in rows:
             data.setdefault("region", region)
