@@ -26,12 +26,6 @@ export default function AdminPanel() {
   }, []);
 
   useEffect(() => {
-    const onUnauth = () => setAuth("out");
-    window.addEventListener("admin-unauthorized", onUnauth);
-    return () => window.removeEventListener("admin-unauthorized", onUnauth);
-  }, []);
-
-  useEffect(() => {
     if (auth !== "in") return;
     adminApi.getAppeals({ status: "new", page: 1 })
       .then(d => setNewAppeals(d.total || 0))
