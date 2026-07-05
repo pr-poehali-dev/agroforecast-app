@@ -153,6 +153,10 @@ def _heuristic_map(columns):
     return cmap
 
 
+# Ограничения длины для столбцов с типом varchar (остальные — text, без лимита)
+MAXLEN = {"inn": 100, "status": 20, "source": 50}
+
+
 def _apply_map(raw_rows, cmap):
     out = []
     for r in raw_rows:
@@ -167,7 +171,11 @@ def _apply_map(raw_rows, cmap):
                 except ValueError:
                     continue
             else:
-                obj[field] = str(val).strip()
+                s = str(val).strip()
+                limit = MAXLEN.get(field)
+                if limit and len(s) > limit:
+                    s = s[:limit]
+                obj[field] = s
         if obj.get("name"):
             out.append(obj)
     return out
