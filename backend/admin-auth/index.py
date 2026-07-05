@@ -40,7 +40,8 @@ def handler(event: dict, context) -> dict:
     params = event.get("queryStringParameters") or {}
     action = params.get("action", "")
     headers = event.get("headers", {})
-    admin_token = headers.get("x-admin-token", "")
+    lheaders = {str(k).lower(): v for k, v in headers.items()}
+    admin_token = lheaders.get("x-admin-token", "") or params.get("token", "")
 
     body = {}
     if event.get("body"):

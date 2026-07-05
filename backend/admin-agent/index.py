@@ -88,9 +88,10 @@ def handler(event: dict, context) -> dict:
         return {"statusCode": 200, "headers": CORS, "body": ""}
 
     method = event.get("httpMethod", "GET")
-    headers = event.get("headers", {})
+    headers = event.get("headers", {}) or {}
+    lheaders = {str(k).lower(): v for k, v in headers.items()}
     params = event.get("queryStringParameters") or {}
-    token = headers.get("x-admin-token", "") or params.get("token", "")
+    token = lheaders.get("x-admin-token", "") or params.get("token", "")
 
     db = get_db()
     cur = db.cursor()

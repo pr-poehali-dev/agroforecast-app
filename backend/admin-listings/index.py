@@ -29,7 +29,10 @@ def get_conn():
 
 
 def check_admin(event: dict) -> bool:
-    token = event.get("headers", {}).get("x-admin-token", "")
+    headers = event.get("headers", {}) or {}
+    h = {str(k).lower(): v for k, v in headers.items()}
+    params = event.get("queryStringParameters") or {}
+    token = h.get("x-admin-token", "") or params.get("token", "")
     if not token:
         return False
     conn = get_conn()

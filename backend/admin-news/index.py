@@ -21,7 +21,8 @@ def ok(data): return {"statusCode": 200, "headers": CORS, "body": json.dumps(dat
 def err(msg, code=400): return {"statusCode": code, "headers": CORS, "body": json.dumps({"error": msg}, ensure_ascii=False)}
 
 def verify_admin(cur, headers):
-    token = headers.get("x-admin-token", "")
+    h = {str(k).lower(): v for k, v in (headers or {}).items()}
+    token = h.get("x-admin-token", "")
     if not token:
         return False
     cur.execute(f"SELECT id FROM {SCHEMA}.admin_sessions WHERE token=%s AND expires_at > now()", (token,))
