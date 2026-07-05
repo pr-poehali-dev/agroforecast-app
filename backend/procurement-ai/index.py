@@ -46,6 +46,12 @@ PROCUREMENT_SYSTEM = (
 # Ссылка на MAX-бота для приглашения поставщиков в быстрый чат
 MAX_BOT_URL = os.environ.get("MAX_BOT_URL", "https://max.ru/id631205241205_1_bot")
 
+# Реквизиты менеджера/компании для подписи писем
+MANAGER_NAME = os.environ.get("MANAGER_NAME", "Александр")
+MANAGER_PHONE = os.environ.get("MANAGER_PHONE", "+7 927 748-68-68")
+MANAGER_EMAIL = os.environ.get("SMTP_USER", "")
+COMPANY_NAME = os.environ.get("COMPANY_NAME", "АгроПорт")
+
 
 def get_db():
     conn = psycopg2.connect(os.environ["DATABASE_URL"])
@@ -282,15 +288,24 @@ def handler(event: dict, context) -> dict:
         goal_text = goal_map.get(goal, goal_map["first_contact"])
         length = "короткое сообщение (3-5 предложений, без темы письма)" if channel == "max" else "письмо"
 
+        signature = (
+            f"МОИ РЕКВИЗИТЫ ДЛЯ ПОДПИСИ (используй именно их, без заглушек-плейсхолдеров):\n"
+            f"Имя: {MANAGER_NAME}\n"
+            f"Компания: {COMPANY_NAME}, менеджер по закупкам\n"
+            f"Телефон: {MANAGER_PHONE}\n"
+            + (f"Email: {MANAGER_EMAIL}\n" if MANAGER_EMAIL else "")
+        )
         prompt = (
             f"Составь {length} поставщику от лица менеджера по закупкам.\n\n"
             f"ДАННЫЕ ПОСТАВЩИКА:\n{supplier_text(p)}\n\n"
             f"ЦЕЛЬ ОБРАЩЕНИЯ: {goal_text}\n"
             + (f"ДОП. УКАЗАНИЯ МЕНЕДЖЕРА: {extra}\n" if extra else "")
+            + f"\n{signature}\n"
             + "\nТребования:\n"
             "• Обращайся по имени, если известно контактное лицо.\n"
             "• Упомяни конкретные культуры этого хозяйства и релевантные показатели качества по ГОСТ.\n"
             "• Профессионально, по делу, с чётким следующим шагом.\n"
+            "• В подписи используй ТОЛЬКО мои реквизиты выше. НЕ пиши «[ваш номер]», «[ваш email]» и подобные заглушки.\n"
             + ("• Верни ТОЛЬКО текст письма. В ПЕРВОЙ строке укажи «Тема: ...», далее пустая строка и тело письма."
                if channel == "email" else "• Верни только текст сообщения, без темы.")
         )
