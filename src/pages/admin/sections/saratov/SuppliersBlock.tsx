@@ -85,6 +85,26 @@ export default function SuppliersBlock() {
     } finally { setExporting(false); }
   };
 
+  const downloadTemplate = () => {
+    const rows = [{
+      "Название хозяйства": "ООО Пример / КФХ Иванов",
+      "ИНН": "6400000000",
+      "Район": "Аткарский",
+      "Населённый пункт": "с. Пример",
+      "Культуры / продукция": "пшеница, подсолнечник",
+      "Объём, т": 1500,
+      "Контактное лицо": "Иванов Иван Иванович",
+      "Телефон": "+7 900 000-00-00",
+      "Email": "example@mail.ru",
+      "Адрес": "Саратовская обл., Аткарский р-н, с. Пример",
+    }];
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws["!cols"] = [{ wch: 26 }, { wch: 14 }, { wch: 16 }, { wch: 18 }, { wch: 24 }, { wch: 10 }, { wch: 26 }, { wch: 18 }, { wch: 20 }, { wch: 36 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Шаблон");
+    XLSX.writeFile(wb, "шаблон_загрузки_хозяйств.xlsx");
+  };
+
   const handleDelete = async (id: number) => {
     if (!confirm("Удалить хозяйство из базы?")) return;
     await adminApi.deleteSupplier(id); load();
@@ -190,6 +210,10 @@ export default function SuppliersBlock() {
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-secondary text-xs font-medium hover:bg-secondary/80 disabled:opacity-60">
             {enrichingAll ? <Icon name="Loader" size={13} className="animate-spin" /> : <Icon name="Wand2" size={13} className="text-primary" />}
             ИИ-обогащение
+          </button>
+          <button onClick={downloadTemplate} title="Скачать пустой Excel с нужными колонками"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-secondary text-xs font-medium hover:bg-secondary/80">
+            <Icon name="FileSpreadsheet" size={13} className="text-primary" />Шаблон
           </button>
           <button onClick={() => fileRef.current?.click()} disabled={importing}
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-secondary text-xs font-medium hover:bg-secondary/80 disabled:opacity-60">
