@@ -3,8 +3,7 @@ import * as XLSX from "xlsx";
 import { adminApi } from "@/lib/adminApi";
 import Icon from "@/components/ui/icon";
 import { Supplier, Facet, Facets, Analytics, REGION, STATUS_LABELS, STATUS_COLORS } from "./shared";
-import SupplierModal from "./SupplierModal";
-import CrmModal from "./CrmModal";
+import SupplierCard from "./SupplierCard";
 
 // ── Блок базы поставщиков ────────────────────────────────────────────────────
 export default function SuppliersBlock() {
@@ -21,8 +20,7 @@ export default function SuppliersBlock() {
   const [priorityOnly, setPriorityOnly] = useState(false); // районы вокруг Аткарска
   const [saratovOnly, setSaratovOnly] = useState(false);   // ИНН 64
   const [page, setPage] = useState(1);
-  const [modal, setModal] = useState<Partial<Supplier> | null | false>(false);
-  const [crm, setCrm] = useState<Supplier | null>(null);
+  const [card, setCard] = useState<Partial<Supplier> | null>(null);
   const [importMsg, setImportMsg] = useState("");
   const [importing, setImporting] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -173,7 +171,7 @@ export default function SuppliersBlock() {
             {importing ? <Icon name="Loader" size={13} className="animate-spin" /> : <Icon name="Upload" size={13} />}
             Импорт Excel
           </button>
-          <button onClick={() => setModal({})} className="flex items-center gap-1.5 px-3 py-2 rounded-xl hero-gradient text-white text-xs font-medium">
+          <button onClick={() => setCard({})} className="flex items-center gap-1.5 px-3 py-2 rounded-xl hero-gradient text-white text-xs font-medium">
             <Icon name="Plus" size={14} />Добавить
           </button>
         </div>
@@ -242,7 +240,8 @@ export default function SuppliersBlock() {
       ) : (
         <div className="space-y-2">
           {data?.suppliers.map(sup => (
-            <div key={sup.id} className="glass-card rounded-xl p-4 flex items-start justify-between gap-3">
+            <div key={sup.id} onClick={() => setCard(sup)}
+              className="glass-card rounded-xl p-4 flex items-start justify-between gap-3 cursor-pointer hover:border-primary/40 transition-colors">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1 flex-wrap">
                   {(sup.priority ?? 0) >= 2 && (
@@ -267,12 +266,11 @@ export default function SuppliersBlock() {
                 </div>
               </div>
               <div className="flex items-center gap-1 shrink-0">
-                <button onClick={() => setCrm(sup)} title="ИИ-менеджер: анализ и письмо"
+                <button onClick={e => { e.stopPropagation(); setCard(sup); }} title="Открыть карточку"
                   className="flex items-center gap-1 px-2 py-1.5 rounded-lg hero-gradient text-white text-[11px] font-medium">
-                  <Icon name="Sparkles" size={13} />ИИ
+                  <Icon name="Sparkles" size={13} />Открыть
                 </button>
-                <button onClick={() => setModal(sup)} className="p-1.5 hover:bg-primary/10 rounded-lg text-primary"><Icon name="Edit" size={14} /></button>
-                <button onClick={() => handleDelete(sup.id)} className="p-1.5 hover:bg-destructive/10 rounded-lg text-destructive"><Icon name="Trash2" size={14} /></button>
+                <button onClick={e => { e.stopPropagation(); handleDelete(sup.id); }} className="p-1.5 hover:bg-destructive/10 rounded-lg text-destructive"><Icon name="Trash2" size={14} /></button>
               </div>
             </div>
           ))}
@@ -299,8 +297,7 @@ export default function SuppliersBlock() {
         </div>
       )}
 
-      {modal !== false && <SupplierModal item={modal || {}} onClose={() => setModal(false)} onSave={() => { setModal(false); load(); }} />}
-      {crm && <CrmModal item={crm} onClose={() => { setCrm(null); load(); }} />}
+      {card && <SupplierCard item={card} onClose={() => { setCard(null); load(); }} onSaved={() => { setCard(null); load(); }} />}
       {showAnalytics && <AnalyticsModal region={region} onClose={() => setShowAnalytics(false)}
         onPick={(f) => { if (f.district !== undefined) setDistrict(f.district); if (f.activity !== undefined) setActivity(f.activity); if (f.ownership !== undefined) setOwnership(f.ownership); setPage(1); setShowAnalytics(false); }} />}
     </div>

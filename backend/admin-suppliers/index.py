@@ -398,7 +398,55 @@ def handler(event: dict, context) -> dict:
         if not text:
             return err("Генерация письма временно недоступна. Попробуйте позже.", 502)
         cur.execute(f"UPDATE {SCHEMA}.suppliers SET ai_letter=%s, updated_at=now() WHERE id=%s", (text, p["id"]))
+        # фиксируем в истории
+        cur.execute(
+            f"INSERT INTO {SCHEMA}.supplier_interactions (supplier_id, type, content) VALUES (%s, 'letter', %s)",
+            (p["id"], "Сгенерировано письмо о сотрудничестве (ИИ)")
+        )
         return ok({"letter": text})
+
+    # ── История взаимодействий: список ──
+    if method == "GET" and action == "history" and sid:
+        cur.execute(
+            f"""SELECT id, type, content, author, created_at
+                FROM {SCHEMA}.supplier_interactions
+                WHERE supplier_id=%s ORDER BY created_at DESC""",
+            (sid,)
+        )
+        keys = ["id", "type", "content", "author", "created_at"]
+        items = [dict(zip(keys, r)) for r in cur.fetchall()]
+        return ok({"interactions": items})
+
+    # ── История взаимодействий: добавить запись ──
+    if method == "POST" and action == "history" and sid:
+        itype = (body.get("type") or "note").strip()
+        content = (body.get("content") or "").strip()
+        author = (body.get("author") or "").strip() or None
+        allowed = {"note", "call", "email", "meeting", "status", "letter"}
+        if itype not in allowed:
+            itype = "note"
+        if not content:
+            return err("Текст записи обязателен")
+        cur.execute(
+            f"""INSERT INTO {SCHEMA}.supplier_interactions (supplier_id, type, content, author)
+                VALUES (%s, %s, %s, %s) RETURNING id, created_at""",
+            (sid, itype, content, author)
+        )
+        row = cur.fetchone()
+        # обновляем дату последнего контакта у поставщика
+        if itype in ("call", "email", "meeting", "letter"):
+            cur.execute(f"UPDATE {SCHEMA}.suppliers SET last_contact_at=now() WHERE id=%s", (sid,))
+        return ok({"id": row[0], "created_at": row[1]})
+
+    # ── История взаимодействий: удалить запись ──
+    if method == "DELETE" and action == "history":
+        hid = params.get("hid")
+        if not hid:
+            return err("Не указан id записи")
+        cur.execute(f"DELETE FROM {SCHEMA}.supplier_interactions WHERE id=%s RETURNING id", (hid,))
+        if not cur.fetchone():
+            return err("Запись не найдена", 404)
+        return ok({"ok": True})
 
     # Исключение служебных/мусорных строк из аналитики и справочников
     NOT_JUNK = "status <> 'rejected' AND name NOT LIKE '[служебная строка]%' AND "
@@ -544,6 +592,12 @@ def handler(event: dict, context) -> dict:
         updates = _clean(body)
         if not updates:
             return err("Нечего обновлять")
+        # если меняется статус — зафиксируем это в истории
+        old_status = None
+        if "status" in updates:
+            cur.execute(f"SELECT status FROM {SCHEMA}.suppliers WHERE id=%s", (sid,))
+            r = cur.fetchone()
+            old_status = r[0] if r else None
         set_clause = ", ".join(f"{k}=%s" for k in updates) + ", updated_at=now()"
         cur.execute(
             f"UPDATE {SCHEMA}.suppliers SET {set_clause} WHERE id=%s RETURNING id",
@@ -551,6 +605,14 @@ def handler(event: dict, context) -> dict:
         )
         if not cur.fetchone():
             return err("Поставщик не найден", 404)
+        if "status" in updates and updates["status"] != old_status:
+            labels = {"new": "Новый", "in_progress": "В работе", "negotiation": "Переговоры",
+                      "partner": "Партнёр", "rejected": "Отказ"}
+            new_lbl = labels.get(updates["status"], updates["status"])
+            cur.execute(
+                f"INSERT INTO {SCHEMA}.supplier_interactions (supplier_id, type, content) VALUES (%s, 'status', %s)",
+                (sid, f"Статус изменён на «{new_lbl}»")
+            )
         return ok({"ok": True})
 
     # ── Удаление ──

@@ -38,6 +38,20 @@ export const emptyForm = () => ({
 export interface Facet { value: string; count: number }
 export interface Facets { regions: Facet[]; districts: Facet[]; activities: Facet[]; ownerships: Facet[] }
 
+export interface Interaction {
+  id: number; type: string; content: string; author?: string | null; created_at: string;
+}
+
+// Типы взаимодействий для истории CRM
+export const INTERACTION_TYPES: Record<string, { label: string; icon: string; color: string }> = {
+  note:    { label: "Заметка",    icon: "StickyNote", color: "bg-secondary text-muted-foreground" },
+  call:    { label: "Звонок",     icon: "Phone",      color: "bg-blue-100 text-blue-700" },
+  email:   { label: "Письмо",     icon: "Mail",       color: "bg-violet-100 text-violet-700" },
+  meeting: { label: "Встреча",    icon: "Users",      color: "bg-emerald-100 text-emerald-700" },
+  letter:  { label: "ИИ-письмо",  icon: "Sparkles",   color: "bg-amber-100 text-amber-700" },
+  status:  { label: "Статус",     icon: "Flag",       color: "bg-rose-100 text-rose-700" },
+};
+
 export interface Analytics {
   region: string; total: number;
   by_district: { district: string; count: number }[];

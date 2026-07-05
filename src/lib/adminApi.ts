@@ -168,6 +168,12 @@ export const adminApi = {
     req(`${URLS.suppliers}?action=ai_analyze&id=${id}`, { method: "POST", body: JSON.stringify({}) }),
   generateSupplierLetter: (id: number, opts: { tone?: string; company?: string } = {}) =>
     req(`${URLS.suppliers}?action=ai_letter&id=${id}`, { method: "POST", body: JSON.stringify(opts) }),
+  getSupplierHistory: (id: number) =>
+    req(`${URLS.suppliers}?action=history&id=${id}`),
+  addSupplierInteraction: (id: number, data: { type: string; content: string; author?: string }) =>
+    req(`${URLS.suppliers}?action=history&id=${id}`, { method: "POST", body: JSON.stringify(data) }),
+  deleteSupplierInteraction: (hid: number) =>
+    req(`${URLS.suppliers}?action=history&hid=${hid}`, { method: "DELETE" }),
 
   // ── Region plan (план по региону) ──
   getRegionPlan: (region: string) =>
