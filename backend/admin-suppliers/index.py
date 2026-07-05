@@ -449,18 +449,23 @@ def handler(event: dict, context) -> dict:
         return ok({"ok": True})
 
     # Исключение служебных/мусорных строк из аналитики и справочников
-    NOT_JUNK = "status <> 'rejected' AND name NOT LIKE '[служебная строка]%' AND "
+    NOT_JUNK = "status <> 'rejected' AND name NOT LIKE '[служебная строка]%%' AND "
     JUNK_ACT = "btrim(a.act) NOT IN ('Направление деятельности','Дополнительные услуги и продукция') AND "
     JUNK_OWN = "ownership NOT IN ('Подчиненность вышестоящей организации','Форма собственности') AND "
 
     # ── Справочники для фильтров (facets) ──
     if method == "GET" and action == "facets":
         region = params.get("region", "")
-        # Условие по региону (для районов/направлений/собственности)
-        rcond = "region=%s AND " if region else ""
-        rargs = [region] if region else []
+        inn_prefix = params.get("inn_prefix", "")
+        # Условие по региону и/или ИНН-префиксу (для районов/направлений/собственности)
+        rcond = ""
+        rargs = []
+        if region:
+            rcond += "region=%s AND "; rargs.append(region)
+        if inn_prefix:
+            rcond += "inn LIKE %s AND "; rargs.append(f"{inn_prefix}%%")
         # Регионы (всегда полный список)
-        cur.execute(f"SELECT region, COUNT(*) FROM {SCHEMA}.suppliers WHERE {NOT_JUNK}region IS NOT NULL AND region<>'' GROUP BY region ORDER BY 2 DESC")
+        cur.execute(f"SELECT region, COUNT(*) FROM {SCHEMA}.suppliers WHERE {NOT_JUNK}region IS NOT NULL AND region<>'' GROUP BY region ORDER BY 2 DESC", [])
         regions = [{"value": r[0], "count": r[1]} for r in cur.fetchall()]
         # Районы (по выбранному региону, если задан)
         cur.execute(f"SELECT district, COUNT(*) FROM {SCHEMA}.suppliers WHERE {NOT_JUNK}{rcond}district IS NOT NULL AND district<>'' GROUP BY district ORDER BY 1", rargs)

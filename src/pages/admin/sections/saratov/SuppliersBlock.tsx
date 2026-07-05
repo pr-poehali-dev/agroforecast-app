@@ -11,14 +11,14 @@ export default function SuppliersBlock() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
-  const [region, setRegion] = useState(REGION);
+  const [region, setRegion] = useState("");         // "" = вся Россия (полная база)
   const [district, setDistrict] = useState("");
   const [activity, setActivity] = useState("");
   const [crop, setCrop] = useState("");
   const [ownership, setOwnership] = useState("");
   const [farmer, setFarmer] = useState(true);       // по умолчанию — только сельхозпроизводители
   const [priorityOnly, setPriorityOnly] = useState(false); // районы вокруг Аткарска
-  const [saratovOnly, setSaratovOnly] = useState(false);   // ИНН 64
+  const [saratovOnly, setSaratovOnly] = useState(true);    // ИНН 64 — саратовские, включено по умолчанию
   const [page, setPage] = useState(1);
   const [card, setCard] = useState<Partial<Supplier> | null>(null);
   const [importMsg, setImportMsg] = useState("");
@@ -42,16 +42,16 @@ export default function SuppliersBlock() {
   };
   useEffect(() => { load(); }, [search, status, region, district, activity, crop, ownership, farmer, priorityOnly, saratovOnly, page]);
 
-  // Справочники фильтров зависят от выбранного региона
+  // Справочники фильтров зависят от выбранного региона и/или ИНН-префикса
   useEffect(() => {
-    adminApi.getSupplierFacets(region).then(setFacets).catch(() => {});
-  }, [region]);
+    adminApi.getSupplierFacets(region, saratovOnly ? "64" : "").then(setFacets).catch(() => {});
+  }, [region, saratovOnly]);
 
   const resetFilters = () => {
     setDistrict(""); setActivity(""); setCrop(""); setOwnership(""); setSearch(""); setStatus("");
-    setPriorityOnly(false); setSaratovOnly(false); setPage(1);
+    setRegion(""); setPriorityOnly(false); setSaratovOnly(true); setPage(1);
   };
-  const activeFilters = [district, activity, crop, ownership].filter(Boolean).length + (priorityOnly ? 1 : 0) + (saratovOnly ? 1 : 0);
+  const activeFilters = [region, district, activity, crop, ownership].filter(Boolean).length + (priorityOnly ? 1 : 0);
 
   // Выгрузка отфильтрованного перечня в Excel
   const handleExport = async () => {
@@ -207,7 +207,7 @@ export default function SuppliersBlock() {
       <div className="glass-card rounded-xl p-3 space-y-2.5">
         <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
           <FilterSelect label="Регион" value={region} onChange={v => { setRegion(v); setDistrict(""); setPage(1); }}
-            options={facets?.regions || []} placeholder="Все регионы" />
+            options={facets?.regions || []} placeholder="Вся Россия" />
           <FilterSelect label="Район" value={district} onChange={v => { setDistrict(v); setPage(1); }}
             options={facets?.districts || []} placeholder="Все районы" />
           <FilterSelect label="Вид деятельности" value={activity} onChange={v => { setActivity(v); setPage(1); }}
@@ -225,7 +225,7 @@ export default function SuppliersBlock() {
         <div className="flex flex-wrap gap-2">
           <Toggle active={farmer} onClick={() => { setFarmer(f => !f); setPage(1); }} icon="Wheat" label="Только сельхозпроизводители" />
           <Toggle active={priorityOnly} onClick={() => { setPriorityOnly(p => !p); setPage(1); }} icon="Star" label="Районы вокруг Аткарска" />
-          <Toggle active={saratovOnly} onClick={() => { setSaratovOnly(p => !p); setPage(1); }} icon="MapPin" label="Саратовские (ИНН 64)" />
+          <Toggle active={saratovOnly} onClick={() => { setSaratovOnly(p => !p); setDistrict(""); setPage(1); }} icon="MapPin" label="Саратовские (ИНН 64)" />
         </div>
 
         {activeFilters > 0 && (
