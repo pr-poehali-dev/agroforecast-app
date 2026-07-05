@@ -43,6 +43,10 @@ PROCUREMENT_SYSTEM = (
 )
 
 
+# Ссылка на MAX-бота для приглашения поставщиков в быстрый чат
+MAX_BOT_URL = os.environ.get("MAX_BOT_URL", "https://max.ru/id631205241205_1_bot")
+
+
 def get_db():
     conn = psycopg2.connect(os.environ["DATABASE_URL"])
     conn.autocommit = True
@@ -302,6 +306,13 @@ def handler(event: dict, context) -> dict:
             b = text[first_nl:].strip() if first_nl != -1 else ""
         if channel == "email" and not subject:
             subject = f"Закупка сельхозпродукции — {p.get('name') or 'сотрудничество'}"
+
+        # В email добавляем приглашение в MAX-бот для быстрой связи
+        if channel == "email" and MAX_BOT_URL and MAX_BOT_URL not in b:
+            b = (b.rstrip()
+                 + "\n\nP.S. Для быстрой связи вы можете написать нам в мессенджере MAX — "
+                 + f"наш чат закупок: {MAX_BOT_URL}\n"
+                 + "Ответим оперативно, обсудим цену и условия поставки.")
 
         recipient = p.get("email") if channel == "email" else (p.get("phone") or "")
         cur.execute(
