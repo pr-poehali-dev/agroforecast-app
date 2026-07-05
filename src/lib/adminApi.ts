@@ -30,6 +30,12 @@ function headers(extra?: Record<string, string>) {
 async function req(url: string, opts?: RequestInit) {
   const res = await fetch(url, { headers: headers(), ...opts });
   const data = await res.json();
+  if (res.status === 401) {
+    // Сессия истекла — очищаем токен и просим войти заново
+    adminToken.clear();
+    window.dispatchEvent(new CustomEvent("admin-unauthorized"));
+    throw new Error("Сессия истекла. Войдите заново.");
+  }
   if (!res.ok) throw new Error(data.error || "Ошибка запроса");
   return data;
 }

@@ -69,7 +69,7 @@ def handler(event: dict, context) -> dict:
         if not hmac.compare_digest(login, admin_login) or not hmac.compare_digest(password, admin_password):
             return err("Неверный логин или пароль", 401)
         token = secrets.token_hex(48)
-        expires = datetime.now(timezone.utc) + timedelta(hours=24)
+        expires = datetime.now(timezone.utc) + timedelta(days=7)
         cur.execute(
             f"INSERT INTO {SCHEMA}.admin_sessions (token, expires_at) VALUES (%s, %s)",
             (token, expires)
