@@ -17,13 +17,16 @@ export default function ProfileTab({ item, onSaved }: {
   const save = async () => {
     if (!String(form.name).trim()) { setError("Название хозяйства обязательно"); return; }
     setSaving(true); setError("");
-    const payload = { ...form, volume_tons: form.volume_tons === "" ? null : Number(form.volume_tons) };
+    // Числовые поля передаём как есть — бэкенд сам аккуратно распарсит.
+    // Пустую строку превращаем в null, чтобы очистить значение.
+    const payload = { ...form, volume_tons: form.volume_tons === "" ? null : form.volume_tons };
     try {
       if (item?.id) await adminApi.updateSupplier(item.id, payload);
       else await adminApi.createSupplier(payload);
       onSaved();
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Ошибка");
+      const msg = e instanceof Error ? e.message : "Ошибка";
+      setError(msg.includes("авторизован") ? "Сессия устарела. Обновите страницу и войдите заново." : msg);
     } finally { setSaving(false); }
   };
 

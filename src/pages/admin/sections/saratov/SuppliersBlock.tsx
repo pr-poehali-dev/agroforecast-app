@@ -60,6 +60,25 @@ export default function SuppliersBlock() {
   };
   const activeFilters = [region, district, activity, crop, ownership].filter(Boolean).length + (priorityOnly ? 1 : 0);
 
+  // Убрать дубли из базы поставщиков (по ИНН, а при пустом ИНН — по названию+районе)
+  const handleDedup = async () => {
+    setImportMsg("Ищу дубли…");
+    try {
+      const prev = await adminApi.dedupSuppliers(true);
+      const dup = prev?.duplicates || 0;
+      if (dup === 0) { setImportMsg("Дубли не найдены — база чистая."); return; }
+      if (!confirm(`Найдено дублей: ${dup}. Удалить их, оставив по одной лучшей записи на хозяйство?`)) {
+        setImportMsg(""); return;
+      }
+      setImportMsg("Удаляю дубли…");
+      const r = await adminApi.dedupSuppliers(false);
+      setImportMsg(`Удалено дублей: ${r.removed}. Осталось хозяйств: ${r.remaining}.`);
+      setPage(1); load();
+    } catch (e: unknown) {
+      setImportMsg(e instanceof Error ? e.message : "Ошибка при удалении дублей");
+    }
+  };
+
   // Массовый перенос отфильтрованных хозяйств в контакты CRM
   const handleCrmImport = async () => {
     const limit = 500;
@@ -244,6 +263,10 @@ export default function SuppliersBlock() {
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-secondary text-xs font-medium hover:bg-secondary/80 disabled:opacity-60">
             {crmImporting ? <Icon name="Loader" size={13} className="animate-spin" /> : <Icon name="Contact" size={13} className="text-primary" />}
             Перенести в CRM
+          </button>
+          <button onClick={handleDedup} title="Найти и удалить дубли (по ИНН, при пустом — по названию и району)"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-secondary text-xs font-medium hover:bg-secondary/80">
+            <Icon name="CopyMinus" size={13} className="text-primary" />Убрать дубли
           </button>
           <button onClick={downloadTemplate} title="Скачать пустой Excel с нужными колонками"
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-secondary text-xs font-medium hover:bg-secondary/80">

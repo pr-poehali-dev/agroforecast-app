@@ -36,11 +36,40 @@ def verify_admin(cur, headers):
     cur.execute(f"SELECT id FROM {SCHEMA}.admin_sessions WHERE token=%s AND expires_at > now()", (token,))
     return cur.fetchone() is not None
 
+# Единственное числовое (numeric) поле таблицы — volume_tons.
+# revenue/staff_count/founded_year хранятся как text, поэтому их не трогаем.
+_NUM_FIELDS = {"volume_tons"}
+
+def _to_number(val):
+    """Достаём число из значения. Возвращает число или None, если не распарсить."""
+    if val is None or val == "":
+        return None
+    if isinstance(val, (int, float)):
+        return None if isinstance(val, float) and val != val else val  # отсекаем NaN
+    s = str(val).replace("\u00a0", " ").replace(" ", "").replace(",", ".")
+    cleaned = "".join(c for c in s if c.isdigit() or c in ".-")
+    if not cleaned or cleaned in ("-", ".", "-."):
+        return None
+    try:
+        num = float(cleaned)
+        return None if num != num else num
+    except (ValueError, TypeError):
+        return None
+
 def _clean(row):
     out = {}
     for k in FIELDS:
-        if k in row and row[k] not in (None, ""):
-            out[k] = row[k]
+        if k not in row:
+            continue
+        val = row[k]
+        if val in (None, ""):
+            continue
+        if k in _NUM_FIELDS:
+            num = _to_number(val)
+            if num is not None:
+                out[k] = num
+        else:
+            out[k] = val
     return out
 
 
@@ -170,6 +199,80 @@ def _ai_json(prompt, system="", temperature=0.2, max_tokens=1200):
         return None
 
 
+def _checko_lookup(inn):
+    """Запрашивает реальные данные компании/ИП из ЕГРЮЛ через Checko API по ИНН.
+    Возвращает dict с нормализованными полями или None."""
+    api_key = os.environ.get("CHECKO_API_KEY", "")
+    inn = (str(inn or "").strip())
+    if not api_key or not inn.isdigit() or len(inn) not in (10, 12):
+        return None
+    url = f"https://api.checko.ru/v2/company?key={api_key}&inn={inn}"
+    try:
+        req = urllib.request.Request(url, headers={"Accept": "application/json"})
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            raw = json.loads(resp.read())
+    except urllib.error.HTTPError as e:
+        print(f"[checko] HTTPError {e.code}: {e.read().decode()[:200]}")
+        return None
+    except Exception as ex:
+        print(f"[checko] error: {ex}")
+        return None
+    d = raw.get("data") or {}
+    if not d:
+        return None
+    # руководитель
+    ruk = d.get("Руковод") or {}
+    if isinstance(ruk, list):
+        ruk = ruk[0] if ruk else {}
+    director = ruk.get("ФИО") or ""
+    # выручка (последний доступный год из финансов)
+    revenue = ""
+    fin = d.get("Финансы") or {}
+    if isinstance(fin, dict) and fin:
+        years = [y for y in fin.keys() if str(y).isdigit()]
+        if years:
+            last = max(years)
+            rev = (fin.get(last) or {}).get("2110")  # 2110 — выручка
+            if rev:
+                revenue = f"{rev} ₽ ({last})"
+    okved = (d.get("ОКВЭД") or {}).get("Наим") or ""
+    contacts = d.get("Контакты") or {}
+    phones = contacts.get("Тел") or []
+    emails = contacts.get("Емэйл") or []
+    if isinstance(phones, str): phones = [phones]
+    if isinstance(emails, str): emails = [emails]
+    return {
+        "full_name": d.get("НаимПолн") or d.get("НаимСокр") or "",
+        "status": d.get("Статус", {}).get("Наим") if isinstance(d.get("Статус"), dict) else (d.get("Статус") or ""),
+        "reg_date": d.get("ДатаРег") or "",
+        "address": d.get("ЮрАдрес", {}).get("Адрес") if isinstance(d.get("ЮрАдрес"), dict) else (d.get("ЮрАдрес") or ""),
+        "director": director,
+        "okved": okved,
+        "revenue": revenue,
+        "phones": [p for p in phones if p][:3],
+        "emails": [e for e in emails if e][:3],
+        "okved_list": [str(a.get("Наим", a)) for a in (d.get("ОКВЭДДоп") or [])][:5] if isinstance(d.get("ОКВЭДДоп"), list) else [],
+    }
+
+
+def _checko_text(c):
+    """Текстовое описание данных из Checko для промпта ИИ."""
+    if not c:
+        return ""
+    lines = ["\nДанные из ЕГРЮЛ (Checko, официальный источник):"]
+    if c.get("full_name"): lines.append(f"Полное наименование: {c['full_name']}")
+    if c.get("status"): lines.append(f"Статус: {c['status']}")
+    if c.get("reg_date"): lines.append(f"Дата регистрации: {c['reg_date']}")
+    if c.get("address"): lines.append(f"Юр. адрес: {c['address']}")
+    if c.get("director"): lines.append(f"Руководитель: {c['director']}")
+    if c.get("okved"): lines.append(f"Основной ОКВЭД: {c['okved']}")
+    if c.get("okved_list"): lines.append(f"Доп. ОКВЭД: {', '.join(c['okved_list'])}")
+    if c.get("revenue"): lines.append(f"Выручка: {c['revenue']}")
+    if c.get("phones"): lines.append(f"Телефоны: {', '.join(c['phones'])}")
+    if c.get("emails"): lines.append(f"Email: {', '.join(c['emails'])}")
+    return "\n".join(lines) if len(lines) > 1 else ""
+
+
 def _supplier_profile(cur, sid):
     """Читает поставщика для CRM и возвращает dict полей."""
     cur.execute(f"""SELECT id, name, inn, region, district, locality, crops, activity,
@@ -272,7 +375,14 @@ def handler(event: dict, context) -> dict:
     """CRUD и импорт базы поставщиков сельхозпродукции"""
     if event.get("httpMethod") == "OPTIONS":
         return {"statusCode": 200, "headers": CORS, "body": ""}
+    try:
+        return _handle(event, context)
+    except Exception as e:
+        print(f"[admin-suppliers ERROR] {type(e).__name__}: {e}")
+        return err(f"Ошибка обработки: {str(e)[:150]}", 500)
 
+
+def _handle(event: dict, context) -> dict:
     method = event.get("httpMethod", "GET")
     params = event.get("queryStringParameters") or {}
     headers = event.get("headers", {})
@@ -292,6 +402,59 @@ def handler(event: dict, context) -> dict:
 
     sid = params.get("id")
     action = params.get("action", "")
+
+    # ── Удаление дублей ──
+    # Группируем по ИНН (если заполнен), иначе по названию+районе.
+    # В группе оставляем «лучшую» запись: с историей взаимодействий/сообщений,
+    # затем с более полными контактами, затем с меньшим id.
+    if method == "POST" and action == "dedup":
+        preview = bool(body.get("preview"))
+        rank_sql = f"""
+            WITH ranked AS (
+                SELECT s.id,
+                    COALESCE(NULLIF(lower(s.inn),''), 'name:'||lower(s.name)||'|'||COALESCE(lower(s.district),'')) AS grp,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY COALESCE(NULLIF(lower(s.inn),''), 'name:'||lower(s.name)||'|'||COALESCE(lower(s.district),''))
+                        ORDER BY
+                            (SELECT COUNT(*) FROM {SCHEMA}.supplier_interactions i WHERE i.supplier_id=s.id) DESC,
+                            (SELECT COUNT(*) FROM {SCHEMA}.supplier_messages m WHERE m.supplier_id=s.id) DESC,
+                            (CASE WHEN s.max_chat_id IS NOT NULL THEN 1 ELSE 0 END) DESC,
+                            ((s.phone IS NOT NULL AND s.phone<>'')::int
+                             + (s.email IS NOT NULL AND s.email<>'')::int
+                             + (s.contact_person IS NOT NULL AND s.contact_person<>'')::int
+                             + (s.inn IS NOT NULL AND s.inn<>'')::int
+                             + (s.address IS NOT NULL AND s.address<>'')::int
+                             + (s.ai_analysis IS NOT NULL AND s.ai_analysis<>'')::int) DESC,
+                            s.id ASC
+                    ) AS rn
+                FROM {SCHEMA}.suppliers s
+            )
+            SELECT id FROM ranked WHERE rn > 1
+        """
+        cur.execute(f"SELECT COUNT(*) FROM ({rank_sql}) q")
+        dup_count = cur.fetchone()[0]
+        if preview:
+            return ok({"duplicates": dup_count, "preview": True})
+        # переносим историю с дублей на keeper не нужно — дубли и так пустые по истории (keeper выбран с историей).
+        # но на всякий случай отвязываем возможные ссылки перед удалением.
+        cur.execute(f"""
+            DELETE FROM {SCHEMA}.supplier_interactions
+            WHERE supplier_id IN ({rank_sql})
+        """)
+        cur.execute(f"""
+            DELETE FROM {SCHEMA}.supplier_messages
+            WHERE supplier_id IN ({rank_sql})
+        """)
+        cur.execute(f"DELETE FROM {SCHEMA}.suppliers WHERE id IN ({rank_sql})")
+        removed = cur.rowcount
+        # подчищаем возможные осиротевшие записи истории
+        cur.execute(f"""DELETE FROM {SCHEMA}.supplier_interactions i
+                        WHERE NOT EXISTS (SELECT 1 FROM {SCHEMA}.suppliers s WHERE s.id=i.supplier_id)""")
+        cur.execute(f"""DELETE FROM {SCHEMA}.supplier_messages m
+                        WHERE NOT EXISTS (SELECT 1 FROM {SCHEMA}.suppliers s WHERE s.id=m.supplier_id)""")
+        cur.execute(f"SELECT COUNT(*) FROM {SCHEMA}.suppliers")
+        remaining = cur.fetchone()[0]
+        return ok({"removed": removed, "remaining": remaining})
 
     # ── ИИ-импорт: сырые строки таблицы, ИИ сам определяет колонки ──
     if method == "POST" and action == "ai_import":
@@ -374,9 +537,10 @@ def handler(event: dict, context) -> dict:
             "Компания закупает у сельхозпроизводителей зерно, подсолнечник и другую растениеводческую продукцию. "
             "Твоя задача — кратко и по делу проанализировать потенциального поставщика."
         )
+        checko = _checko_lookup(p.get("inn"))
         prompt = (
             "Проанализируй сельхозпроизводителя как потенциального поставщика.\n\n"
-            f"{_profile_text(p)}\n\n"
+            f"{_profile_text(p)}\n{_checko_text(checko)}\n\n"
             "Дай структурированный анализ на русском (маркдаун, кратко):\n"
             "1. **Профиль** — тип хозяйства (КФХ/СХО/агрохолдинг), масштаб, что производит.\n"
             "2. **Что можем закупать** — конкретные культуры/продукция для сотрудничества.\n"
@@ -430,15 +594,19 @@ def handler(event: dict, context) -> dict:
         p = _supplier_profile(cur, sid or body.get("id"))
         if not p:
             return err("Поставщик не найден", 404)
+        # Подтягиваем реальные данные из ЕГРЮЛ (Checko) по ИНН
+        checko = _checko_lookup(p.get("inn"))
+        checko_block = _checko_text(checko)
         system = (
-            "Ты — аналитик CRM агротрейдера. Тебе дают сырые данные о сельхозпроизводителе. "
-            "Твоя задача — аккуратно СТРУКТУРИРОВАТЬ и НОРМАЛИЗОВАТЬ уже имеющуюся информацию, "
-            "не выдумывая факты. Если данных нет — оставляй пустую строку. "
+            "Ты — аналитик CRM агротрейдера. Тебе дают сырые данные о сельхозпроизводителе "
+            "и официальные данные из ЕГРЮЛ (если есть). "
+            "Твоя задача — аккуратно СТРУКТУРИРОВАТЬ и НОРМАЛИЗОВАТЬ информацию, опираясь на факты, "
+            "не выдумывая. Если данных нет — оставляй пустую строку. "
             "Отвечай строго валидным JSON без пояснений."
         )
         prompt = (
             "Разбери данные сельхозпроизводителя и верни JSON с нормализованными полями.\n\n"
-            f"Исходные данные:\n{_profile_text(p)}\n\n"
+            f"Исходные данные:\n{_profile_text(p)}\n{checko_block}\n\n"
             "Верни JSON строго такой структуры:\n"
             "{\n"
             '  "crops_clean": "культуры через запятую, аккуратно (из имеющихся данных)",\n'
@@ -467,6 +635,21 @@ def handler(event: dict, context) -> dict:
             updates["phone"] = result["phones_clean"][:200]
         if not (p.get("email") or "").strip() and result.get("emails_clean"):
             updates["email"] = result["emails_clean"][:200]
+
+        # Приоритетно заполняем пустые поля надёжными данными из ЕГРЮЛ (Checko)
+        if checko:
+            checko_phones = ", ".join(checko.get("phones") or [])
+            checko_emails = ", ".join(checko.get("emails") or [])
+            if not (p.get("address") or "").strip() and checko.get("address"):
+                updates["address"] = checko["address"][:500]
+            if not (p.get("contact_person") or "").strip() and checko.get("director"):
+                updates["contact_person"] = checko["director"][:200]
+            if not (p.get("revenue") or "").strip() and checko.get("revenue"):
+                updates["revenue"] = checko["revenue"][:100]
+            if not (p.get("phone") or "").strip() and checko_phones and "phone" not in updates:
+                updates["phone"] = checko_phones[:200]
+            if not (p.get("email") or "").strip() and checko_emails and "email" not in updates:
+                updates["email"] = checko_emails[:200]
 
         # Собираем досье в ai_analysis (обзорная карточка)
         dossier_parts = []

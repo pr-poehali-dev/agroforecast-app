@@ -153,6 +153,8 @@ export const adminApi = {
   },
   createSupplier: (data: Record<string, unknown>) =>
     req(URLS.suppliers, { method: "POST", body: JSON.stringify(data) }),
+  dedupSuppliers: (preview = false) =>
+    req(`${URLS.suppliers}?action=dedup`, { method: "POST", body: JSON.stringify({ preview }) }),
   updateSupplier: (id: number, data: Record<string, unknown>) =>
     req(`${URLS.suppliers}?id=${id}`, { method: "PUT", body: JSON.stringify(data) }),
   deleteSupplier: (id: number) =>
