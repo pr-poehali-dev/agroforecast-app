@@ -4,7 +4,7 @@
 (знание агрорынка, техник продаж, переговоров и ГОСТов) и отправляет их
 через SMTP (email) с подтверждением менеджера. MAX-канал — задел на будущее.
 """
-import json, os, smtplib, ssl
+import json, os, re, smtplib, ssl
 import psycopg2
 import urllib.request
 import urllib.error
@@ -159,12 +159,17 @@ def send_email(to_addr, subject, body):
     host = os.environ.get("SMTP_HOST", "")
     user = os.environ.get("SMTP_USER", "")
     password = os.environ.get("SMTP_PASS", "")
-    port = int(os.environ.get("SMTP_PORT", "465") or "465")
+    _raw_port = (os.environ.get("SMTP_PORT", "465") or "465").strip()
+    port = int(_raw_port) if _raw_port.isdigit() else 465
     if not (host and user and password):
         return False, "Не настроены SMTP-данные (SMTP_HOST / SMTP_USER / SMTP_PASS)."
+    # Поддержка нескольких адресов через ; , пробел
+    recipients = [a.strip() for a in re.split(r"[;,\s]+", to_addr or "") if a.strip() and "@" in a]
+    if not recipients:
+        return False, "Некорректный адрес получателя."
     msg = MIMEMultipart()
     msg["From"] = formataddr((str(Header("АгроПорт · Закупки", "utf-8")), user))
-    msg["To"] = to_addr
+    msg["To"] = ", ".join(recipients)
     msg["Subject"] = str(Header(subject, "utf-8"))
     msg.attach(MIMEText(body, "plain", "utf-8"))
     try:
@@ -172,13 +177,13 @@ def send_email(to_addr, subject, body):
             ctx = ssl.create_default_context()
             with smtplib.SMTP_SSL(host, port, context=ctx, timeout=25) as s:
                 s.login(user, password)
-                s.sendmail(user, [to_addr], msg.as_string())
+                s.sendmail(user, recipients, msg.as_string())
         else:
             with smtplib.SMTP(host, port, timeout=25) as s:
                 s.ehlo()
                 s.starttls(context=ssl.create_default_context())
                 s.login(user, password)
-                s.sendmail(user, [to_addr], msg.as_string())
+                s.sendmail(user, recipients, msg.as_string())
         return True, ""
     except Exception as ex:
         print(f"[send_email] error: {ex}")
@@ -359,6 +364,23 @@ def handler(event: dict, context) -> dict:
         )
         msg_id = cur.fetchone()[0]
         return ok({"id": msg_id, "channel": channel, "recipient": recipient, "subject": subject, "body": b})
+
+    # ── Диагностика рассылки: проверка SMTP-конфига и тестовое письмо ──
+    if method == "POST" and action == "smtp_test":
+        cfg = {
+            "SMTP_HOST": bool(os.environ.get("SMTP_HOST")),
+            "SMTP_USER": bool(os.environ.get("SMTP_USER")),
+            "SMTP_PASS": bool(os.environ.get("SMTP_PASS")),
+            "SMTP_PORT": os.environ.get("SMTP_PORT", "465"),
+        }
+        to = (body.get("to") or os.environ.get("SMTP_USER") or "").strip()
+        if not to:
+            return err("Укажите адрес для тестового письма (to).")
+        success, error_text = send_email(
+            to, "Проверка рассылки АгроПорт",
+            "Это тестовое письмо от ИИ-закупщика АгроПорт. Если вы его получили — рассылка работает."
+        )
+        return ok({"config": cfg, "sent": success, "error": error_text or None, "to": to})
 
     # ── Проверить, рабочее ли сейчас время (для фронта) ──
     if method == "GET" and action == "work_hours":
