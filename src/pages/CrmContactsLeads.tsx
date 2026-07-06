@@ -24,7 +24,10 @@ export const ContactsTab: React.FC = () => {
   const load = useCallback(() => {
     setLoading(true);
     apiCRM("contacts_list")
-      .then((res) => setContacts(res?.data || res || []))
+      .then((res) => {
+        const list = Array.isArray(res?.contacts) ? res.contacts : Array.isArray(res) ? res : [];
+        setContacts(list.map((c: Contact & { name?: string }) => ({ ...c, full_name: c.full_name || c.name || "" })));
+      })
       .catch(() => setContacts([]))
       .finally(() => setLoading(false));
   }, []);
@@ -47,7 +50,7 @@ export const ContactsTab: React.FC = () => {
     if (!form.full_name.trim()) return;
     setSaving(true);
     try {
-      await apiCRM("contacts_create", form);
+      await apiCRM("contacts_create", { ...form, name: form.full_name });
       setShowAdd(false);
       setForm({
         full_name: "",
@@ -310,7 +313,15 @@ export const LeadsTab: React.FC = () => {
   const load = useCallback(() => {
     setLoading(true);
     apiCRM("leads_list")
-      .then((res) => setLeads(res?.data || res || []))
+      .then((res) => {
+        const list = Array.isArray(res?.leads) ? res.leads : Array.isArray(res) ? res : [];
+        setLeads(list.map((l: Lead & { name?: string; crop?: string; area_ha?: number }) => ({
+          ...l,
+          full_name: l.full_name || l.name || "",
+          culture: l.culture || l.crop || "",
+          area: l.area ?? l.area_ha,
+        })));
+      })
       .catch(() => setLeads([]))
       .finally(() => setLoading(false));
   }, []);
@@ -331,9 +342,9 @@ export const LeadsTab: React.FC = () => {
     setSaving(true);
     try {
       await apiCRM("leads_create", {
-        full_name: form.full_name,
-        culture: form.culture,
-        area: form.area ? Number(form.area) : undefined,
+        name: form.full_name,
+        crop: form.culture,
+        area_ha: form.area ? Number(form.area) : undefined,
         budget: form.budget ? Number(form.budget) : undefined,
         region: form.region,
         status: form.status,
