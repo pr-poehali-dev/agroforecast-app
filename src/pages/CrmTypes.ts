@@ -4,6 +4,7 @@ import React from "react";
 
 export type Tab =
   | "dashboard"
+  | "analytics"
   | "kanban"
   | "contacts"
   | "leads"
@@ -46,11 +47,33 @@ export interface Deal {
   title: string;
   amount?: number;
   culture?: string;
+  crop?: string;
   volume?: number;
+  volume_t?: number;
   region?: string;
   stage?: string;
   contact_name?: string;
   close_probability?: number;
+  probability?: number;
+  next_step?: string;
+  health?: number;
+  ai_summary?: string;
+  last_activity_at?: string;
+}
+
+export interface Analytics {
+  funnel: { id: string; label: string; color: string; count: number; amount: number }[];
+  total_deals: number;
+  conversion: number;
+  won: number;
+  lost: number;
+  revenue: number;
+  forecast: number;
+  avg_deal: number;
+  volume_won: number;
+  stalled: number;
+  managers: { name: string; deals: number; won: number; revenue: number }[];
+  by_crop: { crop: string; volume_t: number; amount: number }[];
 }
 
 export interface Task {
@@ -116,6 +139,7 @@ export const STAGE_LABELS: Record<string, string> = {
 
 export const TABS: { key: Tab; label: string; icon: string }[] = [
   { key: "dashboard", label: "Дашборд", icon: "LayoutDashboard" },
+  { key: "analytics", label: "Аналитика", icon: "TrendingUp" },
   { key: "kanban", label: "Канбан", icon: "Columns" },
   { key: "contacts", label: "Контакты", icon: "Users" },
   { key: "leads", label: "Лиды", icon: "UserPlus" },

@@ -4,6 +4,7 @@ import { Tab, TABS } from "./CrmTypes";
 import { DashboardTab, KanbanTab } from "./CrmDashboardKanban";
 import { ContactsTab, LeadsTab } from "./CrmContactsLeads";
 import { DealsTab, TasksTab, ActivitiesTab } from "./CrmDealsTasksActivities";
+import { AnalyticsTab } from "./CrmAnalyticsTab";
 
 // ─── Main SectionCRM ──────────────────────────────────────────────────────────
 
@@ -14,6 +15,8 @@ const SectionCRM: React.FC = () => {
     switch (tab) {
       case "dashboard":
         return <DashboardTab />;
+      case "analytics":
+        return <AnalyticsTab />;
       case "kanban":
         return <KanbanTab />;
       case "contacts":

@@ -9,6 +9,8 @@ action: dashboard, kanban,
         comments_list, comments_create
 """
 import json, os, hashlib, hmac, time, base64
+import urllib.request, urllib.error
+from datetime import datetime, timezone
 import psycopg2
 
 CORS = {
@@ -38,6 +40,58 @@ TASK_STATUSES = [
     {"id": "review",      "label": "На проверке"},
     {"id": "done",        "label": "Завершена"},
 ]
+
+# Рекомендуемое следующее действие по стадии сделки (fallback без ИИ)
+STAGE_NEXT_STEP = {
+    "new":         "Связаться с хозяйством, представиться и уточнить готовность продавать урожай.",
+    "contact":     "Выявить культуру, объём, качество и ориентир по цене. Квалифицировать сделку.",
+    "qualify":     "Подготовить и отправить коммерческое предложение с ценой и условиями поставки.",
+    "proposal":    "Дожать до переговоров: уточнить, устроила ли цена, снять возражения.",
+    "negotiation": "Согласовать финальную цену, объём и базис поставки. Готовить договор.",
+    "won":         "Оформить договор, организовать отгрузку и логистику.",
+    "lost":        "Зафиксировать причину отказа и запланировать повторный контакт через сезон.",
+}
+STAGE_PROBABILITY = {"new": 10, "contact": 25, "qualify": 40, "proposal": 60,
+                     "negotiation": 80, "won": 100, "lost": 0}
+
+CRM_AI_SYSTEM = (
+    "Ты — Юрий, ведущий менеджер по закупкам сельхозпродукции агротрейдера «АгроПорт» "
+    "(Саратовская область) с 20-летним опытом. Помогаешь вести сделки в CRM: "
+    "коротко и по делу подсказываешь следующий шаг, оцениваешь риски и пишешь деловые письма аграриям. "
+    "Знаешь ГОСТы (пшеница 9353-2016, рожь 16990-2017, подсолнечник 22391-2015), базисы поставки, сезонность. "
+    "Пиши на русском, конкретно, уважительно, без воды и давления."
+)
+
+
+def ai_text(prompt, system="", temperature=0.5, max_tokens=900):
+    """Вызов ИИ Polza.ai — возвращает текст или None."""
+    api_key = os.environ.get("POLZA_API_KEY", "")
+    if not api_key:
+        return None
+    messages = []
+    if system:
+        messages.append({"role": "system", "content": system})
+    messages.append({"role": "user", "content": prompt})
+    payload = json.dumps({
+        "model": "openai/gpt-4o-mini",
+        "messages": messages,
+        "temperature": temperature,
+        "max_tokens": max_tokens,
+    }).encode("utf-8")
+    req = urllib.request.Request(
+        "https://api.polza.ai/api/v1/chat/completions",
+        data=payload,
+        headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=40) as r:
+            data = json.loads(r.read())
+        return data["choices"][0]["message"]["content"].strip()
+    except Exception as ex:
+        print(f"[ai_text] error: {ex}")
+        return None
+
 
 def get_db():
     return psycopg2.connect(os.environ["DATABASE_URL"])
@@ -302,21 +356,217 @@ def handler(event: dict, context) -> dict:
             return resp(201, {"success": True, "id": new_id})
 
         if action == "deals_update" and eid:
+            new_stage = body.get("stage")
+            # авто-вероятность по стадии, если явно не задана
+            prob = body.get("probability")
+            if prob is None and new_stage in STAGE_PROBABILITY:
+                prob = STAGE_PROBABILITY[new_stage]
             cur.execute("""
                 UPDATE crm_deals SET
                   title=COALESCE(%s,title), stage=COALESCE(%s,stage),
                   amount=COALESCE(%s,amount), probability=COALESCE(%s,probability),
                   crop=COALESCE(%s,crop), notes=COALESCE(%s,notes),
                   close_date=COALESCE(%s,close_date), lost_reason=COALESCE(%s,lost_reason),
-                  assigned_to=COALESCE(%s,assigned_to), updated_at=NOW()
+                  assigned_to=COALESCE(%s,assigned_to),
+                  next_step = CASE WHEN %s IS NOT NULL THEN %s ELSE next_step END,
+                  stage_changed_at = CASE WHEN %s IS NOT NULL THEN NOW() ELSE stage_changed_at END,
+                  last_activity_at = NOW(), health = 100, updated_at=NOW()
                 WHERE id=%s AND user_id=%s
-            """, (body.get("title"), body.get("stage"), body.get("amount"),
-                  body.get("probability"), body.get("crop"), body.get("notes"),
+            """, (body.get("title"), new_stage, body.get("amount"),
+                  prob, body.get("crop"), body.get("notes"),
                   body.get("close_date"), body.get("lost_reason"), body.get("assigned_to"),
-                  eid, uid))
+                  new_stage, STAGE_NEXT_STEP.get(new_stage or "", None),
+                  new_stage, eid, uid))
+            if new_stage:
+                stage_label = next((s["label"] for s in DEAL_STAGES if s["id"] == new_stage), new_stage)
+                cur.execute("""
+                    INSERT INTO crm_activities (user_id,type,title,deal_id,completed_at)
+                    VALUES (%s,'stage',%s,%s,NOW())
+                """, (uid, f"Сделка перешла на этап «{stage_label}»", eid))
             db.commit()
             cur.close(); db.close()
             return resp(200, {"success": True})
+
+        # ══ АВТО-ВОРОНКА + ИИ ════════════════════════════════════
+        if action == "deal_ai_next" and eid:
+            cur.execute("""
+                SELECT d.id,d.title,d.stage,d.amount,d.crop,d.volume_t,d.price_per_t,
+                       d.region,d.notes,d.created_at,d.stage_changed_at,d.last_activity_at,
+                       c.name,c.phone,c.email
+                FROM crm_deals d LEFT JOIN crm_contacts c ON c.id=d.contact_id
+                WHERE d.id=%s AND d.user_id=%s
+            """, (eid, uid))
+            row = cur.fetchone()
+            if not row:
+                cur.close(); db.close()
+                return resp(404, {"error": "Сделка не найдена"})
+            (d_id,d_title,d_stage,d_amount,d_crop,d_vol,d_price,d_region,d_notes,
+             d_created,d_stagech,d_lastact,c_name,c_phone,c_email) = row
+            # последние активности для контекста
+            cur.execute("SELECT type,title,created_at FROM crm_activities WHERE deal_id=%s ORDER BY created_at DESC LIMIT 8", (eid,))
+            acts = cur.fetchall()
+            acts_txt = "\n".join(f"- {a[2]}: [{a[0]}] {a[1]}" for a in acts) or "нет событий"
+            stage_label = next((s["label"] for s in DEAL_STAGES if s["id"] == d_stage), d_stage)
+            prompt = (
+                f"Сделка в CRM агротрейдера. Дай рекомендацию менеджеру.\n\n"
+                f"Название: {d_title}\nЭтап: {stage_label}\nКонтакт: {c_name or '—'}, тел. {c_phone or '—'}, {c_email or '—'}\n"
+                f"Культура: {d_crop or '—'}, объём: {d_vol or '—'} т, цена: {d_price or '—'} ₽/т, регион: {d_region or '—'}\n"
+                f"Сумма: {d_amount or 0} ₽\nЗаметки: {d_notes or '—'}\n"
+                f"Создана: {d_created}, этап изменён: {d_stagech}, последняя активность: {d_lastact}\n"
+                f"Последние события:\n{acts_txt}\n\n"
+                "Верни СТРОГО JSON без пояснений: "
+                '{"next_step":"одно конкретное следующее действие (1-2 предложения)",'
+                '"health":число 0-100 (насколько сделка здорова и близка к успеху),'
+                '"risk":"главный риск одним предложением",'
+                '"summary":"краткое резюме статуса сделки в 1 предложение"}'
+            )
+            ai = ai_text(prompt, CRM_AI_SYSTEM, temperature=0.4, max_tokens=500)
+            result = None
+            if ai:
+                try:
+                    txt = ai[ai.find("{"): ai.rfind("}") + 1]
+                    result = json.loads(txt)
+                except Exception:
+                    result = None
+            if not result:
+                result = {
+                    "next_step": STAGE_NEXT_STEP.get(d_stage, "Связаться с контактом."),
+                    "health": 70, "risk": "Нет свежих контактов — сделка может остыть.",
+                    "summary": f"Сделка на этапе «{stage_label}».",
+                }
+            cur.execute("""
+                UPDATE crm_deals SET next_step=%s, health=%s, ai_summary=%s, updated_at=NOW()
+                WHERE id=%s AND user_id=%s
+            """, (result.get("next_step"), int(result.get("health", 70)),
+                  result.get("summary"), eid, uid))
+            db.commit()
+            cur.close(); db.close()
+            return resp(200, {"success": True, **result})
+
+        if action == "deal_ai_email" and eid:
+            cur.execute("""
+                SELECT d.title,d.stage,d.crop,d.volume_t,d.price_per_t,d.region,d.notes,
+                       c.name,c.email
+                FROM crm_deals d LEFT JOIN crm_contacts c ON c.id=d.contact_id
+                WHERE d.id=%s AND d.user_id=%s
+            """, (eid, uid))
+            row = cur.fetchone()
+            if not row:
+                cur.close(); db.close()
+                return resp(404, {"error": "Сделка не найдена"})
+            d_title,d_stage,d_crop,d_vol,d_price,d_region,d_notes,c_name,c_email = row
+            stage_label = next((s["label"] for s in DEAL_STAGES if s["id"] == d_stage), d_stage)
+            purpose = body.get("purpose", "")
+            prompt = (
+                f"Напиши деловое письмо аграрию по сделке.\n"
+                f"Получатель: {c_name or 'уважаемый партнёр'}\nЭтап сделки: {stage_label}\n"
+                f"Культура: {d_crop or '—'}, объём: {d_vol or '—'} т, цена: {d_price or '—'} ₽/т, регион: {d_region or '—'}\n"
+                f"Заметки: {d_notes or '—'}\n"
+                f"Цель письма: {purpose or 'продвинуть сделку на следующий этап'}\n"
+                f"Подпись: {os.environ.get('MANAGER_NAME','Александр')}, {os.environ.get('MANAGER_PHONE','')}, АгроПорт.\n"
+                "Верни СТРОГО JSON: {\"subject\":\"тема письма\",\"body\":\"текст письма с приветствием и подписью\"}"
+            )
+            ai = ai_text(prompt, CRM_AI_SYSTEM, temperature=0.6, max_tokens=800)
+            out = {"subject": f"АгроПорт — по сделке «{d_title}»", "body": ""}
+            if ai:
+                try:
+                    txt = ai[ai.find("{"): ai.rfind("}") + 1]
+                    out = json.loads(txt)
+                except Exception:
+                    out["body"] = ai
+            cur.close(); db.close()
+            return resp(200, {"success": True, "recipient": c_email, **out})
+
+        # ══ СКВОЗНАЯ АНАЛИТИКА ═══════════════════════════════════
+        if action == "analytics":
+            # воронка по стадиям
+            cur.execute("""
+                SELECT stage, COUNT(*), COALESCE(SUM(amount),0)
+                FROM crm_deals WHERE user_id=%s GROUP BY stage
+            """, (uid,))
+            by_stage = {r[0]: {"count": int(r[1]), "amount": float(r[2])} for r in cur.fetchall()}
+            funnel = [{"id": s["id"], "label": s["label"], "color": s["color"],
+                       "count": by_stage.get(s["id"], {}).get("count", 0),
+                       "amount": by_stage.get(s["id"], {}).get("amount", 0.0)} for s in DEAL_STAGES]
+            total_deals = sum(v["count"] for v in by_stage.values())
+            won = by_stage.get("won", {}).get("count", 0)
+            lost = by_stage.get("lost", {}).get("count", 0)
+            closed = won + lost
+            conversion = round(won / closed * 100, 1) if closed else 0.0
+            # выручка выигранных + прогноз (взвешенный pipeline)
+            cur.execute("SELECT COALESCE(SUM(amount),0) FROM crm_deals WHERE user_id=%s AND stage='won'", (uid,))
+            revenue = float(cur.fetchone()[0])
+            cur.execute("""
+                SELECT COALESCE(SUM(amount * COALESCE(probability,0) / 100.0),0)
+                FROM crm_deals WHERE user_id=%s AND stage NOT IN ('won','lost')
+            """, (uid,))
+            forecast = float(cur.fetchone()[0])
+            cur.execute("SELECT COALESCE(SUM(volume_t),0) FROM crm_deals WHERE user_id=%s AND stage='won'", (uid,))
+            volume_won = float(cur.fetchone()[0])
+            # средний чек
+            avg_deal = round(revenue / won, 2) if won else 0.0
+            # KPI по менеджерам
+            cur.execute("""
+                SELECT COALESCE(assigned_to,'Не назначен') AS mgr,
+                       COUNT(*) AS deals,
+                       COUNT(*) FILTER (WHERE stage='won') AS won,
+                       COALESCE(SUM(amount) FILTER (WHERE stage='won'),0) AS revenue
+                FROM crm_deals WHERE user_id=%s GROUP BY mgr ORDER BY revenue DESC
+            """, (uid,))
+            managers = [{"name": r[0], "deals": int(r[1]), "won": int(r[2]), "revenue": float(r[3])}
+                        for r in cur.fetchall()]
+            # застрявшие сделки (нет активности > 5 дней, не закрыты)
+            cur.execute("""
+                SELECT COUNT(*) FROM crm_deals
+                WHERE user_id=%s AND stage NOT IN ('won','lost')
+                  AND last_activity_at < NOW() - INTERVAL '5 days'
+            """, (uid,))
+            stalled = int(cur.fetchone()[0])
+            # прогноз закупок по культурам (pipeline)
+            cur.execute("""
+                SELECT COALESCE(crop,'Не указана') AS crop,
+                       COALESCE(SUM(volume_t),0) AS vol,
+                       COALESCE(SUM(amount),0) AS amt
+                FROM crm_deals WHERE user_id=%s AND stage NOT IN ('lost')
+                GROUP BY crop ORDER BY amt DESC LIMIT 8
+            """, (uid,))
+            by_crop = [{"crop": r[0], "volume_t": float(r[1]), "amount": float(r[2])} for r in cur.fetchall()]
+            cur.close(); db.close()
+            return resp(200, {
+                "funnel": funnel, "total_deals": total_deals, "conversion": conversion,
+                "won": won, "lost": lost, "revenue": revenue, "forecast": round(forecast, 2),
+                "avg_deal": avg_deal, "volume_won": volume_won, "stalled": stalled,
+                "managers": managers, "by_crop": by_crop,
+            })
+
+        # ══ ОМНИКАНАЛ: ЕДИНАЯ ЛЕНТА ПО КОНТАКТУ ══════════════════
+        if action == "deal_timeline" and eid:
+            cur.execute("SELECT contact_id, supplier_id FROM crm_deals WHERE id=%s AND user_id=%s", (eid, uid))
+            r = cur.fetchone()
+            if not r:
+                cur.close(); db.close()
+                return resp(404, {"error": "Сделка не найдена"})
+            contact_id, sup_id = r
+            timeline = []
+            cur.execute("""
+                SELECT type, title, description, created_at FROM crm_activities
+                WHERE deal_id=%s OR (contact_id=%s AND contact_id IS NOT NULL)
+                ORDER BY created_at DESC LIMIT 50
+            """, (eid, contact_id))
+            for a in cur.fetchall():
+                timeline.append({"channel": a[0], "title": a[1], "text": a[2], "at": str(a[3]), "dir": "internal"})
+            # письма/сообщения поставщику (омниканал), если сделка связана с supplier_id
+            if sup_id:
+                cur.execute(f"""
+                    SELECT channel, subject, body, status, created_at FROM {SCHEMA}.supplier_messages
+                    WHERE supplier_id=%s ORDER BY created_at DESC LIMIT 30
+                """, (sup_id,))
+                for m in cur.fetchall():
+                    timeline.append({"channel": m[0], "title": m[1] or f"Сообщение ({m[0]})",
+                                     "text": m[2], "status": m[3], "at": str(m[4]), "dir": "out"})
+            timeline.sort(key=lambda x: x["at"], reverse=True)
+            cur.close(); db.close()
+            return resp(200, {"timeline": timeline})
 
         # ══ TASKS ════════════════════════════════════════════════
         if action == "tasks_list":
@@ -435,11 +685,12 @@ def handler(event: dict, context) -> dict:
                 title = body.get("deal_title") or f"Закупка — {s_name}"
                 cur.execute("""
                     INSERT INTO crm_deals
-                      (user_id,title,contact_id,stage,amount,probability,crop,volume_t,region,notes)
-                    VALUES (%s,%s,%s,'new',%s,10,%s,%s,%s,%s) RETURNING id
+                      (user_id,title,contact_id,stage,amount,probability,crop,volume_t,region,notes,supplier_id,next_step)
+                    VALUES (%s,%s,%s,'new',%s,10,%s,%s,%s,%s,%s,%s) RETURNING id
                 """, (uid, title, contact_id, body.get("amount", 0),
                       s_crops, s_vol, s_region,
-                      f"Хозяйство: {s_name}. Контакт: {s_contact or '—'}, тел. {s_phone or '—'}"))
+                      f"Хозяйство: {s_name}. Контакт: {s_contact or '—'}, тел. {s_phone or '—'}",
+                      supplier_id, STAGE_NEXT_STEP["new"]))
                 deal_id = cur.fetchone()[0]
                 cur.execute("""
                     INSERT INTO crm_activities (user_id,type,title,description,contact_id,deal_id)
