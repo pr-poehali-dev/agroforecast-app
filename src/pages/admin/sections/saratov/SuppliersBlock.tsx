@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import * as XLSX from "xlsx";
 import { adminApi } from "@/lib/adminApi";
+import { apiCRM } from "@/lib/auth";
 import Icon from "@/components/ui/icon";
 import { Supplier, Facet, Facets, Analytics, REGION, STATUS_LABELS, STATUS_COLORS } from "./shared";
 import SupplierCard from "./SupplierCard";
@@ -25,6 +26,7 @@ export default function SuppliersBlock() {
   const [importing, setImporting] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [enrichingAll, setEnrichingAll] = useState(false);
+  const [crmImporting, setCrmImporting] = useState(false);
   const [facets, setFacets] = useState<Facets | null>(null);
   const [showAnalytics, setShowAnalytics] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -53,6 +55,29 @@ export default function SuppliersBlock() {
     setRegion(""); setPriorityOnly(false); setSaratovOnly(true); setPage(1);
   };
   const activeFilters = [region, district, activity, crop, ownership].filter(Boolean).length + (priorityOnly ? 1 : 0);
+
+  // Массовый перенос отфильтрованных хозяйств в контакты CRM
+  const handleCrmImport = async () => {
+    const limit = 500;
+    if (!confirm(`Перенести отфильтрованные хозяйства в контакты CRM (до ${limit} за раз)?\nДубликаты по ИНН будут пропущены.`)) return;
+    setCrmImporting(true); setImportMsg("Переношу хозяйства в CRM…");
+    try {
+      const r = await apiCRM("import_suppliers_bulk", {
+        region: region || undefined,
+        district: district || undefined,
+        priority_only: priorityOnly,
+        farmer_only: farmer,
+        limit,
+      });
+      if (r?.success) {
+        setImportMsg(`Перенесено в CRM: ${r.imported}. Пропущено (дубли/лимит): ${r.skipped}. Всего под фильтр: ${r.total_match}.`);
+      } else {
+        setImportMsg(r?.error || "Не удалось перенести в CRM");
+      }
+    } catch {
+      setImportMsg("Ошибка соединения с CRM");
+    } finally { setCrmImporting(false); }
+  };
 
   // Выгрузка отфильтрованного перечня в Excel
   const handleExport = async () => {
@@ -210,6 +235,11 @@ export default function SuppliersBlock() {
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-secondary text-xs font-medium hover:bg-secondary/80 disabled:opacity-60">
             {enrichingAll ? <Icon name="Loader" size={13} className="animate-spin" /> : <Icon name="Wand2" size={13} className="text-primary" />}
             ИИ-обогащение
+          </button>
+          <button onClick={handleCrmImport} disabled={crmImporting} title="Перенести отфильтрованные хозяйства в контакты CRM"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-secondary text-xs font-medium hover:bg-secondary/80 disabled:opacity-60">
+            {crmImporting ? <Icon name="Loader" size={13} className="animate-spin" /> : <Icon name="Contact" size={13} className="text-primary" />}
+            Перенести в CRM
           </button>
           <button onClick={downloadTemplate} title="Скачать пустой Excel с нужными колонками"
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-secondary text-xs font-medium hover:bg-secondary/80">

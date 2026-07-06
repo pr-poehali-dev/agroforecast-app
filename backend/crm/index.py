@@ -450,6 +450,63 @@ def handler(event: dict, context) -> dict:
             cur.close(); db.close()
             return resp(200, {"success": True, "contact_id": contact_id, "deal_id": deal_id, "existed": bool(existing)})
 
+        # ══ МАССОВЫЙ ПЕРЕНОС ПОСТАВЩИКОВ В КОНТАКТЫ ══════════════
+        if action == "import_suppliers_bulk":
+            where = ["1=1"]
+            args = []
+            if body.get("district"):
+                where.append("district = %s"); args.append(body["district"])
+            if body.get("region"):
+                where.append("region = %s"); args.append(body["region"])
+            if body.get("priority_only"):
+                where.append("priority >= 2")
+            if body.get("farmer_only"):
+                where.append("is_farmer = true")
+            if body.get("with_email"):
+                where.append("email IS NOT NULL AND email <> ''")
+            if body.get("with_phone"):
+                where.append("phone IS NOT NULL AND phone <> ''")
+            limit = int(body.get("limit") or 500)
+            limit = max(1, min(limit, 3000))
+            where_sql = " AND ".join(where)
+
+            # Считаем сколько всего подходит под фильтр
+            cur.execute(f"SELECT COUNT(*) FROM {SCHEMA}.suppliers WHERE {where_sql}", tuple(args))
+            total_match = cur.fetchone()[0]
+
+            # Переносим одним запросом: только те, кого ещё нет в контактах (по ИНН или названию)
+            cur.execute(f"""
+                INSERT INTO crm_contacts
+                    (user_id, name, phone, email, company, position, type, status, source, region, notes)
+                SELECT %s,
+                       COALESCE(NULLIF(s.contact_person,''), s.name),
+                       s.phone, s.email, s.name, 'Руководитель',
+                       'supplier', 'active', 'Импорт поставщиков', s.region,
+                       'Импортирован из базы поставщиков. ИНН ' || COALESCE(s.inn,'—') ||
+                       '. Регион: ' || COALESCE(s.region,'') || ' ' || COALESCE(s.district,'')
+                FROM {SCHEMA}.suppliers s
+                WHERE {where_sql}
+                  AND NOT EXISTS (
+                      SELECT 1 FROM crm_contacts c
+                      WHERE c.user_id = %s AND (
+                          (s.inn IS NOT NULL AND s.inn <> '' AND c.notes ILIKE '%%ИНН ' || s.inn || '%%')
+                          OR c.name = s.name
+                          OR c.company = s.name
+                      )
+                  )
+                ORDER BY s.priority DESC, s.id
+                LIMIT %s
+            """, (uid, *args, uid, limit))
+            imported = cur.rowcount
+            db.commit()
+            cur.close(); db.close()
+            return resp(200, {
+                "success": True,
+                "imported": imported,
+                "total_match": total_match,
+                "skipped": total_match - imported if total_match >= imported else 0,
+            })
+
         # ══ COMMENTS ═════════════════════════════════════════════
         if action == "comments_list":
             entity_type = params.get("entity_type")
