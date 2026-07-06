@@ -718,14 +718,37 @@ def handler(event: dict, context) -> dict:
             if body.get("with_phone"):
                 where.append("phone IS NOT NULL AND phone <> ''")
             limit = int(body.get("limit") or 500)
-            limit = max(1, min(limit, 3000))
+            limit = max(1, min(limit, 6000))
             where_sql = " AND ".join(where)
 
-            # Считаем сколько всего подходит под фильтр
-            cur.execute(f"SELECT COUNT(*) FROM {SCHEMA}.suppliers WHERE {where_sql}", tuple(args))
+            # Опционально: очистить прошлый импорт (кроме контактов, связанных со сделками)
+            reset_removed = 0
+            if body.get("reset"):
+                cur.execute("""
+                    DELETE FROM crm_activities WHERE contact_id IN (
+                        SELECT id FROM crm_contacts
+                        WHERE user_id=%s AND source='Импорт поставщиков'
+                          AND id NOT IN (SELECT contact_id FROM crm_deals WHERE contact_id IS NOT NULL)
+                    )
+                """, (uid,))
+                cur.execute("""
+                    DELETE FROM crm_contacts
+                    WHERE user_id=%s AND source='Импорт поставщиков'
+                      AND id NOT IN (SELECT contact_id FROM crm_deals WHERE contact_id IS NOT NULL)
+                """, (uid,))
+                reset_removed = cur.rowcount
+
+            # Уникальные хозяйства под фильтром: 1 запись на ИНН (а без ИНН — на название)
+            cur.execute(f"""
+                SELECT COUNT(*) FROM (
+                    SELECT DISTINCT ON (COALESCE(NULLIF(inn,''), 'NAME:' || name)) id
+                    FROM {SCHEMA}.suppliers WHERE {where_sql}
+                    ORDER BY COALESCE(NULLIF(inn,''), 'NAME:' || name), priority DESC, id
+                ) q
+            """, tuple(args))
             total_match = cur.fetchone()[0]
 
-            # Переносим одним запросом: только те, кого ещё нет в контактах (по ИНН или названию)
+            # Переносим по одному контакту на уникальное хозяйство, пропуская уже существующие
             cur.execute(f"""
                 INSERT INTO crm_contacts
                     (user_id, name, phone, email, company, position, type, status, source, region, notes)
@@ -735,16 +758,19 @@ def handler(event: dict, context) -> dict:
                        'supplier', 'active', 'Импорт поставщиков', s.region,
                        'Импортирован из базы поставщиков. ИНН ' || COALESCE(s.inn,'—') ||
                        '. Регион: ' || COALESCE(s.region,'') || ' ' || COALESCE(s.district,'')
-                FROM {SCHEMA}.suppliers s
-                WHERE {where_sql}
-                  AND NOT EXISTS (
-                      SELECT 1 FROM crm_contacts c
-                      WHERE c.user_id = %s AND (
-                          (s.inn IS NOT NULL AND s.inn <> '' AND c.notes ILIKE '%%ИНН ' || s.inn || '%%')
-                          OR c.name = s.name
-                          OR c.company = s.name
-                      )
-                  )
+                FROM (
+                    SELECT DISTINCT ON (COALESCE(NULLIF(inn,''), 'NAME:' || name))
+                           id, name, inn, region, district, contact_person, phone, email, priority
+                    FROM {SCHEMA}.suppliers WHERE {where_sql}
+                    ORDER BY COALESCE(NULLIF(inn,''), 'NAME:' || name), priority DESC, id
+                ) s
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM crm_contacts c
+                    WHERE c.user_id = %s AND (
+                        (s.inn IS NOT NULL AND s.inn <> '' AND c.notes ILIKE '%%ИНН ' || s.inn || '%%')
+                        OR ((s.inn IS NULL OR s.inn = '') AND c.company = s.name)
+                    )
+                )
                 ORDER BY s.priority DESC, s.id
                 LIMIT %s
             """, (uid, *args, uid, limit))
@@ -755,6 +781,7 @@ def handler(event: dict, context) -> dict:
                 "success": True,
                 "imported": imported,
                 "total_match": total_match,
+                "reset_removed": reset_removed,
                 "skipped": total_match - imported if total_match >= imported else 0,
             })
 
