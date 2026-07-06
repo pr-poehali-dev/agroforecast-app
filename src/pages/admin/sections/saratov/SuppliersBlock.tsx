@@ -20,6 +20,8 @@ export default function SuppliersBlock() {
   const [farmer, setFarmer] = useState(true);       // по умолчанию — только сельхозпроизводители
   const [priorityOnly, setPriorityOnly] = useState(false); // районы вокруг Аткарска
   const [saratovOnly, setSaratovOnly] = useState(true);    // ИНН 64 — саратовские, включено по умолчанию
+  const [hasEmail, setHasEmail] = useState(false);   // только с электронной почтой
+  const [hasPhone, setHasPhone] = useState(false);   // только с телефоном
   const [page, setPage] = useState(1);
   const [card, setCard] = useState<Partial<Supplier> | null>(null);
   const [importMsg, setImportMsg] = useState("");
@@ -36,6 +38,8 @@ export default function SuppliersBlock() {
     farmer: farmer ? "1" : "",
     priority: priorityOnly ? "2" : "",
     inn_prefix: saratovOnly ? "64" : "",
+    has_email: hasEmail ? "1" : "",
+    has_phone: hasPhone ? "1" : "",
   });
 
   const load = () => {
@@ -43,7 +47,7 @@ export default function SuppliersBlock() {
     adminApi.getSuppliers({ ...filterParams(), page })
       .then(setData).finally(() => setLoading(false));
   };
-  useEffect(() => { load(); }, [search, status, region, district, activity, crop, ownership, farmer, priorityOnly, saratovOnly, page]);
+  useEffect(() => { load(); }, [search, status, region, district, activity, crop, ownership, farmer, priorityOnly, saratovOnly, hasEmail, hasPhone, page]);
 
   // Справочники фильтров зависят от выбранного региона и/или ИНН-префикса
   useEffect(() => {
@@ -52,7 +56,7 @@ export default function SuppliersBlock() {
 
   const resetFilters = () => {
     setDistrict(""); setActivity(""); setCrop(""); setOwnership(""); setSearch(""); setStatus("");
-    setRegion(""); setPriorityOnly(false); setSaratovOnly(true); setPage(1);
+    setRegion(""); setPriorityOnly(false); setSaratovOnly(true); setHasEmail(false); setHasPhone(false); setPage(1);
   };
   const activeFilters = [region, district, activity, crop, ownership].filter(Boolean).length + (priorityOnly ? 1 : 0);
 
@@ -305,6 +309,8 @@ export default function SuppliersBlock() {
           <Toggle active={farmer} onClick={() => { setFarmer(f => !f); setPage(1); }} icon="Wheat" label="Только сельхозпроизводители" />
           <Toggle active={priorityOnly} onClick={() => { setPriorityOnly(p => !p); setPage(1); }} icon="Star" label="Районы вокруг Аткарска" />
           <Toggle active={saratovOnly} onClick={() => { setSaratovOnly(p => !p); setDistrict(""); setPage(1); }} icon="MapPin" label="Саратовские (ИНН 64)" />
+        <Toggle active={hasEmail} onClick={() => { setHasEmail(p => !p); setPage(1); }} icon="Mail" label="Есть эл. почта" />
+        <Toggle active={hasPhone} onClick={() => { setHasPhone(p => !p); setPage(1); }} icon="Phone" label="Есть телефон" />
         </div>
 
         {activeFilters > 0 && (

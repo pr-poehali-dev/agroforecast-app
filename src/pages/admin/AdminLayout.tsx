@@ -4,7 +4,6 @@ import { adminApi, adminToken } from "@/lib/adminApi";
 
 const NAV = [
   { id: "dashboard", label: "Дашборд", icon: "LayoutDashboard" },
-  { id: "crm", label: "CRM", icon: "Contact" },
   { id: "agent", label: "ИИ Менеджер", icon: "Bot" },
   { id: "project", label: "План проекта", icon: "KanbanSquare" },
   { id: "strategy", label: "Документы", icon: "BookOpen" },

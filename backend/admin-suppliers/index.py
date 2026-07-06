@@ -677,6 +677,8 @@ def handler(event: dict, context) -> dict:
         farmer = params.get("farmer", "")        # "1" — только сельхозпроизводители
         priority = params.get("priority", "")     # "2" — районы вокруг Аткарска
         inn_prefix = params.get("inn_prefix", "") # напр. "64" — саратовские
+        has_email = params.get("has_email", "")   # "1" — только с email
+        has_phone = params.get("has_phone", "")   # "1" — только с телефоном
         page = int(params.get("page", 1))
         limit = 50
         offset = (page - 1) * limit
@@ -704,6 +706,10 @@ def handler(event: dict, context) -> dict:
             where += " AND priority = %s"; args.append(int(priority))
         if inn_prefix:
             where += " AND inn LIKE %s"; args.append(f"{inn_prefix}%")
+        if has_email == "1":
+            where += " AND email IS NOT NULL AND email <> ''"
+        if has_phone == "1":
+            where += " AND phone IS NOT NULL AND phone <> ''"
 
         cur.execute(f"SELECT COUNT(*) FROM {SCHEMA}.suppliers {where}", args)
         total = cur.fetchone()[0]
