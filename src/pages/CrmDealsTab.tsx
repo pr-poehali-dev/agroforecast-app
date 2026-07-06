@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from "react";
 import Icon from "@/components/ui/icon";
 import { apiCRM } from "@/lib/auth";
 import { Deal, KANBAN_STAGES, SkeletonRows } from "./CrmTypes";
+import { CrmDealCard } from "./CrmDealCard";
+import { useToast } from "@/hooks/use-toast";
 
 // ─── Deals Tab ────────────────────────────────────────────────────────────────
 
@@ -36,6 +38,7 @@ const healthBg = (h?: number) =>
   h == null ? "bg-gray-300" : h >= 70 ? "bg-green-500" : h >= 40 ? "bg-amber-500" : "bg-red-500";
 
 export const DealsTab: React.FC = () => {
+  const { toast } = useToast();
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
   const [stageFilter, setStageFilter] = useState("all");
@@ -47,6 +50,7 @@ export const DealsTab: React.FC = () => {
   const [email, setEmail] = useState<AiEmail | null>(null);
   const [timeline, setTimeline] = useState<TimelineItem[] | null>(null);
   const [tlBusy, setTlBusy] = useState(false);
+  const [openId, setOpenId] = useState<number | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -65,10 +69,11 @@ export const DealsTab: React.FC = () => {
   const handleStageChange = async (id: number, stage: string) => {
     setUpdatingId(id);
     try {
-      await apiCRM("deals_update", { stage }, id);
+      const res = await apiCRM("deals_update", { stage }, id);
+      if (res?.error) throw new Error(res.error);
       setDeals((prev) => prev.map((d) => (d.id === id ? { ...d, stage } : d)));
-    } catch {
-      // ignore
+    } catch (e) {
+      toast({ title: "Не удалось сменить стадию", description: String((e as Error).message), variant: "destructive" });
     } finally {
       setUpdatingId(null);
     }
@@ -164,7 +169,14 @@ export const DealsTab: React.FC = () => {
               {filtered.map((d) => (
                 <React.Fragment key={d.id}>
                   <tr className="border-b border-gray-100 hover:bg-green-50/50 transition-colors">
-                    <td className="px-4 py-3 font-medium text-gray-800 max-w-[160px] truncate">{d.title}</td>
+                    <td className="px-4 py-3 max-w-[160px] truncate">
+                      <button
+                        onClick={() => setOpenId(d.id)}
+                        className="font-medium text-gray-800 hover:text-primary hover:underline text-left truncate"
+                      >
+                        {d.title}
+                      </button>
+                    </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1.5">
                         <div className="w-10 h-1.5 bg-gray-100 rounded-full overflow-hidden">
@@ -309,6 +321,10 @@ export const DealsTab: React.FC = () => {
           )}
         </table>
       </div>
+
+      {openId != null && (
+        <CrmDealCard dealId={openId} onClose={() => setOpenId(null)} onChanged={load} />
+      )}
     </div>
   );
 };

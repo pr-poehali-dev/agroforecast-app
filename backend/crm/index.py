@@ -288,6 +288,17 @@ def handler(event: dict, context) -> dict:
             cur.close(); db.close()
             return resp(200, {"success": True})
 
+        if action == "contacts_delete" and eid:
+            # отвязываем связанные записи, затем удаляем контакт
+            cur.execute("UPDATE crm_activities SET contact_id=NULL WHERE contact_id=%s AND user_id=%s", (eid, uid))
+            cur.execute("UPDATE crm_deals SET contact_id=NULL WHERE contact_id=%s AND user_id=%s", (eid, uid))
+            cur.execute("UPDATE crm_tasks SET contact_id=NULL WHERE contact_id=%s AND user_id=%s", (eid, uid))
+            cur.execute("DELETE FROM crm_contacts WHERE id=%s AND user_id=%s", (eid, uid))
+            deleted = cur.rowcount
+            db.commit()
+            cur.close(); db.close()
+            return resp(200, {"success": deleted > 0})
+
         # ══ LEADS ════════════════════════════════════════════════
         if action == "leads_list":
             cur.execute("""
@@ -322,6 +333,13 @@ def handler(event: dict, context) -> dict:
             cur.close(); db.close()
             return resp(200, {"success": True})
 
+        if action == "leads_delete" and eid:
+            cur.execute("DELETE FROM crm_leads WHERE id=%s AND user_id=%s", (eid, uid))
+            deleted = cur.rowcount
+            db.commit()
+            cur.close(); db.close()
+            return resp(200, {"success": deleted > 0})
+
         # ══ DEALS ════════════════════════════════════════════════
         if action == "deals_list":
             stage_filter = params.get("stage", "")
@@ -340,6 +358,22 @@ def handler(event: dict, context) -> dict:
             items = rows_to_dicts(cur, cur.fetchall())
             cur.close(); db.close()
             return resp(200, {"deals": items, "stages": DEAL_STAGES})
+
+        if action == "deals_get" and eid:
+            cur.execute("""
+                SELECT d.*, c.name as contact_name, c.phone as contact_phone, c.email as contact_email
+                FROM crm_deals d LEFT JOIN crm_contacts c ON c.id=d.contact_id
+                WHERE d.id=%s AND d.user_id=%s
+            """, (eid, uid))
+            row = cur.fetchone()
+            if not row:
+                cur.close(); db.close()
+                return resp(404, {"error": "Сделка не найдена"})
+            deal = rows_to_dicts(cur, [row])[0]
+            cur.execute("SELECT * FROM crm_activities WHERE deal_id=%s AND user_id=%s ORDER BY created_at DESC LIMIT 30", (eid, uid))
+            deal["activities"] = rows_to_dicts(cur, cur.fetchall())
+            cur.close(); db.close()
+            return resp(200, {"deal": deal, "stages": DEAL_STAGES})
 
         if action == "deals_create":
             cur.execute("""
@@ -386,6 +420,15 @@ def handler(event: dict, context) -> dict:
             db.commit()
             cur.close(); db.close()
             return resp(200, {"success": True})
+
+        if action == "deals_delete" and eid:
+            cur.execute("UPDATE crm_activities SET deal_id=NULL WHERE deal_id=%s AND user_id=%s", (eid, uid))
+            cur.execute("UPDATE crm_tasks SET deal_id=NULL WHERE deal_id=%s AND user_id=%s", (eid, uid))
+            cur.execute("DELETE FROM crm_deals WHERE id=%s AND user_id=%s", (eid, uid))
+            deleted = cur.rowcount
+            db.commit()
+            cur.close(); db.close()
+            return resp(200, {"success": deleted > 0})
 
         # ══ АВТО-ВОРОНКА + ИИ ════════════════════════════════════
         if action == "deal_ai_next" and eid:
@@ -618,6 +661,14 @@ def handler(event: dict, context) -> dict:
             db.commit()
             cur.close(); db.close()
             return resp(200, {"success": True})
+
+        if action == "tasks_delete" and eid:
+            cur.execute("UPDATE crm_activities SET task_id=NULL WHERE task_id=%s AND user_id=%s", (eid, uid))
+            cur.execute("DELETE FROM crm_tasks WHERE id=%s AND user_id=%s", (eid, uid))
+            deleted = cur.rowcount
+            db.commit()
+            cur.close(); db.close()
+            return resp(200, {"success": deleted > 0})
 
         # ══ ACTIVITIES ═══════════════════════════════════════════
         if action == "activities_list":

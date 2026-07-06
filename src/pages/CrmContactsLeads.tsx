@@ -2,15 +2,18 @@ import React, { useState, useEffect, useCallback } from "react";
 import Icon from "@/components/ui/icon";
 import { apiCRM } from "@/lib/auth";
 import { Contact, Lead, SkeletonRows } from "./CrmTypes";
+import { CrmContactCard } from "./CrmContactCard";
+import { useToast } from "@/hooks/use-toast";
 
 // ─── Contacts Tab ─────────────────────────────────────────────────────────────
 
 export const ContactsTab: React.FC = () => {
+  const { toast } = useToast();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [showAdd, setShowAdd] = useState(false);
-  const [selected, setSelected] = useState<Contact | null>(null);
+  const [openId, setOpenId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     full_name: "",
@@ -50,7 +53,9 @@ export const ContactsTab: React.FC = () => {
     if (!form.full_name.trim()) return;
     setSaving(true);
     try {
-      await apiCRM("contacts_create", { ...form, name: form.full_name });
+      const res = await apiCRM("contacts_create", { ...form, name: form.full_name });
+      if (res?.error) throw new Error(res.error);
+      toast({ title: "Контакт добавлен" });
       setShowAdd(false);
       setForm({
         full_name: "",
@@ -61,8 +66,8 @@ export const ContactsTab: React.FC = () => {
         status: "active",
       });
       load();
-    } catch {
-      // ignore
+    } catch (e) {
+      toast({ title: "Не удалось добавить контакт", description: String((e as Error).message), variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -151,54 +156,9 @@ export const ContactsTab: React.FC = () => {
         </div>
       )}
 
-      {/* Contact detail panel */}
-      {selected && (
-        <div className="glass-card rounded-xl p-5 border-2 border-primary/20">
-          <div className="flex items-center justify-between mb-4">
-            <h4 className="font-semibold text-gray-800 flex items-center gap-2">
-              <Icon name="User" size={18} className="text-primary" />
-              {selected.full_name}
-            </h4>
-            <button
-              onClick={() => setSelected(null)}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              <Icon name="X" size={18} />
-            </button>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
-            {selected.phone && (
-              <div className="flex items-center gap-2 text-gray-600">
-                <Icon name="Phone" size={14} className="text-gray-400" />
-                {selected.phone}
-              </div>
-            )}
-            {selected.email && (
-              <div className="flex items-center gap-2 text-gray-600">
-                <Icon name="Mail" size={14} className="text-gray-400" />
-                {selected.email}
-              </div>
-            )}
-            {selected.company && (
-              <div className="flex items-center gap-2 text-gray-600">
-                <Icon name="Building2" size={14} className="text-gray-400" />
-                {selected.company}
-              </div>
-            )}
-            {selected.region && (
-              <div className="flex items-center gap-2 text-gray-600">
-                <Icon name="MapPin" size={14} className="text-gray-400" />
-                {selected.region}
-              </div>
-            )}
-            {selected.status && (
-              <div className="flex items-center gap-2 text-gray-600">
-                <Icon name="Circle" size={14} className="text-gray-400" />
-                {selected.status}
-              </div>
-            )}
-          </div>
-        </div>
+      {/* Contact card modal */}
+      {openId != null && (
+        <CrmContactCard contactId={openId} onClose={() => setOpenId(null)} onChanged={load} />
       )}
 
       {/* Table */}
@@ -246,10 +206,8 @@ export const ContactsTab: React.FC = () => {
               {filtered.map((c) => (
                 <tr
                   key={c.id}
-                  onClick={() => setSelected(c.id === selected?.id ? null : c)}
-                  className={`border-b border-gray-100 cursor-pointer hover:bg-green-50/50 transition-colors ${
-                    selected?.id === c.id ? "bg-primary/5" : ""
-                  }`}
+                  onClick={() => setOpenId(c.id)}
+                  className="border-b border-gray-100 cursor-pointer hover:bg-green-50/50 transition-colors"
                 >
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
