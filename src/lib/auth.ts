@@ -32,9 +32,14 @@ export async function apiCRM(action: string, body?: object, id?: number, extra?:
   url.searchParams.set("action", action);
   if (id) url.searchParams.set("id", String(id));
   if (extra) Object.entries(extra).forEach(([k, v]) => url.searchParams.set(k, v));
+  // В админке используем общий доступ по admin-токену (общая база команды)
+  const adminTk = localStorage.getItem("admin_token");
+  const hdrs: Record<string, string> = adminTk
+    ? { "Content-Type": "application/json", "X-Admin-Token": adminTk }
+    : authHeaders();
   const r = await fetch(url.toString(), {
     method: body ? "POST" : "GET",
-    headers: authHeaders(),
+    headers: hdrs,
     body: body ? JSON.stringify(body) : undefined,
   });
   return r.json();

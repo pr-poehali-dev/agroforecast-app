@@ -14,9 +14,13 @@ import psycopg2
 CORS = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Authorization",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Authorization, X-Admin-Token",
     "Content-Type": "application/json",
 }
+
+SCHEMA = os.environ.get("MAIN_DB_SCHEMA", "t_p36960093_agroforecast_app")
+# Общий владелец CRM-данных для команды (при входе через админку)
+CRM_ADMIN_UID = int(os.environ.get("CRM_ADMIN_UID", "1"))
 
 DEAL_STAGES = [
     {"id": "new",         "label": "Новая",           "color": "#6b7280"},
@@ -55,8 +59,41 @@ def verify_jwt(token: str):
     except Exception:
         return None
 
+def verify_admin_token(token: str):
+    """Проверка админ-токена по таблице admin_sessions. Возвращает payload с общим uid команды."""
+    if not token:
+        return None
+    conn = None
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute(
+            f"SELECT id FROM {SCHEMA}.admin_sessions WHERE token=%s AND expires_at > now()",
+            (token,),
+        )
+        row = cur.fetchone()
+        cur.close()
+        if row:
+            return {"uid": CRM_ADMIN_UID, "is_admin": True}
+        return None
+    except Exception:
+        return None
+    finally:
+        if conn:
+            conn.close()
+
+
 def get_auth(event):
-    auth = event.get("headers", {}).get("X-Authorization") or event.get("headers", {}).get("Authorization", "")
+    headers = event.get("headers", {}) or {}
+    hl = {str(k).lower(): v for k, v in headers.items()}
+    # 1) Админ-токен (вход через админку) — общий доступ ко всей CRM
+    admin_token = hl.get("x-admin-token", "")
+    if admin_token:
+        p = verify_admin_token(admin_token)
+        if p:
+            return p
+    # 2) JWT пользователя (личный кабинет)
+    auth = hl.get("x-authorization") or hl.get("authorization", "")
     token = auth.replace("Bearer ", "").strip()
     return verify_jwt(token)
 
@@ -356,6 +393,62 @@ def handler(event: dict, context) -> dict:
             db.commit()
             cur.close(); db.close()
             return resp(201, {"success": True, "id": new_id})
+
+        # ══ ИМПОРТ ПОСТАВЩИКА В CRM ══════════════════════════════
+        if action == "import_supplier":
+            supplier_id = body.get("supplier_id")
+            if not supplier_id:
+                cur.close(); db.close()
+                return resp(400, {"error": "Не указан supplier_id"})
+            cur.execute(f"""
+                SELECT id, name, inn, region, district, crops, contact_person,
+                       phone, email, address, volume_tons
+                FROM {SCHEMA}.suppliers WHERE id=%s
+            """, (supplier_id,))
+            sup = cur.fetchone()
+            if not sup:
+                cur.close(); db.close()
+                return resp(404, {"error": "Поставщик не найден"})
+            s_id, s_name, s_inn, s_region, s_district, s_crops, s_contact, s_phone, s_email, s_addr, s_vol = sup
+            # Не дублируем: ищем контакт по ИНН/названию среди контактов команды
+            cur.execute("""
+                SELECT id FROM crm_contacts
+                WHERE user_id=%s AND (
+                    (notes ILIKE %s AND %s <> '') OR name=%s
+                ) LIMIT 1
+            """, (uid, f"%ИНН {s_inn}%", s_inn or "", s_name))
+            existing = cur.fetchone()
+            if existing:
+                contact_id = existing[0]
+            else:
+                note = f"Импортирован из базы поставщиков. ИНН {s_inn or '—'}. Регион: {s_region or ''} {s_district or ''}".strip()
+                cur.execute("""
+                    INSERT INTO crm_contacts
+                      (user_id,name,phone,email,company,position,type,status,source,region,notes,tags)
+                    VALUES (%s,%s,%s,%s,%s,%s,'supplier','active','Импорт поставщиков',%s,%s,%s)
+                    RETURNING id
+                """, (uid, s_contact or s_name, s_phone, s_email, s_name, "Руководитель",
+                      s_region, note, [c.strip() for c in (s_crops or "").split(",") if c.strip()] or None))
+                contact_id = cur.fetchone()[0]
+            deal_id = None
+            if body.get("create_deal"):
+                title = body.get("deal_title") or f"Закупка — {s_name}"
+                cur.execute("""
+                    INSERT INTO crm_deals
+                      (user_id,title,contact_id,stage,amount,probability,crop,volume_t,region,notes)
+                    VALUES (%s,%s,%s,'new',%s,10,%s,%s,%s,%s) RETURNING id
+                """, (uid, title, contact_id, body.get("amount", 0),
+                      s_crops, s_vol, s_region,
+                      f"Хозяйство: {s_name}. Контакт: {s_contact or '—'}, тел. {s_phone or '—'}"))
+                deal_id = cur.fetchone()[0]
+                cur.execute("""
+                    INSERT INTO crm_activities (user_id,type,title,description,contact_id,deal_id)
+                    VALUES (%s,'note',%s,%s,%s,%s)
+                """, (uid, "Сделка заведена из базы поставщиков",
+                      f"Поставщик {s_name} добавлен в воронку.", contact_id, deal_id))
+            db.commit()
+            cur.close(); db.close()
+            return resp(200, {"success": True, "contact_id": contact_id, "deal_id": deal_id, "existed": bool(existing)})
 
         # ══ COMMENTS ═════════════════════════════════════════════
         if action == "comments_list":

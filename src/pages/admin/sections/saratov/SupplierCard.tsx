@@ -1,5 +1,6 @@
 import { useState } from "react";
 import Icon from "@/components/ui/icon";
+import { apiCRM } from "@/lib/auth";
 import { Supplier, STATUS_LABELS, STATUS_COLORS } from "./shared";
 import ProfileTab from "./ProfileTab";
 import HistoryTab from "./HistoryTab";
@@ -14,6 +15,23 @@ export default function SupplierCard({ item, onClose, onSaved }: {
 }) {
   const isNew = !item.id;
   const [tab, setTab] = useState<Tab>("profile");
+  const [crmMsg, setCrmMsg] = useState("");
+  const [crmBusy, setCrmBusy] = useState(false);
+
+  const addToCrm = async () => {
+    if (!item.id) return;
+    setCrmBusy(true); setCrmMsg("");
+    try {
+      const r = await apiCRM("import_supplier", { supplier_id: item.id, create_deal: true });
+      if (r?.success) {
+        setCrmMsg(r.existed ? "Контакт уже был — создана сделка в CRM" : "Заведено в CRM: контакт и сделка");
+      } else {
+        setCrmMsg(r?.error || "Не удалось завести в CRM");
+      }
+    } catch {
+      setCrmMsg("Ошибка соединения с CRM");
+    } finally { setCrmBusy(false); }
+  };
 
   const tabs: { key: Tab; label: string; icon: string }[] = [
     { key: "profile", label: "Профиль", icon: "User" },
@@ -47,8 +65,20 @@ export default function SupplierCard({ item, onClose, onSaved }: {
                 </div>
               )}
             </div>
-            <button onClick={onClose}><Icon name="X" size={18} className="text-muted-foreground" /></button>
+            <div className="flex items-center gap-2 shrink-0">
+              {!isNew && (
+                <button onClick={addToCrm} disabled={crmBusy}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary text-white text-xs font-medium hover:opacity-90 disabled:opacity-60">
+                  {crmBusy ? <Icon name="Loader" size={13} className="animate-spin" /> : <Icon name="Contact" size={13} />}
+                  В CRM
+                </button>
+              )}
+              <button onClick={onClose}><Icon name="X" size={18} className="text-muted-foreground" /></button>
+            </div>
           </div>
+          {crmMsg && (
+            <div className="text-[11px] px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700">{crmMsg}</div>
+          )}
 
           {/* Вкладки — только для существующего поставщика */}
           {!isNew && (

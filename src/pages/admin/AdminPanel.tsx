@@ -13,6 +13,7 @@ import AdminAgent from "./sections/AdminAgent";
 import AdminProjectManager from "./sections/AdminProjectManager";
 import AdminStrategy from "./sections/AdminStrategy";
 import AdminSaratov from "./sections/AdminSaratov";
+import SectionCRM from "@/pages/SectionCRM";
 import Icon from "@/components/ui/icon";
 
 export default function AdminPanel() {
@@ -42,6 +43,7 @@ export default function AdminPanel() {
 
   const sections: Record<string, React.ReactNode> = {
     dashboard: <AdminDashboard onSection={setSection} />,
+    crm: <SectionCRM />,
     agent: <AdminAgent />,
     project: <AdminProjectManager />,
     strategy: <AdminStrategy />,
@@ -62,10 +64,14 @@ export default function AdminPanel() {
         onLogout={() => setAuth("out")}
         newAppeals={newAppeals}
       />
-      <main className="flex-1 overflow-y-auto p-6">
-        <div className="max-w-5xl mx-auto">
-          {sections[section]}
-        </div>
+      <main className="flex-1 overflow-y-auto">
+        {section === "crm" ? (
+          sections[section]
+        ) : (
+          <div className="max-w-5xl mx-auto p-6">
+            {sections[section]}
+          </div>
+        )}
       </main>
     </div>
   );
