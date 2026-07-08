@@ -52,11 +52,11 @@ export default function SectionNdvi() {
             <h1 className="font-heading font-black text-2xl sm:text-3xl text-white">
               NDVI-<span className="gold-text">мониторинг</span>
             </h1>
-            <p className="text-white/60 text-sm mt-1 font-body">Sentinel-2 (ESA) · 10 м/пиксель · обновление каждые 5 дней</p>
+            <p className="text-white/60 text-sm mt-1 font-body">Индекс вегетации по регионам · демонстрационный модуль</p>
           </div>
           <div className="flex gap-2 flex-wrap shrink-0">
             <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 border border-white/25 text-white text-xs font-mono">
-              <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse-glow" />LIVE
+              Демо
             </span>
             <span className="px-3 py-1.5 rounded-full bg-white/15 border border-white/25 text-white/80 text-xs font-mono">
               NDVI = (NIR − Red) / (NIR + Red)
@@ -76,7 +76,7 @@ export default function SectionNdvi() {
           <div className="w-7 h-7 rounded-lg bg-primary/15 flex items-center justify-center">
             <Icon name="Sliders" size={13} className="text-primary" />
           </div>
-          <span className="text-xs font-semibold font-heading text-foreground">Шкала значений NDVI · апрель 2026</span>
+          <span className="text-xs font-semibold font-heading text-foreground">Шкала значений NDVI (демо)</span>
         </div>
         <div className="flex gap-3 flex-wrap">
           {[

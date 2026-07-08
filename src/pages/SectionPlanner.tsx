@@ -320,7 +320,7 @@ export default function SectionPlanner() {
             <div className="p-4 border-b border-border">
               <div className="flex items-center gap-2">
                 <Icon name="BookOpen" size={14} className="text-primary" />
-                <span className="text-sm font-semibold">Нормативы по культурам · апрель 2026</span>
+                <span className="text-sm font-semibold">Нормативы по культурам · демо-данные</span>
                 <span className="ml-auto text-[10px] text-muted-foreground font-mono">НТБ + ФГБУ Агроэкспорт</span>
               </div>
             </div>
@@ -377,7 +377,7 @@ export default function SectionPlanner() {
           <div className="glass-card rounded-xl p-5">
             <div className="flex items-center gap-2 mb-4">
               <Icon name="Trophy" size={15} className="text-accent" />
-              <h3 className="font-semibold text-sm">Рейтинг по ROI · апрель 2026</h3>
+              <h3 className="font-semibold text-sm">Рейтинг по ROI · демо-данные</h3>
             </div>
             <div className="space-y-2.5">
               {[...crops].sort((a, b) => b.roi - a.roi).map((c, i) => (

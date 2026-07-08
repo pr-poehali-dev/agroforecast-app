@@ -12,7 +12,7 @@
       "method": "GET",
       "path": "/?weather=1",
       "expectedStatus": 200,
-      "expectedBody": {"source": "Росгидромет, апрель 2026"},
+      "expectedBody": {"source": "Демонстрационный прогноз"},
       "bodyMatcher": "partial"
     },
     {

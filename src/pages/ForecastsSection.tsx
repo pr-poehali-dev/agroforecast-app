@@ -124,18 +124,15 @@ export default function ForecastsSection({
             <h1 className="font-heading font-black text-2xl sm:text-3xl text-white leading-tight">
               Прогнозы цен<br />и <span className="gold-text">урожайности</span>
             </h1>
-            <p className="text-white/65 text-sm mt-1 font-body">ARIMA + LSTM · горизонт 3–12 месяцев · апрель 2026</p>
+            <p className="text-white/65 text-sm mt-1 font-body">Аналитическая модель · горизонт 3–12 месяцев</p>
           </div>
-          <div className="flex gap-2 shrink-0">
-            {[
-              { v: "94.7%", l: "Точность" },
-              { v: "12",    l: "культур"  },
-            ].map((s, i) => (
-              <div key={i} className="bg-white/15 border border-white/25 rounded-xl px-4 py-3 text-center">
-                <div className="font-mono font-black text-xl text-white">{s.v}</div>
-                <div className="text-white/60 text-[10px] mt-0.5">{s.l}</div>
+          <div className="shrink-0">
+            <div className="bg-white/15 border border-white/25 rounded-xl px-4 py-3 text-center max-w-[220px]">
+              <div className="text-white/85 text-[11px] leading-snug flex items-center gap-1.5">
+                <Icon name="Info" size={13} className="shrink-0" />
+                Прогноз носит аналитический характер и не является рекомендацией к сделке
               </div>
-            ))}
+            </div>
           </div>
         </div>
       </div>
@@ -189,7 +186,7 @@ export default function ForecastsSection({
           ) : pricesError ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground px-2 py-3">
               <Icon name="WifiOff" size={14} className="text-red-400" />
-              Не удалось загрузить котировки — показаны данные из НТБ (апрель 2026)
+              Не удалось загрузить котировки — показаны ориентировочные значения
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">

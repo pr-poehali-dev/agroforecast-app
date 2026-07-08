@@ -256,6 +256,10 @@ export default function SectionNews() {
       {/* ── МЕТЕОПРОГНОЗ ── */}
       {tab === "weather" && !loading && (
         <div className="space-y-4">
+          <div className="flex items-start gap-2 text-xs text-muted-foreground bg-secondary/60 border border-border rounded-xl px-3 py-2">
+            <Icon name="Info" size={13} className="text-primary mt-0.5 shrink-0" />
+            <span>Метеопрогноз показан в демонстрационном виде. Для полевых решений сверяйтесь с официальными данными Гидрометцентра.</span>
+          </div>
           {/* Region selector */}
           <div className="flex gap-1.5 flex-wrap">
             {Object.entries(REGION_NAMES).map(([id, name]) => {
@@ -287,7 +291,7 @@ export default function SectionNews() {
                   <div>
                     <div className="flex items-center gap-2">
                       <Icon name="MapPin" size={14} className="text-primary" />
-                      <h2 className="font-semibold">{selWeather.name} обл. — погода апрель 2026</h2>
+                      <h2 className="font-semibold">{selWeather.name} обл. — прогноз погоды (демо)</h2>
                     </div>
                     <div className="text-xs text-muted-foreground mt-1">Росгидромет · прогноз на 7 дней</div>
                   </div>

@@ -22,10 +22,10 @@ export default function HomeHero({ setActiveSection }: HomeHeroProps) {
           <div className="flex flex-wrap items-center gap-2 mb-5">
             <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/20 border border-white/30 text-white text-xs font-semibold backdrop-blur-sm">
               <span className="w-2 h-2 rounded-full bg-accent animate-pulse-glow" />
-              Данные обновлены · апрель 2026
+              Новости и цены обновляются онлайн
             </span>
             <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-accent/25 border border-accent/40 text-accent text-xs font-bold">
-              <Icon name="Brain" size={11} />ARIMA + LSTM · v3.0
+              <Icon name="Brain" size={11} />Аналитическая модель
             </span>
             <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 border border-white/20 text-white/80 text-xs font-mono">
               🇷🇺 23 региона России
@@ -61,10 +61,10 @@ export default function HomeHero({ setActiveSection }: HomeHeroProps) {
             {/* Большие KPI-цифры */}
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 gap-3 shrink-0 lg:w-64">
               {[
-                { v: "87%",  l: "Точность AI",      icon: "Target" },
                 { v: "23",   l: "Региона России",   icon: "MapPin" },
-                { v: "12",   l: "Культур",           icon: "Wheat" },
-                { v: "LIVE", l: "Обновление данных", icon: "Zap" },
+                { v: "5",    l: "Культур",           icon: "Wheat" },
+                { v: "8+",   l: "Источников новостей", icon: "Newspaper" },
+                { v: "LIVE", l: "Цены и новости",    icon: "Zap" },
               ].map((s, i) => (
                 <div key={i} className="bg-white/12 border border-white/20 rounded-2xl p-4 text-center backdrop-blur-sm hover:bg-white/18 transition-colors">
                   <Icon name={s.icon as string} size={16} className="text-white/60 mx-auto mb-1.5" />
@@ -96,15 +96,15 @@ export default function HomeHero({ setActiveSection }: HomeHeroProps) {
           {[
             {
               icon: "Brain", color: "primary",
-              title: "AI с точностью 87%",
-              desc: "ARIMA + LSTM + Random Forest. Валидация на данных 2015–2024. MAPE цен 8.7%, урожайности 12.4%.",
-              badge: "vs 65% у конкурентов",
+              title: "Аналитические прогнозы",
+              desc: "Модель учитывает цены, погоду, NDVI и сезонность. Прогноз носит аналитический характер, не является рекомендацией к сделке.",
+              badge: "Прогноз цен и урожая",
             },
             {
               icon: "Satellite", color: "accent",
-              title: "Спутниковый NDVI",
-              desc: "Sentinel-2 (ESA) с разрешением 10 м/пиксель. Обновление каждые 5 дней. 23 региона России.",
-              badge: "Sentinel-2 · ESA",
+              title: "NDVI-мониторинг",
+              desc: "Индекс вегетации по регионам для оценки состояния посевов. Демонстрационный модуль на базе спутниковых данных.",
+              badge: "NDVI по регионам",
             },
             {
               icon: "Globe", color: "primary",

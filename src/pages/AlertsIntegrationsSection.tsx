@@ -11,7 +11,7 @@ const INTEGRATIONS = [
     name: "НТБ (Нац. товарная биржа)", tag: "Биржа", status: "connected", icon: "BarChart2",
     url: "https://ntbex.ru",
     desc: "Официальные котировки зерновых на бирже НТБ — пшеница, ячмень, кукуруза, рожь, подсолнечник.",
-    metric: "Базовые цены · апрель 2026",
+    metric: "Базовые цены · ориентир",
   },
   {
     name: "Росгидромет", tag: "Метео", status: "connected", icon: "Cloud",

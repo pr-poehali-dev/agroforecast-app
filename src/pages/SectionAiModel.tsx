@@ -84,6 +84,11 @@ export default function SectionAiModel() {
         </div>
       </div>
 
+      <div className="flex items-start gap-2 text-xs text-muted-foreground bg-secondary/60 border border-border rounded-xl px-3 py-2">
+        <Icon name="Info" size={13} className="text-primary mt-0.5 shrink-0" />
+        <span>Демонстрационная аналитическая модель. Показатели иллюстрируют работу системы и не являются рекомендацией к сделке.</span>
+      </div>
+
       {/* ── Архитектурные карточки ── */}
       {meta && (
         <div className="grid sm:grid-cols-3 gap-4">

@@ -334,7 +334,7 @@ export default function NdviHeatMap({ summary, selectedRegion, onSelectRegion }:
         <div className="flex items-center gap-2 mb-5">
           <Icon name="LayoutGrid" size={15} className="text-primary" />
           <h2 className="font-semibold text-sm">
-            Рейтинг регионов · NDVI апрель 2026
+            Рейтинг регионов · NDVI (демо)
           </h2>
           <span className="ml-auto text-[10px] text-muted-foreground font-mono">
             сортировка: NDVI ↓

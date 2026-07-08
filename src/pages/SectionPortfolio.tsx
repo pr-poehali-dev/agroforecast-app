@@ -121,7 +121,7 @@ export default function SectionPortfolio() {
               Мой <span className="gold-text">портфель</span>
             </h1>
             <p className="text-white/60 text-sm mt-1 font-body">
-              Культуры, площади и расчёт выручки · цены НТБ апрель 2026
+              Культуры, площади и расчёт выручки · ориентировочные цены
             </p>
           </div>
 

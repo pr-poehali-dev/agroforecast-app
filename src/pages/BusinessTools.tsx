@@ -100,7 +100,7 @@ export default function BusinessTools({ exporting, doExport, exportActions }: Bu
               ))}
             </div>
             <p className="text-[10px] text-muted-foreground mt-3 leading-relaxed">
-              PDF открывается в новой вкладке для печати. CSV/JSON скачиваются автоматически. Данные: НТБ + Минсельхоз, апрель 2026.
+              PDF открывается в новой вкладке для печати. CSV/JSON скачиваются автоматически. Часть данных — демонстрационные.
             </p>
           </div>
         </div>

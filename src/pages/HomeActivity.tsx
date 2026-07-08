@@ -187,8 +187,8 @@ export default function HomeActivity({
               <div className="w-7 h-7 rounded-lg bg-accent/15 flex items-center justify-center">
                 <Icon name="Bell" size={13} className="text-accent" />
               </div>
-              <span className="font-heading font-bold text-sm">Последние события</span>
-              <span className="px-1.5 py-0.5 rounded-full bg-destructive/15 text-destructive text-[10px] font-bold badge-pulse">7</span>
+              <span className="font-heading font-bold text-sm">Типы оповещений</span>
+              <span className="px-1.5 py-0.5 rounded-full bg-secondary text-muted-foreground text-[10px] font-medium">пример</span>
             </div>
             <button onClick={() => setActiveSection("alerts")} className="text-xs text-primary hover:text-primary/80 transition-colors flex items-center gap-1">
               Все <Icon name="ArrowRight" size={11} />
@@ -209,7 +209,6 @@ export default function HomeActivity({
                   <div className="text-xs font-semibold text-foreground truncate font-heading">{a.title}</div>
                   <div className="text-xs text-muted-foreground truncate mt-0.5">{a.desc}</div>
                 </div>
-                <span className="text-[10px] text-muted-foreground shrink-0 mt-0.5">{a.time}</span>
               </div>
             ))}
           </div>
@@ -225,7 +224,7 @@ export default function HomeActivity({
             </div>
             <div>
               <div className="font-heading font-bold text-sm text-foreground">Прогнозы цен · +3 месяца</div>
-              <div className="text-[11px] text-muted-foreground font-body">апрель 2026 · AI-модель ARIMA+LSTM</div>
+              <div className="text-[11px] text-muted-foreground font-body">аналитическая модель (демо)</div>
             </div>
             {aiLoading ? (
               <span className="flex items-center gap-1 text-[10px] text-muted-foreground animate-pulse px-2 py-1 bg-secondary rounded-full">

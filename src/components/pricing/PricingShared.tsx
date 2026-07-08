@@ -17,7 +17,7 @@ export const COMMISSION_RATES = [
 
 export const API_PACKAGES = [
   { title: "NDVI и метеоданные", price: 10_000, unit: "регион/мес", icon: "Satellite", desc: "Спутниковые NDVI-индексы Sentinel-2, метеоданные Росгидромета" },
-  { title: "Прогнозы урожайности", price: 15_000, unit: "культура/мес", icon: "TrendingUp", desc: "Модели ARIMA+LSTM, горизонт до 12 месяцев, 87% точность" },
+  { title: "Прогнозы урожайности", price: 15_000, unit: "культура/мес", icon: "TrendingUp", desc: "Аналитическая модель, горизонт до 12 месяцев" },
   { title: "Аналитика цен", price: 12_000, unit: "культура/мес", icon: "BarChart3", desc: "Котировки НТБ/CBOT, биржевые данные, исторические ряды" },
   { title: "White-label платформа", price: 500_000, unit: "проект", icon: "Layers", desc: "Кастомизированная платформа АгроПорт под брендом клиента" },
 ];

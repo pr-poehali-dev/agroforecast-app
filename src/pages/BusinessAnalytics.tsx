@@ -1,4 +1,5 @@
 import Icon from "@/components/ui/icon";
+import DemoBadge from "@/components/DemoBadge";
 import { PROFITABILITY_DATA } from "./data";
 
 export default function BusinessAnalytics() {
@@ -21,10 +22,10 @@ export default function BusinessAnalytics() {
       {/* Метрики платформы */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: "Точность прогнозов цен", value: "87.4%", sub: "+2.1%", up: true, icon: "TrendingUp" },
-          { label: "Точность урожая", value: "82.1%", sub: "+0.8%", up: true, icon: "Sprout" },
-          { label: "Данных обработано", value: "1.2M", sub: "записей/сут", up: true, icon: "Database" },
-          { label: "Время обновления", value: "15 мин", sub: "задержка", up: false, icon: "Clock" },
+          { label: "Регионов на карте", value: "23", sub: "России", up: true, icon: "MapPin" },
+          { label: "Культур в аналитике", value: "5", sub: "основных", up: true, icon: "Sprout" },
+          { label: "Источников новостей", value: "8+", sub: "открытых", up: true, icon: "Newspaper" },
+          { label: "Цены рынка", value: "LIVE", sub: "из RSS", up: true, icon: "Zap" },
         ].map((m, i) => (
           <div key={i} className="kpi-card rounded-xl p-4">
             <div className={`w-9 h-9 rounded-xl mb-3 flex items-center justify-center ${m.up ? "bg-primary/15 text-primary" : "bg-secondary text-muted-foreground"}`}>
@@ -45,8 +46,10 @@ export default function BusinessAnalytics() {
               <Icon name="BarChart3" size={15} className="text-primary" />
             </div>
             <div>
-              <div className="font-heading font-bold text-sm text-foreground">Рентабельность по культурам</div>
-              <div className="text-[11px] text-muted-foreground">маржа и ROI · апрель 2026</div>
+              <div className="font-heading font-bold text-sm text-foreground flex items-center gap-2">
+                Рентабельность по культурам <DemoBadge />
+              </div>
+              <div className="text-[11px] text-muted-foreground">маржа и ROI · иллюстрация</div>
             </div>
           </div>
           <div className="space-y-4">

@@ -17,13 +17,14 @@ CORS = {
     "Content-Type": "application/json",
 }
 
-# ─── Fallback цены НТБ / Поволжье, апрель 2026 ───────────────────────────────
+# ─── Ориентировочные цены (показываются ТОЛЬКО когда нет связи с источником) ──
+# Помечаются is_fallback=true и source="ориентир", чтобы не выдавать за биржевые данные.
 FALLBACK_PRICES = {
-    "Пшеница озимая": {"price": 13650, "trend": 2.1,  "week_change": 290,  "source": "НТБ (кэш)"},
-    "Подсолнечник":   {"price": 46500, "trend": -1.8, "week_change": -840, "source": "oilworld (кэш)"},
-    "Кукуруза":       {"price": 13800, "trend": 1.2,  "week_change": 165,  "source": "НТБ (кэш)"},
-    "Ячмень яровой":  {"price": 12200, "trend": 0.9,  "week_change": 110,  "source": "НТБ (кэш)"},
-    "Рожь":           {"price": 10100, "trend": -0.5, "week_change": -51,  "source": "НТБ (кэш)"},
+    "Пшеница озимая": {"price": 13650, "trend": 2.1,  "week_change": 290,  "source": "ориентир"},
+    "Подсолнечник":   {"price": 46500, "trend": -1.8, "week_change": -840, "source": "ориентир"},
+    "Кукуруза":       {"price": 13800, "trend": 1.2,  "week_change": 165,  "source": "ориентир"},
+    "Ячмень яровой":  {"price": 12200, "trend": 0.9,  "week_change": 110,  "source": "ориентир"},
+    "Рожь":           {"price": 10100, "trend": -0.5, "week_change": -51,  "source": "ориентир"},
 }
 
 CROP_META = {

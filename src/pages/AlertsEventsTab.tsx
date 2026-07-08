@@ -95,10 +95,6 @@ function AlertCard({
         </div>
         <div className="text-sm text-muted-foreground mt-1 leading-relaxed">{alert.desc}</div>
         <div className="flex items-center gap-3 mt-2">
-          <span className="text-[11px] text-muted-foreground font-mono flex items-center gap-1">
-            <Icon name="Clock" size={10} />
-            {alert.time}
-          </span>
           {!read && (
             <button
               onClick={() => onRead(alert.id)}
@@ -133,6 +129,10 @@ export default function AlertsEventsTab({
 }: AlertsEventsTabProps) {
   return (
     <div className="space-y-4">
+      <div className="flex items-start gap-2 text-xs text-muted-foreground bg-secondary/60 border border-border rounded-xl px-3 py-2">
+        <Icon name="Info" size={13} className="text-primary mt-0.5 shrink-0" />
+        <span>Ниже — примеры типов оповещений, которые формирует платформа. Реальные новости рынка доступны в разделе «Новости и погода».</span>
+      </div>
       <FilterBar active={filter} counts={counts} onChange={onFilterChange} />
 
       <div className="space-y-3">
