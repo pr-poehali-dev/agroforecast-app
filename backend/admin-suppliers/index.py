@@ -73,6 +73,39 @@ def _clean(row):
     return out
 
 
+def _build_where(params):
+    """Строит WHERE и args по фильтрам списка. Используется списком и анализом качества."""
+    where = "WHERE name NOT LIKE '[служебная строка]%%'"
+    args = []
+    search = params.get("search", "")
+    if search:
+        where += " AND (name ILIKE %s OR inn ILIKE %s OR contact_person ILIKE %s OR locality ILIKE %s)"
+        args += [f"%{search}%"] * 4
+    if params.get("region"):
+        where += " AND region=%s"; args.append(params["region"])
+    if params.get("district"):
+        where += " AND district=%s"; args.append(params["district"])
+    if params.get("status"):
+        where += " AND status=%s"; args.append(params["status"])
+    if params.get("activity"):
+        where += " AND activity ILIKE %s"; args.append(f"%{params['activity']}%")
+    if params.get("crop"):
+        where += " AND crops ILIKE %s"; args.append(f"%{params['crop']}%")
+    if params.get("ownership"):
+        where += " AND ownership=%s"; args.append(params["ownership"])
+    if params.get("farmer") == "1":
+        where += " AND is_farmer = true"
+    if params.get("priority"):
+        where += " AND priority = %s"; args.append(int(params["priority"]))
+    if params.get("inn_prefix"):
+        where += " AND inn LIKE %s"; args.append(f"{params['inn_prefix']}%")
+    if params.get("has_email") == "1":
+        where += " AND email IS NOT NULL AND email <> ''"
+    if params.get("has_phone") == "1":
+        where += " AND phone IS NOT NULL AND phone <> ''"
+    return where, args
+
+
 def _ai_column_map(columns, sample_rows):
     """ИИ определяет, какая колонка таблицы какому полю базы соответствует."""
     api_key = os.environ.get("POLZA_API_KEY", "")
@@ -848,51 +881,48 @@ def _handle(event: dict, context) -> dict:
         return ok({"region": region, "total": total,
                    "by_district": by_district, "by_activity": by_activity, "by_ownership": by_ownership})
 
+    # ── Анализ качества данных по текущей выборке фильтров ──
+    if method == "GET" and action == "quality":
+        where, args = _build_where(params)
+        base = f"FROM {SCHEMA}.suppliers {where}"
+        cur.execute(f"""SELECT
+                COUNT(*) AS total,
+                COUNT(*) FILTER (WHERE inn IS NULL OR inn='') AS no_inn,
+                COUNT(*) FILTER (WHERE phone IS NULL OR phone='') AS no_phone,
+                COUNT(*) FILTER (WHERE email IS NULL OR email='') AS no_email,
+                COUNT(*) FILTER (WHERE (phone IS NULL OR phone='') AND (email IS NULL OR email='')) AS no_contacts,
+                COUNT(*) FILTER (WHERE contact_person IS NULL OR contact_person='') AS no_person,
+                COUNT(*) FILTER (WHERE crops IS NULL OR crops='') AS no_crops,
+                COUNT(*) FILTER (WHERE address IS NULL OR address='') AS no_address,
+                COUNT(*) FILTER (WHERE ai_analysis IS NULL OR ai_analysis='') AS no_analysis,
+                COUNT(*) FILTER (WHERE district IS NULL OR district='') AS no_district
+            {base}""", args)
+        row = cur.fetchone()
+        cols = ["total", "no_inn", "no_phone", "no_email", "no_contacts",
+                "no_person", "no_crops", "no_address", "no_analysis", "no_district"]
+        stats = dict(zip(cols, [int(x) for x in row]))
+        # Дубли внутри выборки: по ИНН (если есть), иначе по названию+районе
+        cur.execute(f"""SELECT COALESCE(SUM(cnt-1),0) FROM (
+                SELECT COUNT(*) cnt
+                {base} AND inn IS NOT NULL AND inn<>''
+                GROUP BY lower(inn) HAVING COUNT(*)>1
+            ) q""", args)
+        dup_inn = int(cur.fetchone()[0])
+        cur.execute(f"""SELECT COALESCE(SUM(cnt-1),0) FROM (
+                SELECT COUNT(*) cnt
+                {base} AND (inn IS NULL OR inn='')
+                GROUP BY lower(name), COALESCE(lower(district),'') HAVING COUNT(*)>1
+            ) q""", args)
+        dup_name = int(cur.fetchone()[0])
+        stats["duplicates"] = dup_inn + dup_name
+        return ok(stats)
+
     # ── Список ──
     if method == "GET" and not sid:
-        search = params.get("search", "")
-        region = params.get("region", "")
-        district = params.get("district", "")
-        status = params.get("status", "")
-        activity = params.get("activity", "")
-        crop = params.get("crop", "")
-        ownership = params.get("ownership", "")
-        farmer = params.get("farmer", "")        # "1" — только сельхозпроизводители
-        priority = params.get("priority", "")     # "2" — районы вокруг Аткарска
-        inn_prefix = params.get("inn_prefix", "") # напр. "64" — саратовские
-        has_email = params.get("has_email", "")   # "1" — только с email
-        has_phone = params.get("has_phone", "")   # "1" — только с телефоном
         page = int(params.get("page", 1))
         limit = 50
         offset = (page - 1) * limit
-
-        where = "WHERE name NOT LIKE '[служебная строка]%%'"
-        args = []
-        if search:
-            where += " AND (name ILIKE %s OR inn ILIKE %s OR contact_person ILIKE %s OR locality ILIKE %s)"
-            args += [f"%{search}%"] * 4
-        if region:
-            where += " AND region=%s"; args.append(region)
-        if district:
-            where += " AND district=%s"; args.append(district)
-        if status:
-            where += " AND status=%s"; args.append(status)
-        if activity:
-            where += " AND activity ILIKE %s"; args.append(f"%{activity}%")
-        if crop:
-            where += " AND crops ILIKE %s"; args.append(f"%{crop}%")
-        if ownership:
-            where += " AND ownership=%s"; args.append(ownership)
-        if farmer == "1":
-            where += " AND is_farmer = true"
-        if priority:
-            where += " AND priority = %s"; args.append(int(priority))
-        if inn_prefix:
-            where += " AND inn LIKE %s"; args.append(f"{inn_prefix}%")
-        if has_email == "1":
-            where += " AND email IS NOT NULL AND email <> ''"
-        if has_phone == "1":
-            where += " AND phone IS NOT NULL AND phone <> ''"
+        where, args = _build_where(params)
 
         cur.execute(f"SELECT COUNT(*) FROM {SCHEMA}.suppliers {where}", args)
         total = cur.fetchone()[0]

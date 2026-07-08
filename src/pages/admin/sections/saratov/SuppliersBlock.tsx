@@ -3,7 +3,7 @@ import * as XLSX from "xlsx";
 import { adminApi } from "@/lib/adminApi";
 import { apiCRM } from "@/lib/auth";
 import Icon from "@/components/ui/icon";
-import { Supplier, Facet, Facets, Analytics, REGION, STATUS_LABELS, STATUS_COLORS } from "./shared";
+import { Supplier, Facet, Facets, Analytics, QualityReport, REGION, STATUS_LABELS, STATUS_COLORS } from "./shared";
 import SupplierCard from "./SupplierCard";
 
 // ── Блок базы поставщиков ────────────────────────────────────────────────────
@@ -19,7 +19,6 @@ export default function SuppliersBlock() {
   const [ownership, setOwnership] = useState("");
   const [farmer, setFarmer] = useState(true);       // по умолчанию — только сельхозпроизводители
   const [priorityOnly, setPriorityOnly] = useState(false); // районы вокруг Аткарска
-  const [saratovOnly, setSaratovOnly] = useState(true);    // ИНН 64 — саратовские, включено по умолчанию
   const [hasEmail, setHasEmail] = useState(false);   // только с электронной почтой
   const [hasPhone, setHasPhone] = useState(false);   // только с телефоном
   const [page, setPage] = useState(1);
@@ -31,13 +30,15 @@ export default function SuppliersBlock() {
   const [crmImporting, setCrmImporting] = useState(false);
   const [facets, setFacets] = useState<Facets | null>(null);
   const [showAnalytics, setShowAnalytics] = useState(false);
+  const [quality, setQuality] = useState<QualityReport | null>(null);
+  const [qualityLoading, setQualityLoading] = useState(false);
+  const [showQuality, setShowQuality] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const filterParams = () => ({
     region, district, activity, crop, ownership, search, status,
     farmer: farmer ? "1" : "",
     priority: priorityOnly ? "2" : "",
-    inn_prefix: saratovOnly ? "64" : "",
     has_email: hasEmail ? "1" : "",
     has_phone: hasPhone ? "1" : "",
   });
@@ -47,16 +48,28 @@ export default function SuppliersBlock() {
     adminApi.getSuppliers({ ...filterParams(), page })
       .then(setData).finally(() => setLoading(false));
   };
-  useEffect(() => { load(); }, [search, status, region, district, activity, crop, ownership, farmer, priorityOnly, saratovOnly, hasEmail, hasPhone, page]);
+  useEffect(() => { load(); }, [search, status, region, district, activity, crop, ownership, farmer, priorityOnly, hasEmail, hasPhone, page]);
 
-  // Справочники фильтров зависят от выбранного региона и/или ИНН-префикса
+  // Справочники фильтров зависят от выбранного региона
   useEffect(() => {
-    adminApi.getSupplierFacets(region, saratovOnly ? "64" : "").then(setFacets).catch(() => {});
-  }, [region, saratovOnly]);
+    adminApi.getSupplierFacets(region, "").then(setFacets).catch(() => {});
+  }, [region]);
+
+  // Анализ качества данных по текущей выборке фильтров
+  const runQuality = async () => {
+    if (showQuality) { setShowQuality(false); return; }
+    setShowQuality(true); setQualityLoading(true);
+    try {
+      const r = await adminApi.suppliersQuality(filterParams());
+      setQuality(r);
+    } catch {
+      setQuality(null);
+    } finally { setQualityLoading(false); }
+  };
 
   const resetFilters = () => {
     setDistrict(""); setActivity(""); setCrop(""); setOwnership(""); setSearch(""); setStatus("");
-    setRegion(""); setPriorityOnly(false); setSaratovOnly(true); setHasEmail(false); setHasPhone(false); setPage(1);
+    setRegion(""); setPriorityOnly(false); setHasEmail(false); setHasPhone(false); setPage(1);
   };
   const activeFilters = [region, district, activity, crop, ownership].filter(Boolean).length + (priorityOnly ? 1 : 0);
 
@@ -249,6 +262,10 @@ export default function SuppliersBlock() {
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-secondary text-xs font-medium hover:bg-secondary/80">
             <Icon name="BarChart3" size={13} className="text-primary" />Аналитика
           </button>
+          <button onClick={runQuality} title="Анализ качества данных по текущей выборке фильтров"
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium ${showQuality ? "bg-primary text-white" : "bg-secondary hover:bg-secondary/80"}`}>
+            <Icon name="ClipboardCheck" size={13} className={showQuality ? "" : "text-primary"} />Анализ
+          </button>
           <button onClick={handleExport} disabled={exporting}
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-secondary text-xs font-medium hover:bg-secondary/80 disabled:opacity-60">
             {exporting ? <Icon name="Loader" size={13} className="animate-spin" /> : <Icon name="Download" size={13} className="text-primary" />}
@@ -286,6 +303,74 @@ export default function SuppliersBlock() {
       {importMsg && (
         <div className="flex items-center gap-2 text-xs px-3 py-2 rounded-xl bg-secondary text-foreground/80">
           <Icon name="Info" size={13} className="text-primary shrink-0" /><span>{importMsg}</span>
+        </div>
+      )}
+
+      {/* Анализ качества данных */}
+      {showQuality && (
+        <div className="glass-card rounded-xl p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <h4 className="font-heading font-bold text-sm flex items-center gap-2">
+              <Icon name="ClipboardCheck" size={15} className="text-primary" />
+              Качество данных
+              {quality && <span className="text-xs font-normal text-muted-foreground">· {quality.total} хозяйств в выборке</span>}
+            </h4>
+            <button onClick={() => setShowQuality(false)} className="text-muted-foreground hover:text-foreground">
+              <Icon name="X" size={16} />
+            </button>
+          </div>
+          {qualityLoading ? (
+            <div className="flex justify-center py-6"><Icon name="Loader" size={20} className="animate-spin text-primary" /></div>
+          ) : !quality ? (
+            <p className="text-xs text-muted-foreground">Не удалось загрузить анализ.</p>
+          ) : quality.total === 0 ? (
+            <p className="text-xs text-muted-foreground">В выборке нет хозяйств.</p>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {[
+                  { label: "Без ИНН", val: quality.no_inn, icon: "Hash" },
+                  { label: "Без телефона", val: quality.no_phone, icon: "Phone" },
+                  { label: "Без эл. почты", val: quality.no_email, icon: "Mail" },
+                  { label: "Совсем без контактов", val: quality.no_contacts, icon: "UserX" },
+                  { label: "Без контактного лица", val: quality.no_person, icon: "User" },
+                  { label: "Без культур / продукции", val: quality.no_crops, icon: "Wheat" },
+                  { label: "Без района", val: quality.no_district, icon: "MapPin" },
+                  { label: "Без ИИ-досье", val: quality.no_analysis, icon: "Sparkles" },
+                ].map(m => {
+                  const pct = quality.total ? Math.round((m.val / quality.total) * 100) : 0;
+                  const bad = pct >= 50;
+                  return (
+                    <div key={m.label} className="rounded-lg border border-border p-2.5">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <Icon name={m.icon} size={12} className="text-primary" />{m.label}
+                        </span>
+                        <span className={`text-xs font-bold ${bad ? "text-rose-600" : m.val ? "text-amber-600" : "text-emerald-600"}`}>
+                          {m.val} · {pct}%
+                        </span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
+                        <div className={`h-full ${bad ? "bg-rose-500" : m.val ? "bg-amber-500" : "bg-emerald-500"}`} style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className={`flex items-center gap-2 text-xs px-3 py-2 rounded-lg ${quality.duplicates ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"}`}>
+                <Icon name={quality.duplicates ? "CopyMinus" : "CheckCircle2"} size={14} className="shrink-0" />
+                {quality.duplicates
+                  ? <span>Найдено дублей в выборке: <b>{quality.duplicates}</b>. Нажмите «Убрать дубли», чтобы очистить.</span>
+                  : <span>Дублей в выборке нет.</span>}
+              </div>
+
+              <p className="text-[11px] text-muted-foreground flex items-start gap-1.5">
+                <Icon name="Lightbulb" size={12} className="text-amber-500 mt-0.5 shrink-0" />
+                Показатели рассчитаны по текущим фильтрам. Заполнить пробелы поможет кнопка «ИИ-обогащение» (подтягивает контакты и досье из ЕГРЮЛ).
+              </p>
+            </>
+          )}
         </div>
       )}
 
@@ -331,7 +416,6 @@ export default function SuppliersBlock() {
         <div className="flex flex-wrap gap-2">
           <Toggle active={farmer} onClick={() => { setFarmer(f => !f); setPage(1); }} icon="Wheat" label="Только сельхозпроизводители" />
           <Toggle active={priorityOnly} onClick={() => { setPriorityOnly(p => !p); setPage(1); }} icon="Star" label="Районы вокруг Аткарска" />
-          <Toggle active={saratovOnly} onClick={() => { setSaratovOnly(p => !p); setDistrict(""); setPage(1); }} icon="MapPin" label="Саратовские (ИНН 64)" />
         <Toggle active={hasEmail} onClick={() => { setHasEmail(p => !p); setPage(1); }} icon="Mail" label="Есть эл. почта" />
         <Toggle active={hasPhone} onClick={() => { setHasPhone(p => !p); setPage(1); }} icon="Phone" label="Есть телефон" />
         </div>

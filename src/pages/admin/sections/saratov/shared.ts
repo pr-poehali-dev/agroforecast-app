@@ -58,3 +58,11 @@ export interface Analytics {
   by_activity: { activity: string; count: number }[];
   by_ownership: { ownership: string; count: number }[];
 }
+
+// Отчёт о качестве данных по выборке базы поставщиков
+export interface QualityReport {
+  total: number;
+  no_inn: number; no_phone: number; no_email: number; no_contacts: number;
+  no_person: number; no_crops: number; no_address: number;
+  no_analysis: number; no_district: number; duplicates: number;
+}
