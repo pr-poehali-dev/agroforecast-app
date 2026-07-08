@@ -15,7 +15,7 @@ const WEATHER_ICONS: Record<string, string> = {
 
 interface NewsItem {
   id: number; date: string; time: string;
-  source: string; category: string; crop: string;
+  source: string; source_url?: string; category: string; crop: string;
   title: string; summary: string;
   impact: "positive" | "negative" | "neutral";
   urgency: "critical" | "high" | "medium" | "low";
@@ -115,7 +115,7 @@ export default function SectionNews() {
             <h1 className="font-heading font-black text-2xl sm:text-3xl text-white">
               Новости <span className="gold-text">АПК</span>
             </h1>
-            <p className="text-white/60 text-sm mt-1 font-body">zerno.ru · Минсельхоз РФ · Росгидромет · апрель 2026</p>
+            <p className="text-white/60 text-sm mt-1 font-body">zerno.ru · Зерно Он-Лайн · Агроэкспорт · Минсельхоз РФ · Цена Зерна · Росгидромет</p>
           </div>
           <div className="flex gap-2 flex-wrap shrink-0">
             {!loading && news.filter(n => n.urgency === "critical").length > 0 && (
@@ -165,6 +165,26 @@ export default function SectionNews() {
             ))}
           </div>
 
+          {/* Закреплённый блок: цены и сделки по зерну на «Цена Зерна» */}
+          <a href="https://cenazerna.ru/" target="_blank" rel="noopener noreferrer"
+            className="block glass-card rounded-xl border border-primary/25 bg-primary/5 p-4 hover:border-primary/50 hover:bg-primary/10 transition-all">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
+                <Icon name="LineChart" size={20} className="text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-sm text-foreground">Цены на зерно в реальном времени</span>
+                  <span className="text-[9px] font-bold uppercase bg-primary/20 text-primary px-1.5 py-0.5 rounded">Цена Зерна</span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Актуальные закупочные цены, торги на бирже и онлайн-сделки по сельхозкультурам
+                </p>
+              </div>
+              <Icon name="ArrowUpRight" size={18} className="text-primary shrink-0" />
+            </div>
+          </a>
+
           {/* News list */}
           <div className="space-y-3">
             {news.map(item => (
@@ -181,7 +201,15 @@ export default function SectionNews() {
                         <span className="text-[10px] text-muted-foreground font-mono">{item.source}</span>
                         <span className="text-[10px] text-muted-foreground ml-auto">{item.date} {item.time}</span>
                       </div>
-                      <div className="font-semibold text-sm text-foreground mb-1 leading-snug">{item.title}</div>
+                      {item.source_url ? (
+                        <a href={item.source_url} target="_blank" rel="noopener noreferrer"
+                          className="font-semibold text-sm text-foreground mb-1 leading-snug hover:text-primary transition-colors inline-flex items-start gap-1">
+                          <span>{item.title}</span>
+                          <Icon name="ExternalLink" size={12} className="mt-0.5 shrink-0 text-muted-foreground" />
+                        </a>
+                      ) : (
+                        <div className="font-semibold text-sm text-foreground mb-1 leading-snug">{item.title}</div>
+                      )}
                       <div className="text-xs text-muted-foreground leading-relaxed">
                         {expandedNews === item.id ? item.summary : item.summary.slice(0, 120) + (item.summary.length > 120 ? "..." : "")}
                       </div>

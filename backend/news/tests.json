@@ -1,11 +1,10 @@
 {
   "tests": [
     {
-      "name": "GET — все новости (RSS + fallback)",
+      "name": "GET — лента новостей (RSS + БД + fallback)",
       "method": "GET",
       "path": "/",
       "expectedStatus": 200,
-      "expectedBody": {"live_count": 0},
       "bodyMatcher": "partial"
     },
     {

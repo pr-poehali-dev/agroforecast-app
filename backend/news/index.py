@@ -4,19 +4,35 @@
 Метео: Росгидромет-совместимый формат.
 """
 import json
+import os
 import re
+import hashlib
 import urllib.request
 import urllib.error
 from datetime import datetime, timedelta
 import math
 
+try:
+    import psycopg2
+except Exception:
+    psycopg2 = None
+
+SCHEMA = os.environ.get("MAIN_DB_SCHEMA", "t_p36960093_agroforecast_app")
+
 # ─── RSS-парсинг реальных новостей ────────────────────────────────────────────
 
 RSS_SOURCES = [
-    {"url": "https://zerno.ru/rss.xml",          "name": "zerno.ru",          "category": "рынок"},
-    {"url": "https://agroinvestor.ru/rss/",       "name": "agroinvestor.ru",   "category": "рынок"},
-    {"url": "https://oilworld.ru/rss/",           "name": "oilworld.ru",       "category": "цены"},
-    {"url": "https://mcx.gov.ru/press-service/news/rss/", "name": "Минсельхоз РФ", "category": "регулирование"},
+    {"url": "https://zerno.ru/rss.xml",                    "name": "zerno.ru",        "category": "рынок"},
+    {"url": "https://www.agroinvestor.ru/rss/",            "name": "agroinvestor.ru", "category": "рынок"},
+    {"url": "https://agroinvestor.ru/rss/",                "name": "agroinvestor.ru", "category": "рынок"},
+    {"url": "https://oilworld.ru/rss/",                    "name": "oilworld.ru",     "category": "цены"},
+    {"url": "https://mcx.gov.ru/press-service/news/rss/",  "name": "Минсельхоз РФ",   "category": "регулирование"},
+    {"url": "https://www.zol.ru/rss/",                     "name": "Зерно Он-Лайн",   "category": "рынок"},
+    {"url": "https://rosng.ru/rss.xml",                    "name": "РОСНГ",           "category": "рынок"},
+    {"url": "https://specagro.ru/rss",                     "name": "Центр Агроаналитики", "category": "аналитика"},
+    {"url": "https://feed.exportcenter.ru/rss/apk",        "name": "Агроэкспорт",     "category": "экспорт"},
+    {"url": "https://milknews.ru/rss/",                    "name": "Milknews",        "category": "рынок"},
+    {"url": "https://kvedomosti.ru/feed",                  "name": "Крестьянские ведомости", "category": "рынок"},
 ]
 
 CROP_KEYWORDS = {
@@ -49,9 +65,12 @@ def _parse_rss_item(xml_block: str, source_name: str, category: str, news_id: in
         return m.group(1).strip() if m else ""
 
     title   = tag("title")
-    desc    = tag("description") or tag("summary")
+    desc    = tag("description") or tag("summary") or tag("content:encoded") or tag("content")
     link    = tag("link")
-    pubdate = tag("pubDate") or tag("dc:date") or ""
+    if not link:  # Atom: <link href="..."/>
+        m = re.search(r'<link[^>]*href="([^"]+)"', xml_block)
+        link = m.group(1) if m else ""
+    pubdate = tag("pubDate") or tag("dc:date") or tag("published") or tag("updated") or ""
 
     if not title or len(title) < 5:
         return None
@@ -108,15 +127,21 @@ def _parse_rss_item(xml_block: str, source_name: str, category: str, news_id: in
     }
 
 def fetch_live_news(max_per_source: int = 5) -> list:
-    """Пробует получить реальные новости по RSS. При ошибке — пустой список."""
+    """Пробует получить реальные новости по RSS/Atom. При ошибке — пустой список."""
     results = []
     news_id = 100
     for src in RSS_SOURCES:
         try:
-            req = urllib.request.Request(src["url"], headers={"User-Agent": "AgroPort/3.0"})
-            with urllib.request.urlopen(req, timeout=4) as resp:
+            req = urllib.request.Request(src["url"], headers={
+                "User-Agent": "Mozilla/5.0 (compatible; AgroPort/3.0; +https://agroport)",
+                "Accept": "application/rss+xml, application/xml, text/xml, */*",
+            })
+            with urllib.request.urlopen(req, timeout=3) as resp:
                 xml = resp.read().decode("utf-8", errors="replace")
-            items = re.findall(r"<item>(.*?)</item>", xml, re.S)
+            # поддержка и RSS (<item>), и Atom (<entry>)
+            items = re.findall(r"<item[ >](.*?)</item>", xml, re.S)
+            if not items:
+                items = re.findall(r"<entry[ >](.*?)</entry>", xml, re.S)
             count = 0
             for item_xml in items:
                 if count >= max_per_source:
@@ -129,6 +154,91 @@ def fetch_live_news(max_per_source: int = 5) -> list:
         except Exception:
             pass
     return results
+
+
+# ─── Кэш ленты в БД: лента живёт постоянно, даже если источник временно недоступен ───
+
+def _db():
+    if psycopg2 is None or not os.environ.get("DATABASE_URL"):
+        return None
+    try:
+        conn = psycopg2.connect(os.environ["DATABASE_URL"])
+        conn.autocommit = True
+        return conn
+    except Exception as e:
+        print(f"[news] db connect error: {e}")
+        return None
+
+def _uid(item: dict) -> str:
+    base = (item.get("source_url") or "").strip() or (item.get("title") or "")[:120]
+    return hashlib.md5(base.encode("utf-8", "ignore")).hexdigest()
+
+def save_news_to_db(items: list) -> int:
+    """Сохраняет свежие новости в кэш (дедупликация по uid). Возвращает число новых."""
+    conn = _db()
+    if not conn or not items:
+        return 0
+    saved = 0
+    try:
+        cur = conn.cursor()
+        for it in items:
+            pub = f"{it.get('date','')} {it.get('time','00:00')}".strip()
+            try:
+                pub_dt = datetime.strptime(pub[:16], "%Y-%m-%d %H:%M")
+            except Exception:
+                pub_dt = datetime.now()
+            cur.execute(
+                f"""INSERT INTO {SCHEMA}.news_feed
+                    (uid, title, summary, source, source_url, category, crop, impact, urgency, published_at)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    ON CONFLICT (uid) DO NOTHING""",
+                (_uid(it), it.get("title","")[:500], it.get("summary","")[:2000],
+                 it.get("source","")[:200], it.get("source_url","")[:1000],
+                 it.get("category","рынок")[:100], it.get("crop","Все культуры")[:100],
+                 it.get("impact","neutral")[:20], it.get("urgency","medium")[:20], pub_dt)
+            )
+            if cur.rowcount and cur.rowcount > 0:
+                saved += cur.rowcount
+    except Exception as e:
+        print(f"[news] save error: {e}")
+    finally:
+        conn.close()
+    return saved
+
+def read_news_from_db(category: str = "все", crop: str = None, limit: int = 40) -> list:
+    """Читает накопленную ленту из кэша."""
+    conn = _db()
+    if not conn:
+        return []
+    out = []
+    try:
+        cur = conn.cursor()
+        where = "WHERE 1=1"
+        args = []
+        if category and category != "все":
+            where += " AND category=%s"; args.append(category)
+        if crop:
+            where += " AND (crop ILIKE %s OR crop ILIKE %s)"; args += [f"%{crop}%", "%все%"]
+        cur.execute(
+            f"""SELECT id, title, summary, source, source_url, category, crop, impact, urgency, published_at
+                FROM {SCHEMA}.news_feed {where}
+                ORDER BY published_at DESC LIMIT %s""",
+            args + [limit]
+        )
+        for r in cur.fetchall():
+            pub = r[9]
+            out.append({
+                "id": r[0], "title": r[1], "summary": r[2], "source": r[3], "source_url": r[4],
+                "category": r[5], "crop": r[6], "impact": r[7], "urgency": r[8],
+                "date": pub.strftime("%Y-%m-%d") if pub else "",
+                "time": pub.strftime("%H:%M") if pub else "",
+                "regions": [], "action": "Следить за развитием ситуации на рынке",
+            })
+    except Exception as e:
+        print(f"[news] read error: {e}")
+    finally:
+        conn.close()
+    return out
 
 CORS = {
     "Access-Control-Allow-Origin": "*",
@@ -407,15 +517,22 @@ def handler(event: dict, context) -> dict:
                     "regions": list(WEATHER.values()),
                 }, ensure_ascii=False)}
 
-    # Пробуем получить живые новости из RSS, добавляем к статичным
+    # 1) Пробуем собрать свежее из открытых источников и складываем в кэш БД
     live = fetch_live_news(max_per_source=4)
-    all_news = live + NEWS  # живые впереди, статичные как fallback
+    saved = save_news_to_db(live)
 
-    filtered = all_news
-    if category != "все":
-        filtered = [n for n in filtered if n["category"] == category]
-    if crop_filter:
-        filtered = [n for n in filtered if crop_filter.lower() in n["crop"].lower() or "все" in n["crop"].lower()]
+    # 2) Читаем накопленную ленту из БД (живёт постоянно, даже если источник упал)
+    db_news = read_news_from_db(category=category, crop=crop_filter, limit=40)
+
+    # 3) Формируем выдачу: приоритет — накопленная лента из БД; если пусто — статичный fallback
+    if db_news:
+        filtered = db_news
+    else:
+        filtered = NEWS
+        if category != "все":
+            filtered = [n for n in filtered if n["category"] == category]
+        if crop_filter:
+            filtered = [n for n in filtered if crop_filter.lower() in n["crop"].lower() or "все" in n["crop"].lower()]
 
     # Дедупликация по заголовку
     seen = set()
@@ -425,13 +542,14 @@ def handler(event: dict, context) -> dict:
         if key not in seen:
             seen.add(key)
             deduped.append(item)
-    filtered = deduped[:25]  # не более 25
+    filtered = deduped[:30]
 
     return {"statusCode": 200, "headers": CORS,
             "body": json.dumps({
                 "generated_at": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
                 "total": len(filtered),
                 "live_count": len(live),
+                "new_saved": saved,
                 "categories": CATEGORIES,
                 "news": filtered,
             }, ensure_ascii=False)}
