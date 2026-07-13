@@ -159,6 +159,10 @@ export const adminApi = {
     const q = new URLSearchParams({ ...params, action: "quality" }).toString();
     return req(`${URLS.suppliers}?${q}`);
   },
+  suppliersRadar: (params: Record<string, string> = {}) => {
+    const q = new URLSearchParams({ ...params, action: "radar" }).toString();
+    return req(`${URLS.suppliers}?${q}`);
+  },
   updateSupplier: (id: number, data: Record<string, unknown>) =>
     req(`${URLS.suppliers}?id=${id}`, { method: "PUT", body: JSON.stringify(data) }),
   deleteSupplier: (id: number) =>

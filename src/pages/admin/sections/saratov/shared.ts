@@ -66,3 +66,18 @@ export interface QualityReport {
   no_person: number; no_crops: number; no_address: number;
   no_analysis: number; no_district: number; duplicates: number;
 }
+
+// Радар потенциальных клиентов
+export interface RadarItem {
+  id: number; name: string; inn: string | null;
+  district: string | null; locality: string | null; crops: string | null;
+  volume_tons: number | null; contact_person: string | null;
+  phone: string | null; email: string | null; status: string;
+  is_farmer: boolean; priority: number;
+  ai_analysis: string | null; last_contact_at: string | null;
+  score: number; temp: "hot" | "warm" | "cold"; reasons: string[];
+}
+export interface RadarReport {
+  radar: RadarItem[];
+  summary: { total: number; hot: number; warm: number; no_analysis: number };
+}

@@ -2,7 +2,7 @@
 База сельхозпроизводителей (поставщиков) по регионам.
 CRUD + пакетный импорт из Excel/CSV (фронт присылает готовый массив строк).
 """
-import json, os
+import json, os, re
 import psycopg2
 import urllib.request
 import urllib.error
@@ -73,14 +73,60 @@ def _clean(row):
     return out
 
 
+# Раскладка клавиатуры: латиница <-> кириллица (частая ошибка при вводе)
+_LAT = "qwertyuiop[]asdfghjkl;'zxcvbnm,.`"
+_RUS = "йцукенгшщзхъфывапролджэячсмитьбюё"
+_LAT2RUS = {l: r for l, r in zip(_LAT, _RUS)}
+_RUS2LAT = {r: l for l, r in zip(_LAT, _RUS)}
+
+def _switch_layout(s: str):
+    """Возвращает вариант строки в другой раскладке, если это осмысленно."""
+    low = s.lower()
+    lat = sum(1 for c in low if c in _LAT2RUS)
+    rus = sum(1 for c in low if c in _RUS2LAT)
+    if lat and lat >= rus:
+        return "".join(_LAT2RUS.get(c, c) for c in low)
+    if rus:
+        return "".join(_RUS2LAT.get(c, c) for c in low)
+    return None
+
+# Поля, по которым идёт умный поиск «с полуслова»
+_SEARCH_FIELDS = ["name", "inn", "contact_person", "phone", "email",
+                  "district", "locality", "crops", "activity", "address"]
+
+def _search_clause(search: str):
+    """Умный поиск: каждое слово ищется по всем полям (AND между словами, OR между полями).
+    Плюс автоисправление раскладки. Возвращает (sql, args) или (None, [])."""
+    words = [w for w in re.split(r"[\s,;]+", search.strip()) if w]
+    if not words:
+        return None, []
+    and_parts = []
+    args = []
+    for w in words:
+        variants = {w}
+        alt = _switch_layout(w)
+        if alt and alt != w.lower():
+            variants.add(alt)
+        or_parts = []
+        for v in variants:
+            like = f"%{v}%"
+            field_ors = " OR ".join(f"{f} ILIKE %s" for f in _SEARCH_FIELDS)
+            or_parts.append(f"({field_ors})")
+            args += [like] * len(_SEARCH_FIELDS)
+        and_parts.append("(" + " OR ".join(or_parts) + ")")
+    return " AND ".join(and_parts), args
+
+
 def _build_where(params):
     """Строит WHERE и args по фильтрам списка. Используется списком и анализом качества."""
     where = "WHERE name NOT LIKE '[служебная строка]%%'"
     args = []
     search = params.get("search", "")
     if search:
-        where += " AND (name ILIKE %s OR inn ILIKE %s OR contact_person ILIKE %s OR locality ILIKE %s)"
-        args += [f"%{search}%"] * 4
+        clause, sargs = _search_clause(search)
+        if clause:
+            where += f" AND ({clause})"
+            args += sargs
     if params.get("region"):
         where += " AND region=%s"; args.append(params["region"])
     if params.get("district"):
@@ -880,6 +926,79 @@ def _handle(event: dict, context) -> dict:
         by_ownership = [{"ownership": r[0], "count": r[1]} for r in cur.fetchall()]
         return ok({"region": region, "total": total,
                    "by_district": by_district, "by_activity": by_activity, "by_ownership": by_ownership})
+
+    # ── Радар: рейтинг «горячих» потенциальных клиентов по текущей выборке ──
+    if method == "GET" and action == "radar":
+        where, args = _build_where(params)
+        try:
+            limit = min(int(params.get("limit", 50)), 200)
+        except (ValueError, TypeError):
+            limit = 50
+        # Балл вероятности сделки 0..100 считается прямо в SQL по данным карточки.
+        score_sql = """
+            (
+              LEAST(40, COALESCE(volume_tons,0) / 100.0)                                   -- объём (до 40)
+              + CASE WHEN phone IS NOT NULL AND phone<>'' THEN 12 ELSE 0 END               -- есть телефон
+              + CASE WHEN email IS NOT NULL AND email<>'' THEN 8 ELSE 0 END                -- есть почта
+              + CASE WHEN contact_person IS NOT NULL AND contact_person<>'' THEN 6 ELSE 0 END
+              + CASE WHEN inn IS NOT NULL AND inn<>'' THEN 4 ELSE 0 END
+              + CASE WHEN is_farmer THEN 6 ELSE 0 END
+              + LEAST(10, priority * 5)                                                     -- приоритетный район
+              + CASE status
+                    WHEN 'negotiation' THEN 12 WHEN 'in_progress' THEN 8
+                    WHEN 'new' THEN 5 WHEN 'partner' THEN 3 ELSE 0 END
+              + CASE
+                    WHEN last_contact_at IS NULL THEN 6                                      -- ещё не касались — свежий лид
+                    WHEN last_contact_at < now() - interval '60 days' THEN 4                 -- пора вернуться
+                    ELSE 0 END
+            )
+        """
+        cur.execute(
+            f"""SELECT id, name, inn, district, locality, crops, volume_tons,
+                       contact_person, phone, email, status, is_farmer, priority,
+                       ai_analysis, last_contact_at,
+                       ROUND(LEAST(100, {score_sql}))::int AS score
+                FROM {SCHEMA}.suppliers {where}
+                ORDER BY score DESC, COALESCE(volume_tons,0) DESC
+                LIMIT %s""",
+            args + [limit]
+        )
+        rcols = ["id","name","inn","district","locality","crops","volume_tons",
+                 "contact_person","phone","email","status","is_farmer","priority",
+                 "ai_analysis","last_contact_at","score"]
+        items = []
+        for r in cur.fetchall():
+            d = dict(zip(rcols, r))
+            vol = float(d["volume_tons"] or 0)
+            reasons = []
+            if vol >= 1000: reasons.append(f"Крупный объём: {int(vol)} т")
+            elif vol > 0:   reasons.append(f"Объём: {int(vol)} т")
+            if d["phone"] or d["email"]: reasons.append("Есть контакты")
+            else: reasons.append("Нет прямых контактов")
+            if d["priority"]: reasons.append("Приоритетный район")
+            if d["status"] == "negotiation": reasons.append("В переговорах")
+            elif d["status"] == "in_progress": reasons.append("В работе")
+            if not d["last_contact_at"]: reasons.append("Ещё не связывались")
+            if not d["ai_analysis"]: reasons.append("Нет ИИ-досье")
+            if d["volume_tons"] is not None:
+                d["volume_tons"] = float(d["volume_tons"])
+            d["last_contact_at"] = d["last_contact_at"].isoformat() if d["last_contact_at"] else None
+            d["reasons"] = reasons
+            d["temp"] = "hot" if d["score"] >= 60 else ("warm" if d["score"] >= 35 else "cold")
+            items.append(d)
+        # Сводка по «температуре» всей выборки
+        cur.execute(
+            f"""SELECT
+                    COUNT(*) AS total,
+                    COUNT(*) FILTER (WHERE ROUND(LEAST(100,{score_sql})) >= 60) AS hot,
+                    COUNT(*) FILTER (WHERE ROUND(LEAST(100,{score_sql})) BETWEEN 35 AND 59) AS warm,
+                    COUNT(*) FILTER (WHERE ai_analysis IS NULL OR ai_analysis='') AS no_analysis
+                FROM {SCHEMA}.suppliers {where}""",
+            args
+        )
+        s = cur.fetchone()
+        summary = {"total": int(s[0]), "hot": int(s[1]), "warm": int(s[2]), "no_analysis": int(s[3])}
+        return ok({"radar": items, "summary": summary})
 
     # ── Анализ качества данных по текущей выборке фильтров ──
     if method == "GET" and action == "quality":

@@ -5,6 +5,7 @@ import { apiCRM } from "@/lib/auth";
 import Icon from "@/components/ui/icon";
 import { Supplier, Facet, Facets, Analytics, QualityReport, REGION, STATUS_LABELS, STATUS_COLORS } from "./shared";
 import SupplierCard from "./SupplierCard";
+import RadarPanel from "./RadarPanel";
 
 // ── Блок базы поставщиков ────────────────────────────────────────────────────
 export default function SuppliersBlock() {
@@ -33,6 +34,7 @@ export default function SuppliersBlock() {
   const [quality, setQuality] = useState<QualityReport | null>(null);
   const [qualityLoading, setQualityLoading] = useState(false);
   const [showQuality, setShowQuality] = useState(false);
+  const [showRadar, setShowRadar] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const filterParams = () => ({
@@ -258,6 +260,10 @@ export default function SuppliersBlock() {
         </div>
         <div className="flex items-center gap-2">
           <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" onChange={handleFile} className="hidden" />
+          <button onClick={() => setShowRadar(v => !v)} title="Рейтинг потенциальных клиентов по вероятности сделки"
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium ${showRadar ? "bg-primary text-white" : "bg-secondary hover:bg-secondary/80"}`}>
+            <Icon name="Radar" size={13} className={showRadar ? "" : "text-primary"} />Радар
+          </button>
           <button onClick={() => setShowAnalytics(true)}
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-secondary text-xs font-medium hover:bg-secondary/80">
             <Icon name="BarChart3" size={13} className="text-primary" />Аналитика
@@ -304,6 +310,15 @@ export default function SuppliersBlock() {
         <div className="flex items-center gap-2 text-xs px-3 py-2 rounded-xl bg-secondary text-foreground/80">
           <Icon name="Info" size={13} className="text-primary shrink-0" /><span>{importMsg}</span>
         </div>
+      )}
+
+      {/* Радар потенциальных клиентов */}
+      {showRadar && (
+        <RadarPanel
+          filterParams={filterParams}
+          onClose={() => setShowRadar(false)}
+          onOpen={(item) => setCard(item)}
+        />
       )}
 
       {/* Анализ качества данных */}
@@ -390,9 +405,20 @@ export default function SuppliersBlock() {
 
       <div className="relative">
         <Icon name="Search" size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-        <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Поиск по названию, ИНН, контакту…"
-          className="w-full pl-8 pr-3 py-2 rounded-xl border border-border bg-background text-sm focus:outline-none focus:border-primary" />
+        <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
+          placeholder="Умный поиск: название, ИНН, ФИО, телефон, район, культура…"
+          className="w-full pl-8 pr-8 py-2 rounded-xl border border-border bg-background text-sm focus:outline-none focus:border-primary" />
+        {search && (
+          <button onClick={() => { setSearch(""); setPage(1); }}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+            <Icon name="X" size={14} />
+          </button>
+        )}
       </div>
+      <p className="text-[11px] text-muted-foreground -mt-1 flex items-center gap-1.5">
+        <Icon name="Sparkles" size={11} className="text-primary" />
+        Ищет с полуслова по всем полям. Можно вводить несколько слов и даже в неверной раскладке — система поймёт.
+      </p>
 
       {/* Панель фильтров */}
       <div className="glass-card rounded-xl p-3 space-y-2.5">
