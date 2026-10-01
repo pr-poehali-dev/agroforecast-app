@@ -11,6 +11,12 @@
       "method": "GET",
       "path": "/?force=1",
       "expectedStatus": 200
+    },
+    {
+      "name": "Плановый сбор без ключа — отказ",
+      "method": "GET",
+      "path": "/?action=collect",
+      "expectedStatus": 403
     }
   ]
 }

@@ -17,7 +17,7 @@ import cenazerna
 CORS = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Headers": "Content-Type, X-Cron-Key, X-Admin-Token",
     "Content-Type": "application/json",
 }
 
@@ -363,6 +363,75 @@ def _db_last_fetch_age_h() -> float | None:
         return None
 
 
+def _log_run(trigger: str, status: str, saved: int, sources: dict | None, message: str = "") -> None:
+    dsn = os.environ.get("DATABASE_URL")
+    if not dsn:
+        return
+    schema = os.environ.get("MAIN_DB_SCHEMA", "t_p36960093_agroforecast_app")
+    try:
+        import psycopg2
+        conn = psycopg2.connect(dsn); conn.autocommit = True; cur = conn.cursor()
+        cur.execute(f"INSERT INTO {schema}.price_collect_runs (trigger, status, saved, sources, message) VALUES (%s,%s,%s,%s,%s)",
+                    (trigger, status, saved, json.dumps(sources or {}, ensure_ascii=False), message[:500]))
+        cur.close(); conn.close()
+    except Exception as e:
+        print(f"[prices] log run error: {e}")
+
+
+def _is_admin(token: str) -> bool:
+    """Проверка сессии администратора (та же таблица, что у входа в /admin)."""
+    dsn = os.environ.get("DATABASE_URL")
+    if not dsn or not token:
+        return False
+    schema = os.environ.get("MAIN_DB_SCHEMA", "t_p36960093_agroforecast_app")
+    try:
+        import psycopg2
+        conn = psycopg2.connect(dsn); cur = conn.cursor()
+        cur.execute(f"SELECT 1 FROM {schema}.admin_sessions WHERE token=%s AND expires_at > now()", (token,))
+        ok = cur.fetchone() is not None
+        cur.close(); conn.close()
+        return ok
+    except Exception as e:
+        print(f"[prices] admin check error: {e}")
+        return False
+
+
+def _collect_status() -> dict:
+    """Журнал сбора: последние запуски и дни без сбора за 30 дней."""
+    dsn = os.environ.get("DATABASE_URL")
+    schema = os.environ.get("MAIN_DB_SCHEMA", "t_p36960093_agroforecast_app")
+    import psycopg2
+    conn = psycopg2.connect(dsn); cur = conn.cursor()
+    cur.execute(f"""SELECT started_at, trigger, status, saved, message FROM {schema}.price_collect_runs
+                    ORDER BY started_at DESC LIMIT 15""")
+    runs = [{"at": str(a), "trigger": t, "status": st, "saved": n, "message": m} for a, t, st, n, m in cur.fetchall()]
+    cur.execute(f"""SELECT d::date FROM generate_series(current_date - 29, current_date, interval '1 day') d
+                    WHERE NOT EXISTS (SELECT 1 FROM {schema}.buyer_prices b WHERE b.fetched_at::date = d::date)
+                    ORDER BY 1""")
+    missing = [str(r[0]) for r in cur.fetchall()]
+    cur.execute(f"SELECT max(fetched_at), count(DISTINCT price_date), count(*) FROM {schema}.buyer_prices")
+    last, days, total = cur.fetchone()
+    cur.close(); conn.close()
+    return {"last_collect": str(last) if last else None, "days_with_data": days, "rows_total": total,
+            "missing_days_30": missing, "runs": runs}
+
+
+def _run_collect(trigger: str) -> dict:
+    """Полный сбор: опрос источников, сохранение, запись в журнал."""
+    try:
+        live, status = _fetch_live_prices()
+    except Exception as e:
+        live, status = {}, {"error": "fetch_exception"}
+        _log_run(trigger, "failed", 0, status, str(e))
+        return {"ok": False, "status": status}
+    saved = _save_buyer_prices()
+    _save_quotes(live)
+    ok = status.get("cenazerna") == "ok"
+    _log_run(trigger, "ok" if ok else "failed", saved, status,
+             "" if ok else "Источник «Цена Зерна» не ответил")
+    return {"ok": ok, "saved": saved, "status": status, "live": live}
+
+
 def handler(event: dict, context) -> dict:
     """Котировки зерновых: цены закупщиков «Цена Зерна» + прочие источники.
     Обычный запрос отдаёт последние сохранённые данные; сбор заново — если им больше 6 ч или ?force=1."""
@@ -370,7 +439,25 @@ def handler(event: dict, context) -> dict:
         return {"statusCode": 200, "headers": CORS, "body": ""}
 
     now_ts = time.time()
-    force  = (event.get("queryStringParameters") or {}).get("force") == "1"
+    qs     = event.get("queryStringParameters") or {}
+    force  = qs.get("force") == "1"
+    action = qs.get("action", "")
+
+    # Плановый ежедневный сбор: вызывается внешним планировщиком с секретным ключом
+    if action in ("collect", "collect_status"):
+        secret = os.environ.get("CRON_SECRET", "")
+        hdrs = {k.lower(): v for k, v in (event.get("headers") or {}).items()}
+        key = qs.get("key") or hdrs.get("x-cron-key", "")
+        by_key = bool(secret) and key == secret
+        by_admin = not by_key and _is_admin(hdrs.get("x-admin-token", ""))
+        if not (by_key or by_admin):
+            return {"statusCode": 403, "headers": CORS, "body": json.dumps({"error": "Неверный ключ"}, ensure_ascii=False)}
+        if action == "collect_status":
+            return {"statusCode": 200, "headers": CORS, "body": json.dumps(_collect_status(), ensure_ascii=False)}
+        res = _run_collect("schedule" if by_key else "admin")
+        _cache["data"] = None
+        return {"statusCode": 200 if res["ok"] else 502, "headers": CORS,
+                "body": json.dumps({"ok": res["ok"], "saved": res.get("saved", 0), "status": res["status"]}, ensure_ascii=False)}
 
     if not force and _cache["data"] is not None and (now_ts - _cache["ts"]) < CACHE_TTL:
         cached = dict(_cache["data"])
@@ -387,13 +474,9 @@ def handler(event: dict, context) -> dict:
             p["source"] = cenazerna.SOURCE
             p["is_fallback"] = False
     else:
-        try:
-            live, status = _fetch_live_prices()
-        except Exception:
-            live, status = {}, {"error": "fetch_exception"}
-        data = _build_response(live, status)
-        data["saved_quotes"] = _save_quotes(live)
-        data["saved_buyer_prices"] = _save_buyer_prices()
+        res = _run_collect("force" if force else "visit")
+        data = _build_response(res.get("live", {}), res["status"])
+        data["saved_buyer_prices"] = res.get("saved", 0)
 
     _cache["data"] = data
     _cache["ts"]   = now_ts

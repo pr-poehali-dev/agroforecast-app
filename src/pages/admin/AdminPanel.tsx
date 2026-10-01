@@ -13,6 +13,7 @@ import AdminAgent from "./sections/AdminAgent";
 import AdminProjectManager from "./sections/AdminProjectManager";
 import AdminStrategy from "./sections/AdminStrategy";
 import AdminSaratov from "./sections/AdminSaratov";
+import AdminPriceCollect from "./sections/AdminPriceCollect";
 import Icon from "@/components/ui/icon";
 
 export default function AdminPanel() {
@@ -51,6 +52,7 @@ export default function AdminPanel() {
     listings: <AdminListings />,
     "marketplace-rules": <AdminMarketplaceRules />,
     news: <AdminNews />,
+    "price-collect": <AdminPriceCollect />,
     docs: <AdminDocs />,
   };
 

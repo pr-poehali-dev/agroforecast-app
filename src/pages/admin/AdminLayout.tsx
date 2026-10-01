@@ -13,6 +13,7 @@ const NAV = [
   { id: "listings", label: "Маркетплейс", icon: "ShoppingCart" },
   { id: "marketplace-rules", label: "Правила", icon: "ScrollText" },
   { id: "news", label: "Новости", icon: "Newspaper" },
+  { id: "price-collect", label: "Сбор цен", icon: "CalendarClock" },
   { id: "docs", label: "Юр. документы", icon: "FileText" },
 ];
 
