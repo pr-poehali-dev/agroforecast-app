@@ -27,7 +27,6 @@ RSS_SOURCES = [
     {"url": "https://agroinvestor.ru/rss/",                "name": "agroinvestor.ru", "category": "рынок"},
     {"url": "https://oilworld.ru/rss/",                    "name": "oilworld.ru",     "category": "цены"},
     {"url": "https://mcx.gov.ru/press-service/news/rss/",  "name": "Минсельхоз РФ",   "category": "регулирование"},
-    {"url": "https://www.zol.ru/rss/",                     "name": "Зерно Он-Лайн",   "category": "рынок"},
     {"url": "https://rosng.ru/rss.xml",                    "name": "РОСНГ",           "category": "рынок"},
     {"url": "https://specagro.ru/rss",                     "name": "Центр Агроаналитики", "category": "аналитика"},
     {"url": "https://feed.exportcenter.ru/rss/apk",        "name": "Агроэкспорт",     "category": "экспорт"},

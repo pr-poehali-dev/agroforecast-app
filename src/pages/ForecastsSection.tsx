@@ -8,14 +8,22 @@ import { AiSingle, AiTableRow } from "./ForecastsTypes";
 // ── Live-prices backend ────────────────────────────────────────────────────
 const PRICES_URL = "https://functions.poehali.dev/52189484-0746-4acc-8694-949dc8ee7f62";
 
+const SOURCE_NAMES: Record<string, string> = { cenazerna: "Цена Зерна", mcx: "Минсельхоз", zerno: "zerno.ru", ikar: "ИКАР", agroinvestor: "Агроинвестор" };
+
 // ── Types ──────────────────────────────────────────────────────────────────
 interface LivePrice {
   crop: string;
   price: number;
-  price_prev: number;
-  week_change: number;
-  week_change_pct: number;
-  trend: "up" | "down";
+  change: number | null;
+  change_pct: number | null;
+  change_period: string | null;
+  trend: "up" | "down" | "flat" | null;
+  range_min: number | null;
+  range_max: number | null;
+  buyers: number | null;
+  offers: number | null;
+  small_sample?: boolean;
+  price_date: string | null;
   region: string;
   quality: string;
   source: string;
@@ -29,6 +37,7 @@ interface PricesResponse {
   any_live: boolean;
   source_status: Record<string, string>;
   from_cache?: boolean;
+  stored_age_min?: number;
   cache_age_min?: number;
 }
 
@@ -154,7 +163,7 @@ export default function ForecastsSection({
               liveCount > 0
                 ? <span className="flex items-center gap-1 text-[10px] text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full font-mono">
                     <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                    LIVE · {liveCount} источн.
+                    LIVE · {new Set((pricesData?.prices ?? []).filter(p => !p.is_fallback).map(p => p.source.replace(" (сохранено)", ""))).size} источн.
                   </span>
                 : <span className="flex items-center gap-1 text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full font-mono">
                     <Icon name="Clock" size={9} />
@@ -195,8 +204,6 @@ export default function ForecastsSection({
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
               {(pricesData?.prices ?? []).map(p => {
                 const isUp      = p.trend === "up";
-                const changeAbs = Math.abs(p.week_change);
-                const changePct = Math.abs(p.week_change_pct);
                 const isSel     = cropFull === p.crop;
 
                 return (
@@ -232,32 +239,49 @@ export default function ForecastsSection({
                       <span className="text-[10px] font-normal text-muted-foreground ml-0.5">₽/т</span>
                     </p>
 
-                    {/* Weekly change */}
-                    <div className={`flex items-center gap-1 mt-1.5 text-[10px] font-mono font-semibold
-                      ${isUp ? "text-emerald-600" : "text-red-500"}`}>
-                      <Icon name={isUp ? "TrendingUp" : "TrendingDown"} size={10} />
-                      {isUp ? "+" : "−"}{changeAbs.toLocaleString("ru")} ₽
-                      <span className="opacity-70">({isUp ? "+" : "−"}{changePct.toFixed(1)}%)</span>
-                    </div>
+                    {/* Change vs previous day */}
+                    {p.change !== null && p.trend !== "flat" && (
+                      <div className={`flex items-center gap-1 mt-1.5 text-[10px] font-mono font-semibold
+                        ${isUp ? "text-emerald-600" : "text-red-500"}`}>
+                        <Icon name={isUp ? "TrendingUp" : "TrendingDown"} size={10} />
+                        {isUp ? "+" : "−"}{Math.abs(p.change).toLocaleString("ru")} ₽ за {p.change_period}
+                      </div>
+                    )}
+                    {p.trend === "flat" && (
+                      <div className="mt-1.5 text-[10px] font-mono text-muted-foreground">без изменений за {p.change_period}</div>
+                    )}
+                    {p.range_min !== null && (
+                      <div className="mt-1 text-[10px] text-muted-foreground leading-tight">
+                        {p.range_min.toLocaleString("ru")}–{p.range_max?.toLocaleString("ru")} · {p.buyers} закуп.
+                        {p.small_sample && <span className="text-amber-600"> · мало данных</span>}
+                      </div>
+                    )}
                   </button>
                 );
               })}
             </div>
           )}
 
+          {!pricesLoading && (pricesData?.prices ?? []).some(p => p.source.startsWith("Цена Зерна")) && (
+            <p className="mt-3 text-[10px] text-muted-foreground leading-relaxed">
+              Цена — медиана цен закупщиков на условиях доставки до покупателя (CPT) по данным сервиса «Цена Зерна»
+              (ценазерна.рф); диапазон и число закупщиков — на последнюю дату публикации. Не совпадает с ценами
+              производителей Росстата, которые используются для прогноза: другая методика и состав сделок.
+            </p>
+          )}
           {/* Source status footer */}
           {!pricesLoading && pricesData?.source_status && (
             <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-border/50">
               {Object.entries(pricesData.source_status).map(([src, st]) => (
                 <span key={src}
                   className={`flex items-center gap-1 text-[9px] font-mono px-2 py-0.5 rounded-full border
-                    ${st === "ok"
+                    ${st === "ok" || st === "stored"
                       ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                       : st === "no_data"
                         ? "bg-amber-50 text-amber-600 border-amber-200"
                         : "bg-red-50 text-red-500 border-red-200"}`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${st === "ok" ? "bg-emerald-500" : st === "no_data" ? "bg-amber-400" : "bg-red-400"}`} />
-                  {src}: {st === "ok" ? "ок" : st === "no_data" ? "нет данных" : "недоступен"}
+                  <span className={`w-1.5 h-1.5 rounded-full ${st === "ok" || st === "stored" ? "bg-emerald-500" : st === "no_data" ? "bg-amber-400" : "bg-red-400"}`} />
+                  {SOURCE_NAMES[src] ?? src}: {st === "ok" ? "ок" : st === "stored" ? `сбор ${pricesData?.stored_age_min ?? 0} мин назад` : st === "no_data" ? "нет данных" : "недоступен"}
                 </span>
               ))}
             </div>
@@ -319,14 +343,14 @@ export default function ForecastsSection({
                     <span className="text-sm font-normal text-muted-foreground"> ₽/т</span>
                   </div>
                   {/* Weekly change under current price */}
-                  {livePriceMap[selectedForecast.crop] && (() => {
+                  {livePriceMap[selectedForecast.crop] && livePriceMap[selectedForecast.crop].change && (() => {
                     const lp = livePriceMap[selectedForecast.crop];
                     const isUp = lp.trend === "up";
                     return (
                       <div className={`text-[10px] font-mono mt-0.5 flex items-center gap-0.5
                         ${isUp ? "text-emerald-600" : "text-red-500"}`}>
                         <Icon name={isUp ? "TrendingUp" : "TrendingDown"} size={9} />
-                        {isUp ? "+" : "−"}{Math.abs(lp.week_change).toLocaleString("ru")} ₽ за нед.
+                        {isUp ? "+" : "−"}{Math.abs(lp.change ?? 0).toLocaleString("ru")} ₽ за {lp.change_period}
                       </div>
                     );
                   })()}
@@ -446,13 +470,13 @@ export default function ForecastsSection({
                       <div className="font-mono text-muted-foreground text-xs">
                         {f.currentPrice.toLocaleString()} ₽
                       </div>
-                      {lp && (
+                      {lp && lp.change ? (
                         <div className={`text-[10px] font-mono flex items-center gap-0.5 mt-0.5
                           ${lp.trend === "up" ? "text-emerald-600" : "text-red-500"}`}>
                           <Icon name={lp.trend === "up" ? "TrendingUp" : "TrendingDown"} size={8} />
-                          {lp.trend === "up" ? "+" : "−"}{Math.abs(lp.week_change).toLocaleString("ru")} ₽/нед
+                          {lp.trend === "up" ? "+" : "−"}{Math.abs(lp.change).toLocaleString("ru")} ₽/{lp.change_period}
                         </div>
-                      )}
+                      ) : null}
                     </td>
                     <td className="py-3.5 px-4 font-mono font-bold text-foreground">{f.forecastPrice.toLocaleString()} ₽</td>
                     <td className="py-3.5 px-4">

@@ -115,7 +115,7 @@ export default function SectionNews() {
             <h1 className="font-heading font-black text-2xl sm:text-3xl text-white">
               Новости <span className="gold-text">АПК</span>
             </h1>
-            <p className="text-white/60 text-sm mt-1 font-body">zerno.ru · Зерно Он-Лайн · Агроэкспорт · Минсельхоз РФ · Цена Зерна · Росгидромет</p>
+            <p className="text-white/60 text-sm mt-1 font-body">Новости из открытых RSS-лент отрасли · zerno.ru · РОСНГ</p>
           </div>
           <div className="flex gap-2 flex-wrap shrink-0">
             {!loading && news.filter(n => n.urgency === "critical").length > 0 && (

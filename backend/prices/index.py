@@ -1,7 +1,8 @@
 """
 Актуальные котировки зерновых — АгроПорт.
 Получает цены с открытых российских источников, возвращает структурированные данные.
-Кэширование: 6 часов. Fallback: жёстко заданные цены НТБ апрель 2026.
+Основной источник — цены закупщиков «Цена Зерна» (медиана по закупщикам, базис CPT).
+Кэширование: 6 часов. Если источники недоступны — ориентировочные цены с пометкой is_fallback.
 """
 import json
 import os
@@ -11,6 +12,8 @@ import urllib.request
 import urllib.error
 from datetime import datetime, timezone
 
+import cenazerna
+
 CORS = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
@@ -18,15 +21,8 @@ CORS = {
     "Content-Type": "application/json",
 }
 
-# ─── Ориентировочные цены (показываются ТОЛЬКО когда нет связи с источником) ──
-# Помечаются is_fallback=true и source="ориентир", чтобы не выдавать за биржевые данные.
-FALLBACK_PRICES = {
-    "Пшеница озимая": {"price": 13650, "trend": 2.1,  "week_change": 290,  "source": "ориентир"},
-    "Подсолнечник":   {"price": 46500, "trend": -1.8, "week_change": -840, "source": "ориентир"},
-    "Кукуруза":       {"price": 13800, "trend": 1.2,  "week_change": 165,  "source": "ориентир"},
-    "Ячмень яровой":  {"price": 12200, "trend": 0.9,  "week_change": 110,  "source": "ориентир"},
-    "Рожь":           {"price": 10100, "trend": -0.5, "week_change": -51,  "source": "ориентир"},
-}
+# Культуры, по которым собираются котировки (порядок вывода).
+CROPS_ORDER = ["Пшеница озимая", "Подсолнечник", "Кукуруза", "Ячмень яровой", "Рожь"]
 
 CROP_META = {
     "Пшеница озимая": {"region": "Поволжье / ЕФО",   "quality": "3 класс"},
@@ -38,6 +34,7 @@ CROP_META = {
 
 # ─── Модульный кэш (живёт в памяти worker-процесса) ──────────────────────────
 _cache: dict = {"data": None, "ts": 0.0}
+_LAST_BUYER_ROWS: dict[str, list] = {}
 CACHE_TTL = 6 * 3600  # 6 часов
 
 # ─── HTTP helper ──────────────────────────────────────────────────────────────
@@ -177,7 +174,8 @@ def _fetch_live_prices() -> tuple[dict[str, dict], dict[str, str]]:
         "ikar": "https://www.ikar.ru/wheat.html",
         "agroinvestor": "https://agroinvestor.ru/rss/",
     }
-    with ThreadPoolExecutor(max_workers=4) as ex:
+    with ThreadPoolExecutor(max_workers=5) as ex:
+        cz_fut = ex.submit(cenazerna.fetch_all)
         futs = {k: ex.submit(_fetch, u, 6) for k, u in urls.items()}
         raw = {}
         for k, f in futs.items():
@@ -185,9 +183,18 @@ def _fetch_live_prices() -> tuple[dict[str, dict], dict[str, str]]:
                 raw[k] = f.result(timeout=8)
             except Exception:
                 raw[k] = None
+        try:
+            cz_rows, cz_status = cz_fut.result(timeout=22)
+        except Exception:
+            cz_rows, cz_status = {}, "failed"
 
     merged: dict[str, dict] = {}
-    status: dict[str, str] = {}
+    status: dict[str, str] = {"cenazerna": cz_status}
+    for crop, rows in cz_rows.items():
+        sm = cenazerna.summarize(rows)
+        if sm:
+            merged[crop] = {"price": sm["price"], "source": cenazerna.SOURCE, "summary": sm}
+    _LAST_BUYER_ROWS.clear(); _LAST_BUYER_ROWS.update(cz_rows)
     parsers = [
         ("mcx", _parse_mcx, "Минсельхоз РФ"),
         ("zerno", _parse_zerno_rss, "zerno.ru"),
@@ -249,6 +256,50 @@ def _save_quotes(live: dict[str, dict]) -> int:
         return 0
 
 
+def _save_buyer_prices() -> int:
+    dsn = os.environ.get("DATABASE_URL")
+    if not dsn or not _LAST_BUYER_ROWS:
+        return 0
+    schema = os.environ.get("MAIN_DB_SCHEMA", "t_p36960093_agroforecast_app")
+    try:
+        import psycopg2
+        conn = psycopg2.connect(dsn); conn.autocommit = True
+        cur = conn.cursor()
+        n = cenazerna.save(cur, schema, _LAST_BUYER_ROWS)
+        cur.close(); conn.close()
+        return n
+    except Exception as e:
+        print(f"[prices] save buyer prices error: {e}")
+        return 0
+
+
+def _db_latest() -> dict[str, dict]:
+    """Последняя сохранённая сводка по каждой культуре (если источник временно недоступен)."""
+    dsn = os.environ.get("DATABASE_URL")
+    if not dsn:
+        return {}
+    schema = os.environ.get("MAIN_DB_SCHEMA", "t_p36960093_agroforecast_app")
+    try:
+        import psycopg2
+        conn = psycopg2.connect(dsn); cur = conn.cursor()
+        cur.execute(f"""
+            WITH last AS (SELECT crop, max(price_date) d FROM {schema}.buyer_prices GROUP BY crop)
+            SELECT b.crop, l.d,
+                   percentile_cont(0.5) WITHIN GROUP (ORDER BY b.price_rub_t),
+                   min(b.price_rub_t), max(b.price_rub_t), count(*),
+                   count(DISTINCT b.company), count(DISTINCT b.region)
+            FROM {schema}.buyer_prices b JOIN last l ON l.crop=b.crop AND l.d=b.price_date
+            GROUP BY b.crop, l.d""")
+        out = {c: {"price": round(float(m)), "min": round(float(lo)), "max": round(float(hi)), "n": n,
+                   "companies": co, "regions": rg, "day_change": None, "date": str(d)}
+               for c, d, m, lo, hi, n, co, rg in cur.fetchall()}
+        cur.close(); conn.close()
+        return out
+    except Exception as e:
+        print(f"[prices] db fallback error: {e}")
+        return {}
+
+
 # ─── Сборка финального ответа ─────────────────────────────────────────────────
 
 def _build_response(live: dict[str, dict], status: dict[str, str]) -> dict:
@@ -257,32 +308,34 @@ def _build_response(live: dict[str, dict], status: dict[str, str]) -> dict:
 
     any_live = bool(live)
 
-    for crop, fb in FALLBACK_PRICES.items():
+    stored = {} if all(c in live for c in CROPS_ORDER) else _db_latest()
+    for crop in CROPS_ORDER:
         live_entry = live.get(crop)
+        sm = (live_entry or {}).get("summary") or stored.get(crop)
+        if not sm and not live_entry:
+            continue
         is_fallback = live_entry is None
-
-        price     = live_entry["price"] if live_entry else fb["price"]
-        source    = live_entry["source"] if live_entry else fb["source"]
-        wc        = fb["week_change"]
-        trend_pct = fb["trend"]
-
-        price_prev = max(1, round(price - wc))
-        trend_str  = "up" if trend_pct >= 0 else "down"
-
+        price = live_entry["price"] if live_entry else sm["price"]
+        change = sm.get("day_change") if sm else None
         meta = CROP_META.get(crop, {"region": "Россия", "quality": ""})
-
         prices_out.append({
-            "crop":            crop,
-            "price":           price,
-            "price_prev":      price_prev,
-            "week_change":     wc,
-            "week_change_pct": round(trend_pct, 2),
-            "trend":           trend_str,
-            "region":          meta["region"],
-            "quality":         meta["quality"],
-            "source":          source,
-            "fetched_at":      now_iso,
-            "is_fallback":     is_fallback,
+            "crop":          crop,
+            "price":         price,
+            "change":        change,
+            "change_pct":    (round(100 * change / (price - change), 2) if change and price != change else (0.0 if change == 0 else None)),
+            "change_period": "день" if change is not None else None,
+            "trend":         ("up" if change > 0 else "down" if change < 0 else "flat") if change is not None else None,
+            "region":        f"{sm['regions']} регионов РФ" if sm else meta["region"],
+            "quality":       "медиана цен закупщиков, CPT" if sm else meta["quality"],
+            "range_min":     sm["min"] if sm else None,
+            "range_max":     sm["max"] if sm else None,
+            "buyers":        sm["companies"] if sm else None,
+            "offers":        sm["n"] if sm else None,
+            "small_sample":  bool(sm and sm["companies"] < 5),
+            "price_date":    sm["date"] if sm else None,
+            "source":        (live_entry["source"] if live_entry else f"{cenazerna.SOURCE} (сохранено)"),
+            "fetched_at":    now_iso,
+            "is_fallback":   is_fallback,
         })
 
     return {
@@ -294,40 +347,54 @@ def _build_response(live: dict[str, dict], status: dict[str, str]) -> dict:
 
 # ─── Handler ──────────────────────────────────────────────────────────────────
 
+def _db_last_fetch_age_h() -> float | None:
+    dsn = os.environ.get("DATABASE_URL")
+    if not dsn:
+        return None
+    schema = os.environ.get("MAIN_DB_SCHEMA", "t_p36960093_agroforecast_app")
+    try:
+        import psycopg2
+        conn = psycopg2.connect(dsn); cur = conn.cursor()
+        cur.execute(f"SELECT EXTRACT(EPOCH FROM now() - max(fetched_at))/3600 FROM {schema}.buyer_prices")
+        v = cur.fetchone()[0]; cur.close(); conn.close()
+        return float(v) if v is not None else None
+    except Exception as e:
+        print(f"[prices] age check error: {e}")
+        return None
+
+
 def handler(event: dict, context) -> dict:
-    """Котировки зерновых: live-парсинг + fallback + кэш 6 ч."""
+    """Котировки зерновых: цены закупщиков «Цена Зерна» + прочие источники.
+    Обычный запрос отдаёт последние сохранённые данные; сбор заново — если им больше 6 ч или ?force=1."""
     if event.get("httpMethod") == "OPTIONS":
         return {"statusCode": 200, "headers": CORS, "body": ""}
 
     now_ts = time.time()
     force  = (event.get("queryStringParameters") or {}).get("force") == "1"
 
-    # Возвращаем кэш если свежий и нет принудительного обновления
     if not force and _cache["data"] is not None and (now_ts - _cache["ts"]) < CACHE_TTL:
         cached = dict(_cache["data"])
         cached["from_cache"] = True
         cached["cache_age_min"] = round((now_ts - _cache["ts"]) / 60)
-        return {
-            "statusCode": 200,
-            "headers": CORS,
-            "body": json.dumps(cached, ensure_ascii=False),
-        }
+        return {"statusCode": 200, "headers": CORS, "body": json.dumps(cached, ensure_ascii=False)}
 
-    # Получаем живые данные
-    try:
-        live, status = _fetch_live_prices()
-    except Exception:
-        live, status = {}, {"error": "fetch_exception"}
+    age = None if force else _db_last_fetch_age_h()
+    if not force and age is not None and age < CACHE_TTL / 3600:
+        data = _build_response({}, {"cenazerna": "stored"})
+        data["any_live"] = True
+        data["stored_age_min"] = round(age * 60)
+        for p in data["prices"]:
+            p["source"] = cenazerna.SOURCE
+            p["is_fallback"] = False
+    else:
+        try:
+            live, status = _fetch_live_prices()
+        except Exception:
+            live, status = {}, {"error": "fetch_exception"}
+        data = _build_response(live, status)
+        data["saved_quotes"] = _save_quotes(live)
+        data["saved_buyer_prices"] = _save_buyer_prices()
 
-    data = _build_response(live, status)
-    data["saved_quotes"] = _save_quotes(live)
-
-    # Сохраняем в кэш
     _cache["data"] = data
     _cache["ts"]   = now_ts
-
-    return {
-        "statusCode": 200,
-        "headers": CORS,
-        "body": json.dumps(data, ensure_ascii=False),
-    }
+    return {"statusCode": 200, "headers": CORS, "body": json.dumps(data, ensure_ascii=False)}
