@@ -3,9 +3,13 @@ import * as XLSX from "xlsx";
 import { adminApi } from "@/lib/adminApi";
 import { apiCRM } from "@/lib/auth";
 import Icon from "@/components/ui/icon";
-import { Supplier, Facet, Facets, Analytics, QualityReport, REGION, STATUS_LABELS, STATUS_COLORS } from "./shared";
+import { Supplier, Facets, QualityReport, REGION, STATUS_LABELS } from "./shared";
 import SupplierCard from "./SupplierCard";
 import RadarPanel from "./RadarPanel";
+import SuppliersFilters from "./SuppliersFilters";
+import SuppliersQualityPanel from "./SuppliersQualityPanel";
+import SuppliersList from "./SuppliersList";
+import AnalyticsModal from "./SuppliersAnalyticsModal";
 
 // ── Блок базы поставщиков ────────────────────────────────────────────────────
 export default function SuppliersBlock() {
@@ -323,70 +327,7 @@ export default function SuppliersBlock() {
 
       {/* Анализ качества данных */}
       {showQuality && (
-        <div className="glass-card rounded-xl p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <h4 className="font-heading font-bold text-sm flex items-center gap-2">
-              <Icon name="ClipboardCheck" size={15} className="text-primary" />
-              Качество данных
-              {quality && <span className="text-xs font-normal text-muted-foreground">· {quality.total} хозяйств в выборке</span>}
-            </h4>
-            <button onClick={() => setShowQuality(false)} className="text-muted-foreground hover:text-foreground">
-              <Icon name="X" size={16} />
-            </button>
-          </div>
-          {qualityLoading ? (
-            <div className="flex justify-center py-6"><Icon name="Loader" size={20} className="animate-spin text-primary" /></div>
-          ) : !quality ? (
-            <p className="text-xs text-muted-foreground">Не удалось загрузить анализ.</p>
-          ) : quality.total === 0 ? (
-            <p className="text-xs text-muted-foreground">В выборке нет хозяйств.</p>
-          ) : (
-            <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {[
-                  { label: "Без ИНН", val: quality.no_inn, icon: "Hash" },
-                  { label: "Без телефона", val: quality.no_phone, icon: "Phone" },
-                  { label: "Без эл. почты", val: quality.no_email, icon: "Mail" },
-                  { label: "Совсем без контактов", val: quality.no_contacts, icon: "UserX" },
-                  { label: "Без контактного лица", val: quality.no_person, icon: "User" },
-                  { label: "Без культур / продукции", val: quality.no_crops, icon: "Wheat" },
-                  { label: "Без района", val: quality.no_district, icon: "MapPin" },
-                  { label: "Без ИИ-досье", val: quality.no_analysis, icon: "Sparkles" },
-                ].map(m => {
-                  const pct = quality.total ? Math.round((m.val / quality.total) * 100) : 0;
-                  const bad = pct >= 50;
-                  return (
-                    <div key={m.label} className="rounded-lg border border-border p-2.5">
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <Icon name={m.icon} size={12} className="text-primary" />{m.label}
-                        </span>
-                        <span className={`text-xs font-bold ${bad ? "text-rose-600" : m.val ? "text-amber-600" : "text-emerald-600"}`}>
-                          {m.val} · {pct}%
-                        </span>
-                      </div>
-                      <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
-                        <div className={`h-full ${bad ? "bg-rose-500" : m.val ? "bg-amber-500" : "bg-emerald-500"}`} style={{ width: `${pct}%` }} />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div className={`flex items-center gap-2 text-xs px-3 py-2 rounded-lg ${quality.duplicates ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"}`}>
-                <Icon name={quality.duplicates ? "CopyMinus" : "CheckCircle2"} size={14} className="shrink-0" />
-                {quality.duplicates
-                  ? <span>Найдено дублей в выборке: <b>{quality.duplicates}</b>. Нажмите «Убрать дубли», чтобы очистить.</span>
-                  : <span>Дублей в выборке нет.</span>}
-              </div>
-
-              <p className="text-[11px] text-muted-foreground flex items-start gap-1.5">
-                <Icon name="Lightbulb" size={12} className="text-amber-500 mt-0.5 shrink-0" />
-                Показатели рассчитаны по текущим фильтрам. Заполнить пробелы поможет кнопка «ИИ-обогащение» (подтягивает контакты и досье из ЕГРЮЛ).
-              </p>
-            </>
-          )}
-        </div>
+        <SuppliersQualityPanel quality={quality} qualityLoading={qualityLoading} setShowQuality={setShowQuality} />
       )}
 
       {/* Сводка по статусам */}
@@ -421,206 +362,20 @@ export default function SuppliersBlock() {
       </p>
 
       {/* Панель фильтров */}
-      <div className="glass-card rounded-xl p-3 space-y-2.5">
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-          <FilterSelect label="Регион" value={region} onChange={v => { setRegion(v); setDistrict(""); setPage(1); }}
-            options={facets?.regions || []} placeholder="Вся Россия" />
-          <FilterSelect label="Район" value={district} onChange={v => { setDistrict(v); setPage(1); }}
-            options={facets?.districts || []} placeholder="Все районы" />
-          <FilterSelect label="Вид деятельности" value={activity} onChange={v => { setActivity(v); setPage(1); }}
-            options={facets?.activities || []} placeholder="Любая деятельность" />
-          <FilterSelect label="Форма собственности" value={ownership} onChange={v => { setOwnership(v); setPage(1); }}
-            options={facets?.ownerships || []} placeholder="Любая" />
-          <div>
-            <label className="block text-[10px] font-medium text-muted-foreground mb-1">Культура / продукция</label>
-            <input value={crop} onChange={e => { setCrop(e.target.value); setPage(1); }} placeholder="напр. пшеница"
-              className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background text-xs focus:outline-none focus:border-primary" />
-          </div>
-        </div>
+      <SuppliersFilters
+        region={region} setRegion={setRegion} district={district} setDistrict={setDistrict}
+        activity={activity} setActivity={setActivity} ownership={ownership} setOwnership={setOwnership}
+        crop={crop} setCrop={setCrop} farmer={farmer} setFarmer={setFarmer}
+        priorityOnly={priorityOnly} setPriorityOnly={setPriorityOnly} hasEmail={hasEmail} setHasEmail={setHasEmail}
+        hasPhone={hasPhone} setHasPhone={setHasPhone} setPage={setPage} facets={facets}
+        activeFilters={activeFilters} resetFilters={resetFilters}
+      />
 
-        {/* Быстрые CRM-фильтры */}
-        <div className="flex flex-wrap gap-2">
-          <Toggle active={farmer} onClick={() => { setFarmer(f => !f); setPage(1); }} icon="Wheat" label="Только сельхозпроизводители" />
-          <Toggle active={priorityOnly} onClick={() => { setPriorityOnly(p => !p); setPage(1); }} icon="Star" label="Районы вокруг Аткарска" />
-        <Toggle active={hasEmail} onClick={() => { setHasEmail(p => !p); setPage(1); }} icon="Mail" label="Есть эл. почта" />
-        <Toggle active={hasPhone} onClick={() => { setHasPhone(p => !p); setPage(1); }} icon="Phone" label="Есть телефон" />
-        </div>
-
-        {activeFilters > 0 && (
-          <button onClick={resetFilters} className="flex items-center gap-1 text-[11px] text-primary hover:underline">
-            <Icon name="X" size={12} />Сбросить фильтры ({activeFilters})
-          </button>
-        )}
-      </div>
-
-      {loading ? (
-        <div className="flex justify-center py-12"><Icon name="Loader" size={24} className="animate-spin text-primary" /></div>
-      ) : (
-        <div className="space-y-2">
-          {data?.suppliers.map(sup => (
-            <div key={sup.id} onClick={() => setCard(sup)}
-              className="glass-card rounded-xl p-4 flex items-start justify-between gap-3 cursor-pointer hover:border-primary/40 transition-colors">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1 flex-wrap">
-                  {(sup.priority ?? 0) >= 2 && (
-                    <span className="flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-700">
-                      <Icon name="Star" size={10} />Приоритет
-                    </span>
-                  )}
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${STATUS_COLORS[sup.status] || "bg-secondary text-muted-foreground"}`}>
-                    {STATUS_LABELS[sup.status] || sup.status}
-                  </span>
-                  {sup.district && <span className="text-[10px] text-muted-foreground">{sup.district}{sup.locality ? `, ${sup.locality}` : ""}</span>}
-                  {sup.crops && <span className="text-[10px] text-primary truncate max-w-[240px]">{sup.crops}</span>}
-                </div>
-                <p className="text-sm font-medium truncate">{sup.name}</p>
-                <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-                  {sup.inn && <span className="text-[10px] text-muted-foreground">ИНН {sup.inn}</span>}
-                  {sup.volume_tons != null && <span className="text-[10px] text-muted-foreground">{sup.volume_tons} т</span>}
-                  {sup.contact_person && <span className="text-[10px] text-muted-foreground">{sup.contact_person}</span>}
-                  {sup.phone && <span className="text-[10px] text-muted-foreground">{sup.phone}</span>}
-                  {sup.ai_analysis && <span className="flex items-center gap-0.5 text-[10px] text-emerald-600"><Icon name="ClipboardCheck" size={10} />анализ</span>}
-                  {sup.ai_letter && <span className="flex items-center gap-0.5 text-[10px] text-emerald-600"><Icon name="MailCheck" size={10} />письмо</span>}
-                </div>
-              </div>
-              <div className="flex items-center gap-1 shrink-0">
-                <button onClick={e => { e.stopPropagation(); setCard(sup); }} title="Открыть карточку"
-                  className="flex items-center gap-1 px-2 py-1.5 rounded-lg hero-gradient text-white text-[11px] font-medium">
-                  <Icon name="Sparkles" size={13} />Открыть
-                </button>
-                <button onClick={e => { e.stopPropagation(); handleDelete(sup.id); }} className="p-1.5 hover:bg-destructive/10 rounded-lg text-destructive"><Icon name="Trash2" size={14} /></button>
-              </div>
-            </div>
-          ))}
-          {data?.suppliers.length === 0 && (
-            <div className="glass-card rounded-2xl p-12 text-center">
-              <Icon name="Users" size={32} className="text-muted-foreground mx-auto mb-3" />
-              <p className="text-sm text-muted-foreground">Хозяйств пока нет. Добавьте вручную или импортируйте Excel.</p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {data && data.pages > 1 && (
-        <div className="flex justify-center items-center gap-2">
-          <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}
-            className="px-3 h-8 rounded-lg text-xs font-medium bg-secondary hover:bg-secondary/80 disabled:opacity-40 flex items-center gap-1">
-            <Icon name="ChevronLeft" size={13} />Назад
-          </button>
-          <span className="text-xs text-muted-foreground">Стр. {page} из {data.pages}</span>
-          <button onClick={() => setPage(p => Math.min(data.pages, p + 1))} disabled={page >= data.pages}
-            className="px-3 h-8 rounded-lg text-xs font-medium bg-secondary hover:bg-secondary/80 disabled:opacity-40 flex items-center gap-1">
-            Вперёд<Icon name="ChevronRight" size={13} />
-          </button>
-        </div>
-      )}
+      <SuppliersList loading={loading} data={data} page={page} setPage={setPage} setCard={setCard} handleDelete={handleDelete} />
 
       {card && <SupplierCard item={card} onClose={() => { setCard(null); load(); }} onSaved={() => { setCard(null); load(); }} />}
       {showAnalytics && <AnalyticsModal region={region} onClose={() => setShowAnalytics(false)}
         onPick={(f) => { if (f.district !== undefined) setDistrict(f.district); if (f.activity !== undefined) setActivity(f.activity); if (f.ownership !== undefined) setOwnership(f.ownership); setPage(1); setShowAnalytics(false); }} />}
-    </div>
-  );
-}
-
-// ── Переключатель быстрого фильтра ───────────────────────────────────────────
-function Toggle({ active, onClick, icon, label }: {
-  active: boolean; onClick: () => void; icon: string; label: string;
-}) {
-  return (
-    <button onClick={onClick}
-      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium ${active ? "bg-primary text-white" : "bg-secondary text-muted-foreground hover:bg-secondary/80"}`}>
-      <Icon name={icon} size={13} />{label}
-    </button>
-  );
-}
-
-// ── Выпадающий фильтр ────────────────────────────────────────────────────────
-function FilterSelect({ label, value, onChange, options, placeholder }: {
-  label: string; value: string; onChange: (v: string) => void; options: Facet[]; placeholder: string;
-}) {
-  return (
-    <div>
-      <label className="block text-[10px] font-medium text-muted-foreground mb-1">{label}</label>
-      <select value={value} onChange={e => onChange(e.target.value)}
-        className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background text-xs focus:outline-none focus:border-primary">
-        <option value="">{placeholder}</option>
-        {options.map(o => (
-          <option key={o.value} value={o.value}>{o.value} ({o.count})</option>
-        ))}
-      </select>
-    </div>
-  );
-}
-
-// ── Модалка аналитики ────────────────────────────────────────────────────────
-function AnalyticsModal({ region, onClose, onPick }: {
-  region: string; onClose: () => void;
-  onPick: (f: { district?: string; activity?: string; ownership?: string }) => void;
-}) {
-  const [data, setData] = useState<Analytics | null>(null);
-  useEffect(() => { adminApi.getSupplierAnalytics(region).then(setData).catch(() => {}); }, [region]);
-  const max = (arr: { count: number }[]) => Math.max(1, ...arr.map(x => x.count));
-
-  const Bar = ({ label, count, total, onClick }: { label: string; count: number; total: number; onClick: () => void }) => (
-    <button onClick={onClick} className="w-full text-left group">
-      <div className="flex items-center justify-between text-[11px] mb-0.5">
-        <span className="truncate group-hover:text-primary">{label}</span>
-        <span className="text-muted-foreground shrink-0 ml-2">{count}</span>
-      </div>
-      <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
-        <div className="h-full hero-gradient rounded-full" style={{ width: `${(count / total) * 100}%` }} />
-      </div>
-    </button>
-  );
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="bg-background rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-5 border-b border-border sticky top-0 bg-background z-10">
-          <div className="flex items-center gap-2">
-            <Icon name="BarChart3" size={18} className="text-primary" />
-            <h3 className="font-heading font-bold text-base">Аналитика · {region}</h3>
-            {data && <span className="text-xs text-muted-foreground">{data.total} предприятий</span>}
-          </div>
-          <button onClick={onClose}><Icon name="X" size={18} className="text-muted-foreground" /></button>
-        </div>
-        {!data ? (
-          <div className="flex justify-center py-16"><Icon name="Loader" size={24} className="animate-spin text-primary" /></div>
-        ) : (
-          <div className="p-5 grid md:grid-cols-2 gap-5">
-            <div className="space-y-2">
-              <h4 className="text-xs font-heading font-bold flex items-center gap-1.5"><Icon name="MapPin" size={13} className="text-primary" />По районам</h4>
-              <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-                {data.by_district.map(d => (
-                  <Bar key={d.district} label={d.district} count={d.count} total={max(data.by_district)}
-                    onClick={() => onPick({ district: d.district.startsWith("—") ? "" : d.district })} />
-                ))}
-              </div>
-            </div>
-            <div className="space-y-2">
-              <h4 className="text-xs font-heading font-bold flex items-center gap-1.5"><Icon name="Wheat" size={13} className="text-primary" />По видам деятельности</h4>
-              <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-                {data.by_activity.map(a => (
-                  <Bar key={a.activity} label={a.activity} count={a.count} total={max(data.by_activity)}
-                    onClick={() => onPick({ activity: a.activity })} />
-                ))}
-              </div>
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <h4 className="text-xs font-heading font-bold flex items-center gap-1.5"><Icon name="Building2" size={13} className="text-primary" />По форме собственности</h4>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                {data.by_ownership.map(o => (
-                  <Bar key={o.ownership} label={o.ownership} count={o.count} total={max(data.by_ownership)}
-                    onClick={() => onPick({ ownership: o.ownership.startsWith("—") ? "" : o.ownership })} />
-                ))}
-              </div>
-            </div>
-            <p className="md:col-span-2 text-[11px] text-muted-foreground flex items-center gap-1">
-              <Icon name="MousePointerClick" size={12} />Нажмите на любую строку, чтобы отфильтровать базу
-            </p>
-          </div>
-        )}
-      </div>
     </div>
   );
 }
