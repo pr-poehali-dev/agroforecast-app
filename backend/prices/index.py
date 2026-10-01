@@ -4,6 +4,7 @@
 Кэширование: 6 часов. Fallback: жёстко заданные цены НТБ апрель 2026.
 """
 import json
+import os
 import re
 import time
 import urllib.request
@@ -80,37 +81,27 @@ def _extract_first_int(patterns: list[str], text: str, lo: int = 5000, hi: int =
 
 def _parse_mcx(html: str) -> dict[str, int]:
     """Минсельхоз — страница мониторинга цен.
-    Ищем числа рядом с названиями культур в таблицах и тексте."""
-    found: dict[str, int] = {}
-    patterns = {
-        "Пшеница озимая": [
-            r"пшениц[а-я]*\s*3[- ]?кл[а-я]*.*?(\d[\d\s]{3,5})",
-            r"пшениц[а-я]*.*?(\d[\d\s]{3,5})\s*(?:руб|₽|тыс)",
-            r"(\d[\d\s]{3,5})\s*(?:руб|₽).*?пшениц[а-я]*",
-        ],
-        "Подсолнечник": [
-            r"подсолнечник.*?(\d[\d\s]{4,6})",
-            r"(\d[\d\s]{4,6}).*?подсолнечник",
-        ],
-        "Кукуруза": [
-            r"кукуруз[а-я]*.*?(\d[\d\s]{3,5})",
-            r"(\d[\d\s]{3,5}).*?кукуруз[а-я]*",
-        ],
-        "Ячмень яровой": [
-            r"ячмен[а-я]*.*?(\d[\d\s]{3,5})",
-            r"(\d[\d\s]{3,5}).*?ячмен[а-я]*",
-        ],
-        "Рожь": [
-            r"рож[а-я]*.*?(\d[\d\s]{3,5})",
-            r"(\d[\d\s]{3,5}).*?рож[а-я]*",
-        ],
+    Ищем цену только в коротком окне после названия культуры и только с единицей «руб/т»,
+    чтобы не цеплять годы, номера и прочие числа. Работает по очищенному тексту за линейное время."""
+    text = re.sub(r"<script.*?</script>|<style.*?</style>", " ", html[:600_000], flags=re.S | re.I)
+    text = re.sub(r"<[^>]+>", " ", text)
+    text = re.sub(r"&nbsp;|\s+", " ", text)
+    names = {
+        "Пшеница озимая": r"пшениц[а-я]{0,4}", "Подсолнечник": r"подсолнечник[а-я]{0,3}",
+        "Кукуруза": r"кукуруз[а-я]{0,3}", "Ячмень яровой": r"ячмен[а-я]{0,3}", "Рожь": r"рож[ьи]",
     }
-    for crop, pats in patterns.items():
-        lo = 30000 if crop == "Подсолнечник" else 5000
-        hi = 90000 if crop == "Подсолнечник" else 25000
-        val = _extract_first_int(pats, html, lo=lo, hi=hi)
-        if val:
-            found[crop] = val
+    price_re = re.compile(r"(\d{1,2}[\s\u00a0]?\d{3})(?:[.,]\d+)?\s?(?:руб|₽)[^\s]{0,3}\s?/?\s?т", re.I)
+    found: dict[str, int] = {}
+    for crop, name in names.items():
+        lo, hi = (30000, 90000) if crop == "Подсолнечник" else (5000, 30000)
+        for m in re.finditer(name, text, re.I):
+            win = text[m.end(): m.end() + 80]
+            p = price_re.search(win)
+            if p:
+                val = int(re.sub(r"\D", "", p.group(1)))
+                if lo <= val <= hi:
+                    found[crop] = val
+                    break
     return found
 
 def _parse_zerno_rss(xml: str) -> dict[str, int]:
@@ -174,71 +165,89 @@ def _parse_agroinvestor_rss(xml: str) -> dict[str, int]:
 
 def _fetch_live_prices() -> tuple[dict[str, dict], dict[str, str]]:
     """
-    Пытается получить цены из нескольких источников.
-    Возвращает (merged_prices, source_status).
-    merged_prices: {crop: {"price": int, "source": str}}
+    Опрашивает источники параллельно (общий бюджет ~8 с), затем сливает
+    цены в порядке приоритета источников. Возвращает (merged_prices, source_status).
     """
+    from concurrent.futures import ThreadPoolExecutor
+    urls = {
+        "mcx": ("https://mcx.gov.ru/ministry/departments/"
+                "departament-ekonomiki-i-gosudarstvennoy-podderzhki-apk/"
+                "industry-information/info-agrarnye-rynki/"),
+        "zerno": "https://zerno.ru/rss.xml",
+        "ikar": "https://www.ikar.ru/wheat.html",
+        "agroinvestor": "https://agroinvestor.ru/rss/",
+    }
+    with ThreadPoolExecutor(max_workers=4) as ex:
+        futs = {k: ex.submit(_fetch, u, 6) for k, u in urls.items()}
+        raw = {}
+        for k, f in futs.items():
+            try:
+                raw[k] = f.result(timeout=8)
+            except Exception:
+                raw[k] = None
+
     merged: dict[str, dict] = {}
     status: dict[str, str] = {}
+    parsers = [
+        ("mcx", _parse_mcx, "Минсельхоз РФ"),
+        ("zerno", _parse_zerno_rss, "zerno.ru"),
+        ("agroinvestor", _parse_agroinvestor_rss, "agroinvestor.ru"),
+    ]
+    for key, parse, label in parsers[:2]:
+        body = raw.get(key)
+        if not body:
+            status[key] = "failed"; continue
+        prices = parse(body)
+        status[key] = "ok" if prices else "no_data"
+        for crop, price in (prices or {}).items():
+            merged.setdefault(crop, {"price": price, "source": label})
 
-    # ── Источник 1: Минсельхоз ───────────────────────────────────────────────
-    mcx_url = (
-        "https://mcx.gov.ru/ministry/departments/"
-        "departament-ekonomiki-i-gosudarstvennoy-podderzhki-apk/"
-        "industry-information/info-agrarnye-rynki/"
-    )
-    html = _fetch(mcx_url, timeout=10)
-    if html:
-        prices = _parse_mcx(html)
-        if prices:
-            status["mcx"] = "ok"
-            for crop, price in prices.items():
-                if crop not in merged:
-                    merged[crop] = {"price": price, "source": "Минсельхоз РФ"}
-        else:
-            status["mcx"] = "no_data"
-    else:
-        status["mcx"] = "failed"
-
-    # ── Источник 2: zerno.ru RSS ─────────────────────────────────────────────
-    zerno_xml = _fetch("https://zerno.ru/rss.xml", timeout=10)
-    if zerno_xml:
-        prices = _parse_zerno_rss(zerno_xml)
-        if prices:
-            status["zerno"] = "ok"
-            for crop, price in prices.items():
-                if crop not in merged:
-                    merged[crop] = {"price": price, "source": "zerno.ru"}
-        else:
-            status["zerno"] = "no_data"
-    else:
-        status["zerno"] = "failed"
-
-    # ── Источник 3: ikar.ru пшеница ──────────────────────────────────────────
-    ikar_html = _fetch("https://www.ikar.ru/wheat.html", timeout=10)
-    if ikar_html:
-        wheat_price = _parse_ikar(ikar_html)
+    body = raw.get("ikar")
+    if body:
+        wheat_price = _parse_ikar(body)
         if wheat_price and "Пшеница озимая" not in merged:
             merged["Пшеница озимая"] = {"price": wheat_price, "source": "ИКАР"}
         status["ikar"] = "ok" if wheat_price else "no_data"
     else:
         status["ikar"] = "failed"
 
-    # ── Источник 4: agroinvestor.ru RSS ──────────────────────────────────────
-    ai_xml = _fetch("https://agroinvestor.ru/rss/", timeout=10)
-    if ai_xml:
-        prices = _parse_agroinvestor_rss(ai_xml)
-        if prices:
-            status["agroinvestor"] = "ok"
-            for crop, price in prices.items():
-                if crop not in merged:
-                    merged[crop] = {"price": price, "source": "agroinvestor.ru"}
-        else:
-            status["agroinvestor"] = "no_data"
+    key, parse, label = parsers[2]
+    body = raw.get(key)
+    if body:
+        prices = parse(body)
+        status[key] = "ok" if prices else "no_data"
+        for crop, price in (prices or {}).items():
+            merged.setdefault(crop, {"price": price, "source": label})
     else:
-        status["agroinvestor"] = "failed"
-
+        status[key] = "failed"
     return merged, status
+
+
+# ─── Накопление собранных котировок (история для будущего обучения модели) ────
+def _save_quotes(live: dict[str, dict]) -> int:
+    """Пишет в price_quotes только реально собранные цены, не чаще раза в 6 ч на культуру+источник."""
+    dsn = os.environ.get("DATABASE_URL")
+    if not dsn or not live:
+        return 0
+    schema = os.environ.get("MAIN_DB_SCHEMA", "t_p36960093_agroforecast_app")
+    try:
+        import psycopg2
+        conn = psycopg2.connect(dsn); conn.autocommit = True
+        cur = conn.cursor(); n = 0
+        for crop, d in live.items():
+            cur.execute(
+                f"""INSERT INTO {schema}.price_quotes (crop, price_rub_t, source)
+                    SELECT %s, %s, %s WHERE NOT EXISTS (
+                      SELECT 1 FROM {schema}.price_quotes
+                      WHERE crop=%s AND source=%s AND fetched_at > now() - interval '6 hours')""",
+                (crop, d["price"], d["source"], crop, d["source"]))
+            n += max(cur.rowcount, 0)
+        cur.close(); conn.close()
+        return n
+    except Exception as e:
+        print(f"[prices] save quotes error: {e}")
+        return 0
+
 
 # ─── Сборка финального ответа ─────────────────────────────────────────────────
 
@@ -311,6 +320,7 @@ def handler(event: dict, context) -> dict:
         live, status = {}, {"error": "fetch_exception"}
 
     data = _build_response(live, status)
+    data["saved_quotes"] = _save_quotes(live)
 
     # Сохраняем в кэш
     _cache["data"] = data

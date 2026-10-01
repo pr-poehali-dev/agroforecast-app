@@ -25,7 +25,7 @@ export default function NdviChart({ series, selectedRegion, sel, detailLoading }
             <Icon name="TrendingUp" size={15} className="text-primary" />
             <h2 className="font-semibold">{REGION_NAMES[selectedRegion]} — динамика NDVI 2025</h2>
           </div>
-          <p className="text-xs text-muted-foreground mt-1">Sentinel-2 · обновление каждые 5 дней · сравнение со средним 2020–2024</p>
+          <p className="text-xs text-muted-foreground mt-1">Демонстрационный ряд · сравнение со средним многолетним</p>
         </div>
         <div className="flex gap-4 text-xs text-muted-foreground">
           <span className="flex items-center gap-1.5"><span className="w-6 h-0.5 bg-primary inline-block" />2025 (текущий)</span>

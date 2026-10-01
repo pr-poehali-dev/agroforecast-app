@@ -18,10 +18,10 @@ export default function MapSection({ selectedRegion, setSelectedRegion }: MapSec
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
           <h1 className="font-heading font-black text-2xl text-foreground">Карта урожайности России</h1>
-          <p className="text-muted-foreground mt-1 text-sm font-body">Спутниковые данные Sentinel-2 · NDVI · метеоусловия · нажмите регион для деталей</p>
+          <p className="text-muted-foreground mt-1 text-sm font-body">Демонстрационные данные · NDVI · метеоусловия · нажмите регион для деталей</p>
         </div>
         <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/25 text-primary text-xs font-mono">
-          <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse-glow" />Прямой эфир · Sentinel-2
+          <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse-glow" />Демо-режим
         </span>
       </div>
       <div className="grid lg:grid-cols-3 gap-4">

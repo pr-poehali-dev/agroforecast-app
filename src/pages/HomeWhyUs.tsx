@@ -38,7 +38,7 @@ export default function HomeWhyUs({ setActiveSection }: HomeWhyUsProps) {
               role: "Трейдеру", icon: "TrendingUp", color: "accent",
               items: [
                 "Прогноз цены пшеницы, подсолнечника, кукурузы на 3–12 мес",
-                "Лучший момент для покупки и продажи по модели ARIMA+LSTM",
+                "Прогноз цены с указанием измеренной ошибки модели",
                 "Мониторинг экспортных пошлин и мировых котировок CBOT",
                 "Реальные новости рынка с zerno.ru и agroinvestor.ru",
               ],
@@ -46,7 +46,7 @@ export default function HomeWhyUs({ setActiveSection }: HomeWhyUsProps) {
             {
               role: "Агроному", icon: "Sprout", color: "primary",
               items: [
-                "История NDVI-снимков по Sentinel-2 за несколько сезонов",
+                "NDVI-мониторинг посевов (модуль в разработке)",
                 "Фазы вегетации и целевые значения индекса по культуре",
                 "Карта рисков засухи и переувлажнения по районам",
                 "Рекомендации по применению удобрений (NPK)",
@@ -122,8 +122,8 @@ export default function HomeWhyUs({ setActiveSection }: HomeWhyUsProps) {
             Переведите агробизнес<br />на <span className="gold-text">язык данных</span>
           </h2>
           <p className="text-white/70 text-sm sm:text-base font-body max-w-xl mx-auto mb-8">
-            Более <strong className="text-white">1 200 фермеров, трейдеров и агрономов</strong> уже используют АгроПорт
-            для принятия решений. Базовый доступ — бесплатно.
+            Прогнозы, база хозяйств и новости рынка — в одном окне.
+            Базовый доступ — бесплатно.
           </p>
           <div className="flex flex-wrap justify-center gap-3">
             <button onClick={() => setActiveSection("forecasts")}
@@ -140,7 +140,7 @@ export default function HomeWhyUs({ setActiveSection }: HomeWhyUsProps) {
             </button>
           </div>
           <p className="text-white/40 text-xs mt-5 font-mono">
-            Данные НТБ · Росгидромет · Sentinel-2 · Минсельхоз РФ · zerno.ru · agroinvestor.ru
+            Данные Росстата · Всемирного банка · Банка России · Минсельхоза РФ · zerno.ru · agroinvestor.ru
           </p>
         </div>
       </div>

@@ -30,11 +30,12 @@ export interface ModelMeta {
   yield_model: string;
   price_model: string;
   risk_model: string;
-  training_period: string;
-  validation_mape_yield: number;
-  validation_mape_price: number;
-  risk_accuracy_pct: number;
-  update_frequency: string;
+  training_period: string | null;
+  validation_mape_yield: number | null;
+  validation_mape_price: number | null;
+  risk_accuracy_pct: number | null;
+  is_demo?: boolean;
+  update_frequency: string | null;
   last_updated: string;
 }
 

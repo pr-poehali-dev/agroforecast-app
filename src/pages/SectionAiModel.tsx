@@ -14,6 +14,8 @@ const TAB_CONFIG = [
   { id: "chart",  label: "График цен",        icon: "TrendingUp" },
 ] as const;
 
+const fmtMetric = (v: number | null | undefined) => (v === null || v === undefined ? "не измерена" : `${v}%`);
+
 export default function SectionAiModel() {
   const [crop, setCrop] = useState("Пшеница озимая");
   const [region, setRegion] = useState("samara");
@@ -64,15 +66,15 @@ export default function SectionAiModel() {
               AI‑модель<br /><span className="gold-text">прогнозирования</span>
             </h1>
             <p className="text-white/65 text-sm mt-1.5 font-body max-w-sm">
-              LSTM + Random Forest · ARIMA + Prophet · горизонт 3–12 месяцев
+              Демонстрационная модель · горизонт 3–12 месяцев
             </p>
           </div>
           {meta && (
             <div className="grid grid-cols-3 gap-2 shrink-0">
               {[
-                { v: `${meta.validation_mape_price}%`, l: "MAPE цен" },
-                { v: `${meta.validation_mape_yield}%`, l: "MAPE урожай" },
-                { v: `${meta.risk_accuracy_pct}%`,     l: "Точность рисков" },
+                { v: fmtMetric(meta.validation_mape_price), l: "Ошибка цен" },
+                { v: fmtMetric(meta.validation_mape_yield), l: "Ошибка урожая" },
+                { v: fmtMetric(meta.risk_accuracy_pct),     l: "Точность рисков" },
               ].map((s, i) => (
                 <div key={i} className="bg-white/15 border border-white/25 rounded-xl px-3 py-3 text-center backdrop-blur-sm">
                   <div className="font-mono font-black text-lg text-white leading-none">{s.v}</div>
@@ -93,9 +95,9 @@ export default function SectionAiModel() {
       {meta && (
         <div className="grid sm:grid-cols-3 gap-4">
           {[
-            { icon: "Sprout",     label: "Модуль урожайности", value: meta.yield_model, badge: `MAPE ${meta.validation_mape_yield}%`, color: "primary", desc: "Предсказывает урожайность по NDVI, метео, истории" },
-            { icon: "TrendingUp", label: "Модуль цен",         value: meta.price_model, badge: `MAPE ${meta.validation_mape_price}%`, color: "accent",  desc: "Цены на основе биржи, экспорта, спроса" },
-            { icon: "ShieldAlert",label: "Модуль рисков",      value: meta.risk_model,  badge: `Точность ${meta.risk_accuracy_pct}%`, color: "primary", desc: "Засуха, заморозки, вредители — вероятность и уровень" },
+            { icon: "Sprout",     label: "Модуль урожайности", value: meta.yield_model, badge: `Ошибка: ${fmtMetric(meta.validation_mape_yield)}`, color: "primary", desc: "Предсказывает урожайность по NDVI, метео, истории" },
+            { icon: "TrendingUp", label: "Модуль цен",         value: meta.price_model, badge: `Ошибка: ${fmtMetric(meta.validation_mape_price)}`, color: "accent",  desc: "Цены на основе биржи, экспорта, спроса" },
+            { icon: "ShieldAlert",label: "Модуль рисков",      value: meta.risk_model,  badge: `Точность: ${fmtMetric(meta.risk_accuracy_pct)}`, color: "primary", desc: "Засуха, заморозки, вредители — вероятность и уровень" },
           ].map((m, i) => (
             <div key={i} className={`glass-card rounded-2xl p-5 border-t-4 ${m.color === "primary" ? "border-t-primary" : "border-t-accent"}`}>
               <div className="flex items-center gap-3 mb-3">
@@ -186,7 +188,7 @@ export default function SectionAiModel() {
           </div>
           <div>
             <div className="text-sm font-semibold text-foreground">Нейросеть считает прогноз...</div>
-            <div className="text-xs text-muted-foreground">ARIMA + LSTM · {crop} · {REGION_NAMES[region as keyof typeof REGION_NAMES]} · {horizon} мес</div>
+            <div className="text-xs text-muted-foreground">Демо · {crop} · {REGION_NAMES[region as keyof typeof REGION_NAMES]} · {horizon} мес</div>
           </div>
         </div>
       )}

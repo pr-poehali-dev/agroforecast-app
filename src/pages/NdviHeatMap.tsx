@@ -301,7 +301,7 @@ export default function NdviHeatMap({ summary, selectedRegion, onSelectRegion }:
               bg-background/70 backdrop-blur-sm">
               <div className="flex flex-col items-center gap-3 text-muted-foreground">
                 <Icon name="Satellite" size={28} className="text-primary animate-pulse" />
-                <p className="text-sm font-medium">Загрузка данных Sentinel-2…</p>
+                <p className="text-sm font-medium">Загрузка данных…</p>
               </div>
             </div>
           )}
@@ -312,7 +312,7 @@ export default function NdviHeatMap({ summary, selectedRegion, onSelectRegion }:
           flex flex-wrap items-center gap-4 text-[10px] text-muted-foreground">
           <span className="flex items-center gap-1">
             <Icon name="Satellite" size={10} className="text-primary/60" />
-            Sentinel-2 (ESA) · 10 м/пиксель
+            Демонстрационные данные
           </span>
           <span className="flex items-center gap-1">
             <Icon name="RefreshCw" size={10} />

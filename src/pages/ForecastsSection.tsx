@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import { CROPS, FORECAST_DATA } from "./data";
 import { PriceChart } from "./PageWidgets";
+import ValidatedForecast from "@/components/ValidatedForecast";
 import { AiSingle, AiTableRow } from "./ForecastsTypes";
 
 // ── Live-prices backend ────────────────────────────────────────────────────
@@ -136,6 +137,8 @@ export default function ForecastsSection({
           </div>
         </div>
       </div>
+
+      <ValidatedForecast />
 
       {/* ── Актуальные котировки ── */}
       <div className="glass-card rounded-2xl overflow-hidden">
@@ -297,7 +300,7 @@ export default function ForecastsSection({
                   </span>
                 ) : aiSingle ? (
                   <span className="text-[10px] text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full font-mono flex items-center gap-1">
-                    <Icon name="Brain" size={9} />AI · live
+                    <Icon name="Info" size={9} />демо-модель
                   </span>
                 ) : null}
                 {/* Live price indicator on forecast card */}
@@ -332,7 +335,7 @@ export default function ForecastsSection({
                   <Icon name="ArrowRight" size={20} className="text-muted-foreground" />
                 </div>
                 <div className={`rounded-xl px-4 py-3 border ${selectedForecast.trend === "up" ? "bg-primary/8 border-primary/25" : "bg-destructive/8 border-destructive/25"}`}>
-                  <div className="text-[11px] text-muted-foreground mb-1">Прогноз AI (+3 мес)</div>
+                  <div className="text-[11px] text-muted-foreground mb-1">Демо-оценка (+3 мес)</div>
                   <div className={`font-mono font-black text-2xl ${selectedForecast.trend === "up" ? "text-primary" : "text-destructive"}`}>
                     {selectedForecast.forecastPrice.toLocaleString()}
                     <span className="text-sm font-normal"> ₽/т</span>
@@ -368,7 +371,7 @@ export default function ForecastsSection({
           <div className="mb-6 bg-background rounded-xl p-4 border border-border">
             <div className="flex justify-between text-xs text-muted-foreground mb-2">
               <span className="flex items-center gap-1">
-                <Icon name="Brain" size={11} />Уверенность модели ARIMA + LSTM
+                <Icon name="Brain" size={11} />Уверенность модели
               </span>
               <span className="font-mono font-bold text-accent">
                 {typeof selectedForecast.confidence === "number" ? selectedForecast.confidence.toFixed(0) : selectedForecast.confidence}%
@@ -398,8 +401,8 @@ export default function ForecastsSection({
               <Icon name="Table" size={15} className="text-primary" />
             </div>
             <div>
-              <div className="font-heading font-bold text-sm text-foreground">Сводная таблица прогнозов</div>
-              <div className="text-[11px] text-muted-foreground">все культуры · горизонт +3 мес</div>
+              <div className="font-heading font-bold text-sm text-foreground">Сводная таблица (демо-модель)</div>
+              <div className="text-[11px] text-muted-foreground">иллюстрация · проверенный прогноз — в блоке выше</div>
             </div>
             {aiTableLoading ? (
               <span className="text-[10px] text-muted-foreground animate-pulse flex items-center gap-1 bg-secondary px-2 py-0.5 rounded-full ml-1">
@@ -407,7 +410,7 @@ export default function ForecastsSection({
               </span>
             ) : aiTable.length > 0 ? (
               <span className="text-[10px] text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full font-mono flex items-center gap-1 ml-1">
-                <Icon name="Brain" size={9} />AI · live
+                <Icon name="Info" size={9} />демо
               </span>
             ) : null}
           </div>
@@ -416,7 +419,7 @@ export default function ForecastsSection({
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-secondary/40">
-                {["Культура", "Цена сейчас", "Прогноз AI", "Изменение", "Уверенность", "Урожайность"].map(h => (
+                {["Культура", "Цена сейчас", "Демо-оценка", "Изменение", "Уверенность (демо)", "Урожайность"].map(h => (
                   <th key={h} className="text-left text-[11px] text-muted-foreground font-semibold py-3 px-4 first:pl-6 last:pr-6 uppercase tracking-wide">{h}</th>
                 ))}
               </tr>

@@ -167,16 +167,16 @@ export function exportAnalyticsPdf() {
     </div>
     <div class="meta">
       <div style="font-weight:700;font-size:14px">${date}</div>
-      <div>Данные: НТБ, Росгидромет, Минсельхоз РФ</div>
+      <div>Данные: открытые источники; часть показателей — демонстрационные</div>
       <div>Горизонт прогноза: +3 месяца</div>
     </div>
   </div>
 
   <div class="summary-grid">
     <div class="summary-card"><div class="val">8</div><div class="lbl">Регионов под мониторингом</div></div>
-    <div class="summary-card"><div class="val">87%</div><div class="lbl">Точность прогнозов AI</div></div>
+    <div class="summary-card"><div class="val">Демо</div><div class="lbl">Оценки носят иллюстративный характер</div></div>
     <div class="summary-card"><div class="val">13 650 ₽/т</div><div class="lbl">Пшеница сейчас (НТБ)</div></div>
-    <div class="summary-card"><div class="val">85.9 млн т</div><div class="lbl">Прогноз урожая РФ (СовЭкон)</div></div>
+    
   </div>
 
   <h2>Прогнозы цен и урожайности (апрель 2026)</h2>
@@ -257,7 +257,7 @@ export function exportCommercialPdf() {
   </div>
 
   <h2>О платформе</h2>
-  <p>AgroForecast Pro — единственная в Поволжье платформа, объединяющая спутниковый мониторинг посевов (Sentinel-2), прогнозирование цен на основе ARIMA+LSTM и рисков на основе вероятностных моделей. Данные обновляются ежедневно.</p>
+  <p>АгроПорт — платформа для агробизнеса: новости и котировки рынка из открытых источников, база хозяйств, прогноз цен с проверкой точности на истории. Модуль спутникового NDVI — в разработке.</p>
 
   <div class="highlight">
     <strong>Топ-культура апреля 2026:</strong> ${bestCrop.crop} — ROI ${bestCrop.roi}%, маржа ${bestCrop.margin}%, текущая цена закупки ${FORECAST_DATA.find(f => f.crop === bestCrop.crop)?.currentPrice.toLocaleString("ru") ?? "—"} ₽/т.
@@ -267,9 +267,9 @@ export function exportCommercialPdf() {
   <table>
     <thead><tr><th>Модуль</th><th>Что даёт</th><th>Точность</th></tr></thead>
     <tbody>
-      <tr><td>Прогноз цен (ARIMA+LSTM)</td><td>Прогноз на 3–12 мес для 12 культур</td><td>MAPE < 10%</td></tr>
-      <tr><td>NDVI-мониторинг (Sentinel-2)</td><td>Состояние посевов, аномалии, урожай</td><td>MAPE < 13%</td></tr>
-      <tr><td>AI-модель рисков</td><td>Засуха, заморозки, вредители по 8 регионам</td><td>87.2%</td></tr>
+      <tr><td>Прогноз цен</td><td>Пшеница, подсолнечник, кукуруза</td><td>Ошибка публикуется на странице «Технология»</td></tr>
+      <tr><td>NDVI-мониторинг</td><td>Состояние посевов</td><td>В разработке</td></tr>
+      <tr><td>Модуль рисков</td><td>Засуха, заморозки, вредители</td><td>Демо</td></tr>
       <tr><td>Планировщик посевов</td><td>Оптимальная структура под цели хозяйства</td><td>—</td></tr>
       <tr><td>Калькулятор рентабельности</td><td>ROI, маржа, лучший срок продаж</td><td>—</td></tr>
     </tbody>
@@ -296,7 +296,7 @@ export function exportCommercialPdf() {
   <div class="cta">Начать бесплатно: agroforecast.poehali.dev</div>
 
   <div class="footer">
-    Данные: НТБ · СовЭкон · Росгидромет · Минсельхоз РФ · CBOT · Sentinel-2 (ESA) · апрель 2026<br/>
+    Данные: Росстат · Всемирный банк · Банк России · открытые новостные источники<br/>
     AgroForecast Pro — платформа для агробизнеса Поволжья
   </div>
 </div>

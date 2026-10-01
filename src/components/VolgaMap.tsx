@@ -88,7 +88,7 @@ function makePopup(
   const riskLabelText = riskPct >= 65 ? "Высокий" : riskPct >= 40 ? "Средний" : "Низкий";
   const aiBlock = ai ? `
     <div style="margin-top:8px;padding-top:8px;border-top:1px solid #e5e7eb;">
-      <div style="font-size:10px;color:#9ca3af;font-family:'IBM Plex Mono',monospace;letter-spacing:.5px;margin-bottom:5px;">ИИ-прогноз · ARIMA+LSTM</div>
+      <div style="font-size:10px;color:#9ca3af;font-family:'IBM Plex Mono',monospace;letter-spacing:.5px;margin-bottom:5px;">Оценка · демо-данные</div>
       <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px;">
         <span style="color:#6b7280;">Урожай (пшеница)</span>
         <span style="font-weight:700;color:#2E7D32;">${ai.yield_cha ?? "—"} ц/га</span>

@@ -63,7 +63,7 @@ export default function HomeHero({ setActiveSection }: HomeHeroProps) {
               {[
                 { v: "23",   l: "Региона России",   icon: "MapPin" },
                 { v: "5",    l: "Культур",           icon: "Wheat" },
-                { v: "8+",   l: "Источников новостей", icon: "Newspaper" },
+                { v: "RSS",  l: "Новости рынка", icon: "Newspaper" },
                 { v: "LIVE", l: "Цены и новости",    icon: "Zap" },
               ].map((s, i) => (
                 <div key={i} className="bg-white/12 border border-white/20 rounded-2xl p-4 text-center backdrop-blur-sm hover:bg-white/18 transition-colors">
@@ -89,7 +89,7 @@ export default function HomeHero({ setActiveSection }: HomeHeroProps) {
             Аналитика, которой <span className="text-primary">доверяет бизнес</span>
           </h2>
           <p className="text-muted-foreground mt-2 text-sm max-w-xl mx-auto font-body">
-            Мы объединяем спутниковые данные, биржевые котировки и нейросети в одном инструменте
+            Мы объединяем открытую статистику, рыночные котировки и прогнозные модели в одном инструменте
           </p>
         </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -158,14 +158,14 @@ export default function HomeHero({ setActiveSection }: HomeHeroProps) {
         <div className="relative">
           <div className="text-center mb-6">
             <p className="text-white/60 text-xs font-mono uppercase tracking-widest mb-2">Цифры платформы</p>
-            <h2 className="font-heading font-black text-2xl text-white">Нам доверяют <span className="gold-text">профессионалы</span></h2>
+            <h2 className="font-heading font-black text-2xl text-white">Данные, которые <span className="gold-text">можно проверить</span></h2>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
             {[
-              { v: "1 200+", l: "Пользователей", icon: "Users" },
-              { v: "85.9 млн т", l: "Прогноз пшеницы 2026", icon: "Wheat" },
-              { v: "3.2 млн т", l: "Экспорт в апреле", icon: "Globe" },
-              { v: "15 мин", l: "Обновление данных", icon: "Clock" },
+              { v: "2 864", l: "Хозяйств в базе", icon: "Users" },
+              { v: "3", l: "Культуры в прогнозе", icon: "Wheat" },
+              { v: "2019–2024", l: "История урожайности", icon: "Database" },
+              { v: "Открыто", l: "Метрики точности", icon: "Target" },
             ].map((s, i) => (
               <div key={i} className="text-center">
                 <Icon name={s.icon as string} size={20} className="text-white/50 mx-auto mb-2" />
@@ -179,8 +179,8 @@ export default function HomeHero({ setActiveSection }: HomeHeroProps) {
             <p className="text-white/45 text-[11px] font-mono uppercase tracking-widest text-center mb-4">Источники данных</p>
             <div className="flex flex-wrap justify-center gap-3">
               {[
-                "НТБ (биржа)", "Минсельхоз РФ", "Росгидромет", "Sentinel-2 (ESA)",
-                "zerno.ru", "agroinvestor.ru", "oilworld.ru", "Русагротранс",
+                "Росстат", "Всемирный банк", "Банк России", "Минсельхоз РФ",
+                "zerno.ru", "agroinvestor.ru", "oilworld.ru", "ФНС (ЕГРЮЛ)",
               ].map((s, i) => (
                 <span key={i} className="px-3 py-1.5 bg-white/10 border border-white/20 rounded-lg text-white/75 text-xs font-medium">
                   {s}

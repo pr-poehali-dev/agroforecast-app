@@ -132,7 +132,7 @@ export default function AiModelChartTab({ chart, crop, region, horizon, meta }: 
               <h2 className="font-semibold">{crop} — прогноз цен на {horizon} мес.</h2>
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {REGION_NAMES[region] ?? region} · ARIMA + Prophet + Transformer · {chartData.length} точек данных
+              {REGION_NAMES[region] ?? region} · демонстрационная модель · {chartData.length} точек данных
             </p>
           </div>
 
@@ -419,9 +419,9 @@ export default function AiModelChartTab({ chart, crop, region, horizon, meta }: 
           </div>
           <div className="mt-4 grid sm:grid-cols-3 gap-3 text-xs">
             {[
-              { label: "Модуль урожайности", stack: ["Python 3.11", "NumPy + Pandas", "LSTM нейросеть", "Random Forest (100 деревьев)", "XGBoost ансамбль"] },
-              { label: "Модуль цен",         stack: ["ARIMA (p=2,d=1,q=2)", "Prophet (сезонность)", "Transformer NLP", "Данные НТБ + CBOT", "Курс ЦБ РФ"] },
-              { label: "Модуль рисков",      stack: ["Вероятностная модель", "Данные Росгидромет", "NDVI Sentinel-2", "Классификатор угроз", "Автоматические алерты"] },
+              { label: "Модуль урожайности", stack: ["Python 3.11", "История урожайности 2019–2024", "Линейный тренд", "ИИ-ассистент (оценка)", "В разработке: регрессия по NDVI и погоде"] },
+              { label: "Модуль цен",         stack: ["Ряды цен Росстата", "Мировые цены (Всемирный банк)", "Курс ЦБ РФ", "Регрессия с сезонностью", "Проверка на истории (скользящее окно)"] },
+              { label: "Модуль рисков",      stack: ["Правила по метеоусловиям", "Демо-метеоданные", "NDVI (в разработке)", "Классификатор угроз", "Оповещения"] },
             ].map((s, i) => (
               <div key={i} className="bg-secondary/30 rounded-lg p-3">
                 <div className="font-medium text-foreground mb-2">{s.label}</div>

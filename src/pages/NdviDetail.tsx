@@ -46,7 +46,7 @@ export default function NdviDetail({ detail, detailLoading }: NdviDetailProps) {
 
         {/* Формула NDVI */}
         <div className="bg-secondary/50 rounded-xl p-4 border border-border mb-5">
-          <div className="text-[10px] text-muted-foreground font-mono uppercase tracking-wide mb-2">Расчёт NDVI (Sentinel-2, Band 4 Red + Band 8 NIR)</div>
+          <div className="text-[10px] text-muted-foreground font-mono uppercase tracking-wide mb-2">Формула NDVI (Red + NIR каналы)</div>
           <div className="font-mono text-sm text-foreground font-bold">{detail.ndvi_formula}</div>
           <div className="text-xs text-muted-foreground mt-1.5">NIR = отражение в ближнем ИК диапазоне · Red = отражение в красном диапазоне</div>
         </div>

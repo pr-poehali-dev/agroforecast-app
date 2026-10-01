@@ -16,7 +16,7 @@ export default function AiModelSingleTab({ single }: AiModelSingleTabProps) {
           </div>
           <div>
             <div className="text-xs font-semibold text-foreground">Урожайность</div>
-            <div className="text-[10px] text-muted-foreground">LSTM + ансамбль</div>
+            <div className="text-[10px] text-muted-foreground">демо-модель</div>
           </div>
         </div>
         <div className="text-3xl font-bold font-mono text-primary mb-1">
@@ -37,7 +37,7 @@ export default function AiModelSingleTab({ single }: AiModelSingleTabProps) {
               style={{ width: `${single.yield_forecast.confidence_pct}%` }} />
           </div>
           <div className="flex justify-between text-xs text-muted-foreground mt-2">
-            <span>LSTM сигнал</span>
+            <span>Сигнал модели</span>
             <span className="font-mono">{single.yield_forecast.lstm_signal}</span>
           </div>
           <div className="flex justify-between text-xs text-muted-foreground">
@@ -55,7 +55,7 @@ export default function AiModelSingleTab({ single }: AiModelSingleTabProps) {
           </div>
           <div>
             <div className="text-xs font-semibold text-foreground">Цена</div>
-            <div className="text-[10px] text-muted-foreground">ARIMA + Prophet + NLP</div>
+            <div className="text-[10px] text-muted-foreground">тренд + сезонность</div>
           </div>
         </div>
         <div className={`text-3xl font-bold font-mono mb-1 ${single.price_forecast.trend === "up" ? "text-primary" : "text-destructive"}`}>
@@ -80,7 +80,7 @@ export default function AiModelSingleTab({ single }: AiModelSingleTabProps) {
           <div className="mt-3 pt-3 border-t border-border/50 space-y-1.5">
             <div className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Декомпозиция</div>
             {[
-              { label: "ARIMA тренд", value: single.price_forecast.components.arima_rub.toLocaleString() + " ₽" },
+              { label: "Тренд", value: single.price_forecast.components.arima_rub.toLocaleString() + " ₽" },
               { label: "Сезонность", value: (single.price_forecast.components.seasonal_rub > 0 ? "+" : "") + single.price_forecast.components.seasonal_rub.toLocaleString() + " ₽" },
               { label: "NLP сигнал", value: (single.price_forecast.components.news_signal_pct > 0 ? "+" : "") + single.price_forecast.components.news_signal_pct + "%" },
               { label: "Урожай-эффект", value: single.price_forecast.components.yield_effect_rub.toLocaleString() + " ₽" },

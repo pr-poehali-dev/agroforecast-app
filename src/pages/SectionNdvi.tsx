@@ -125,7 +125,7 @@ export default function SectionNdvi() {
 
       {loading && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground animate-pulse">
-          <Icon name="Satellite" size={14} className="text-primary" />Загрузка данных Sentinel-2...
+          <Icon name="Satellite" size={14} className="text-primary" />Загрузка данных...
         </div>
       )}
 

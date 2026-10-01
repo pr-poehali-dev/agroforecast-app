@@ -5,7 +5,7 @@
       "method": "GET",
       "path": "/",
       "expectedStatus": 200,
-      "expectedBody": {"model_info": {"yield_model": "LSTM + Random Forest ensemble"}},
+      "expectedBody": {"model_info": {"is_demo": true}},
       "bodyMatcher": "partial"
     },
     {

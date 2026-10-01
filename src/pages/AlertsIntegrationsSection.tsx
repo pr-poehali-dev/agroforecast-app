@@ -8,22 +8,22 @@ const INTEGRATIONS = [
     metric: "RSS · обновление в реальном времени",
   },
   {
-    name: "НТБ (Нац. товарная биржа)", tag: "Биржа", status: "connected", icon: "BarChart2",
+    name: "НТБ (Нац. товарная биржа)", tag: "Биржа", status: "disconnected", icon: "BarChart2",
     url: "https://ntbex.ru",
     desc: "Официальные котировки зерновых на бирже НТБ — пшеница, ячмень, кукуруза, рожь, подсолнечник.",
     metric: "Базовые цены · ориентир",
   },
   {
-    name: "Росгидромет", tag: "Метео", status: "connected", icon: "Cloud",
+    name: "Росгидромет", tag: "Метео", status: "disconnected", icon: "Cloud",
     url: "https://meteoinfo.ru",
     desc: "Агрометеорологические прогнозы и бюллетени по регионам России. Основной источник данных о погоде и ГТК.",
     metric: "Прогноз 7 дней · 23 региона",
   },
   {
-    name: "Sentinel-2 (ESA)", tag: "Спутник", status: "connected", icon: "Satellite",
+    name: "Sentinel-2 (ESA)", tag: "Спутник", status: "disconnected", icon: "Satellite",
     url: "https://sentinel.esa.int",
     desc: "Спутниковые снимки Sentinel-2 с разрешением 10 м/пиксель. Расчёт индекса NDVI для мониторинга посевов.",
-    metric: "NDVI · обновление каждые 5 дней",
+    metric: "В разработке",
   },
   {
     name: "Минсельхоз РФ", tag: "Статистика", status: "connected", icon: "Building2",

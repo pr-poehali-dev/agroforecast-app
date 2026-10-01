@@ -24,7 +24,7 @@ export default function BusinessAnalytics() {
         {[
           { label: "Регионов на карте", value: "23", sub: "России", up: true, icon: "MapPin" },
           { label: "Культур в аналитике", value: "5", sub: "основных", up: true, icon: "Sprout" },
-          { label: "Источников новостей", value: "8+", sub: "открытых", up: true, icon: "Newspaper" },
+          { label: "Новости рынка", value: "RSS", sub: "открытые источники", up: true, icon: "Newspaper" },
           { label: "Цены рынка", value: "LIVE", sub: "из RSS", up: true, icon: "Zap" },
         ].map((m, i) => (
           <div key={i} className="kpi-card rounded-xl p-4">
@@ -83,7 +83,7 @@ export default function BusinessAnalytics() {
             </div>
             <div>
               <div className="font-heading font-bold text-sm text-foreground">AI-рекомендации</div>
-              <div className="text-[11px] text-muted-foreground font-mono">NLP + LSTM · live</div>
+              <div className="text-[11px] text-muted-foreground font-mono">демо-режим</div>
             </div>
           </div>
           <div className="space-y-3">

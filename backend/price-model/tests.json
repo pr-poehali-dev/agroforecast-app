@@ -1,0 +1,7 @@
+{
+  "tests": [
+    {"name": "OPTIONS preflight", "method": "OPTIONS", "path": "/", "expectedStatus": 200},
+    {"name": "Сводка прогнозов", "method": "GET", "path": "/?action=summary", "expectedStatus": 200, "expectedBody": {"model": "string"}, "bodyMatcher": "partial"},
+    {"name": "Пересчёт без культуры — ошибка", "method": "POST", "path": "/?action=retrain", "expectedStatus": 400}
+  ]
+}
