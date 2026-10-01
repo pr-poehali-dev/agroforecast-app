@@ -40,7 +40,7 @@ export default function AdminPriceCollect() {
     setRunning(true); setMsg("Собираю цены…");
     try {
       const r = await call("collect");
-      setMsg(r.ok ? `Готово: сохранено ${r.saved} цен.` : "Источник не ответил, попытка записана в журнал.");
+      setMsg(r.ok ? `Готово: сохранено ${r.saved} цен${r.status?.cenazerna === "partial" ? " (не все культуры — см. журнал)" : ""}.` : "Источник не ответил, попытка записана в журнал.");
       load();
     } catch (e: unknown) {
       setMsg(e instanceof Error ? e.message : "Ошибка");
@@ -128,8 +128,8 @@ export default function AdminPriceCollect() {
                     <td className="px-4 py-2 font-mono">{fmt(r.at)}</td>
                     <td className="px-4 py-2 text-muted-foreground">{TRIGGER[r.trigger] ?? r.trigger}</td>
                     <td className="px-4 py-2">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${r.status === "ok" ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
-                        {r.status === "ok" ? "успешно" : "ошибка"}
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${r.status === "ok" ? "bg-emerald-100 text-emerald-700" : r.status === "partial" ? "bg-amber-100 text-amber-700" : "bg-rose-100 text-rose-700"}`}>
+                        {r.status === "ok" ? "успешно" : r.status === "partial" ? "частично" : "ошибка"}
                       </span>
                     </td>
                     <td className="px-4 py-2 text-right font-mono">{r.saved}</td>

@@ -184,7 +184,7 @@ def _fetch_live_prices() -> tuple[dict[str, dict], dict[str, str]]:
             except Exception:
                 raw[k] = None
         try:
-            cz_rows, cz_status = cz_fut.result(timeout=22)
+            cz_rows, cz_status = cz_fut.result(timeout=40)
         except Exception:
             cz_rows, cz_status = {}, "failed"
 
@@ -426,9 +426,15 @@ def _run_collect(trigger: str) -> dict:
         return {"ok": False, "status": status}
     saved = _save_buyer_prices()
     _save_quotes(live)
-    ok = status.get("cenazerna") == "ok"
-    _log_run(trigger, "ok" if ok else "failed", saved, status,
-             "" if ok else "Источник «Цена Зерна» не ответил")
+    cz = status.get("cenazerna")
+    ok = cz in ("ok", "partial")
+    if cz == "partial":
+        msg = "Не получены: " + ", ".join(cenazerna.MISSING)
+    elif ok:
+        msg = ""
+    else:
+        msg = "Источник «Цена Зерна» не ответил"
+    _log_run(trigger, "ok" if cz == "ok" else ("partial" if cz == "partial" else "failed"), saved, status, msg)
     return {"ok": ok, "saved": saved, "status": status, "live": live}
 
 

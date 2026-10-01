@@ -24,9 +24,11 @@ CROPS = {
 # защита от явно ошибочных значений, ₽/т
 BOUNDS = {"Подсолнечник": (10000, 90000)}
 DEFAULT_BOUNDS = (3000, 40000)
+# культуры, не полученные при последнем сборе
+MISSING: list[str] = []
 
 
-def _get(culture: str, sub: str, timeout: int = 12, attempts: int = 1):
+def _get(culture: str, sub: str, timeout: int = 8, attempts: int = 1):
     """Запрос с одной повторной попыткой: первое соединение с сервером иногда обрывается."""
     q = urllib.parse.urlencode({"culture": culture, "sub_name": sub, "basis": "CPT"})
     req = urllib.request.Request(f"{API}?{q}", headers={
@@ -83,21 +85,32 @@ def _rows(crop: str, payload) -> list[dict]:
 
 
 def fetch_all() -> tuple[dict[str, list[dict]], str]:
-    """Возвращает ({культура: [цены закупщиков]}, статус: ok | no_data | failed).
-    Сервер источника медленно отвечает на одновременные запросы, поэтому не больше двух сразу."""
+    """Возвращает ({культура: [цены закупщиков]}, статус: ok | partial | no_data | failed).
+    Сервер источника медленно отвечает на одновременные запросы, поэтому не больше двух сразу;
+    культуры, по которым соединение оборвалось, запрашиваются повторно."""
     res: dict[str, list[dict]] = {}
-    errors = 0
-    with ThreadPoolExecutor(max_workers=2) as ex:
-        futs = {crop: ex.submit(_get, *api) for crop, api in CROPS.items()}
-        for crop, f in futs.items():
-            try:
-                res[crop] = _rows(crop, f.result(timeout=20))
-            except Exception as e:
-                print(f"[cenazerna] {crop}: {e}")
-                errors += 1
-    if errors == len(CROPS):
+
+    def run(crops: list[str]) -> list[str]:
+        failed = []
+        with ThreadPoolExecutor(max_workers=2) as ex:
+            futs = {crop: ex.submit(_get, *CROPS[crop]) for crop in crops}
+            for crop, f in futs.items():
+                try:
+                    res[crop] = _rows(crop, f.result(timeout=20))
+                except Exception as e:
+                    print(f"[cenazerna] {crop}: {e}")
+                    failed.append(crop)
+        return failed
+
+    failed = run(list(CROPS))
+    if failed:
+        failed = run(failed)
+    MISSING.clear(); MISSING.extend(failed)
+    if len(failed) == len(CROPS):
         return {}, "failed"
-    return res, ("ok" if any(res.values()) else "no_data")
+    if not any(res.values()):
+        return res, "no_data"
+    return res, ("partial" if failed else "ok")
 
 
 def summarize(rows: list[dict]) -> dict | None:
