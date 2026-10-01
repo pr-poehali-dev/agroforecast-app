@@ -114,11 +114,14 @@ def fetch_all() -> tuple[dict[str, list[dict]], str]:
 
 
 def summarize(rows: list[dict]) -> dict | None:
-    """Сводка по культуре на последнюю дату: медиана, разброс, число закупщиков и регионов."""
+    """Сводка по текущему снимку цен: медиана, разброс, число закупщиков и регионов."""
     if not rows:
         return None
     last = max(r["date"] for r in rows)
-    day = [r for r in rows if r["date"] == last]
+    # весь текущий снимок предложений за последние 7 дней: утром часть цен ещё со вчерашней датой
+    from datetime import date, timedelta
+    edge = (date.fromisoformat(last) - timedelta(days=7)).isoformat()
+    day = [r for r in rows if r["date"] >= edge]
     prices = [r["price"] for r in day]
     diffs = [r["diff"] for r in day if r["diff"] is not None]
     med = statistics.median(prices)

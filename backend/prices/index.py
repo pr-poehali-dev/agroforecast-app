@@ -283,13 +283,18 @@ def _db_latest() -> dict[str, dict]:
         import psycopg2
         conn = psycopg2.connect(dsn); cur = conn.cursor()
         cur.execute(f"""
-            WITH last AS (SELECT crop, max(price_date) d FROM {schema}.buyer_prices GROUP BY crop)
-            SELECT b.crop, l.d,
-                   percentile_cont(0.5) WITHIN GROUP (ORDER BY b.price_rub_t),
-                   min(b.price_rub_t), max(b.price_rub_t), count(*),
-                   count(DISTINCT b.company), count(DISTINCT b.region)
-            FROM {schema}.buyer_prices b JOIN last l ON l.crop=b.crop AND l.d=b.price_date
-            GROUP BY b.crop, l.d""")
+            WITH last AS (SELECT crop, max(fetched_at) f FROM {schema}.buyer_prices GROUP BY crop),
+            snap AS (
+                SELECT DISTINCT ON (b.source_price_id) b.*
+                FROM {schema}.buyer_prices b JOIN last l ON l.crop=b.crop
+                WHERE b.fetched_at >= l.f - interval '1 hour'
+                ORDER BY b.source_price_id, b.price_date DESC)
+            SELECT crop, max(price_date),
+                   percentile_cont(0.5) WITHIN GROUP (ORDER BY price_rub_t),
+                   min(price_rub_t), max(price_rub_t), count(*),
+                   count(DISTINCT company), count(DISTINCT region)
+            FROM snap WHERE price_date >= current_date - 7
+            GROUP BY crop""")
         out = {c: {"price": round(float(m)), "min": round(float(lo)), "max": round(float(hi)), "n": n,
                    "companies": co, "regions": rg, "day_change": None, "date": str(d)}
                for c, d, m, lo, hi, n, co, rg in cur.fetchall()}
